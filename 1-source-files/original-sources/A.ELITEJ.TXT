@@ -1,0 +1,854 @@
+    1GOTO20
+    2*L.ELITEB
+    3GOTO20
+    4*L.ELITEA
+    6*L.ELITEC
+    7GOTO20
+    8*L.ELITED
+    9GOTO20
+   10*L.ELITEE
+   11GOTO20
+   12*L.ELITEF
+   13GOTO20
+   14*L.ELITEG
+   15GOTO20
+   16*L.ELITEH
+   17GOTO20
+   18*L.ELITEI
+   19GOTO30
+   20*L.ELITEJ
+   21GOTO30
+   22*L.ELITEK
+   30REM ELITE <J>  AP   /  Apple DOS 1.00 from Rob Northen
+   40REM
+  100H%=H%+O%-W%:O%=W%
+  103 ztemp0=XX15:ztemp1=ztemp0+1:ztemp2=ztemp1+1:ztemp3=ztemp2+1
+  105 REM Other Addresses
+  110 track  = K%+256+350
+  115 sector = track+1
+  120 curtrk = sector+1
+  125 tsltrk = curtrk+1
+  130 tslsct = tsltrk+1
+  140 filtrk = tslsct+1
+  150 filsct = filtrk+1
+  160 mtimel = filsct+1
+  170 mtimeh = mtimel+1
+  180 seeks  = mtimeh+1
+  190 recals = seeks+1
+  200 slot16 = recals+1
+  210 atemp0 = slot16+1
+  220 stkptr = atemp0+1
+  230 idfld  = stkptr+1 : REM (4 bytes)
+  240 
+  250 comsiz = 110    : REM Commander file size (1-252 bytes)
+  260 comfil = TAP%-20: REM Commander file (must not exceed 252 bytes)
+  265 comfil2= comfil+comsiz-4
+  270 buffer = K%     : REM 256 byte sector buffer
+  280 buffr2 = K%+256 : REM 342 6 bit 'nibble' buffer
+  290 fretrk = buffer+&30 : REM last allocated track
+  300 dirtrk = buffer+&31 : REM direction of track allocation (+1 or -1)
+  310 tracks = buffer+&34 : REM number of tracks per disc
+  320 bitmap = buffer+&38 : REM bit map of free sectors in track 0
+  330 
+  333 IF (buffer ANDFF)OR(buffr2 ANDFF):STOP
+  340 REM Disc Controller Addresses
+  350 phsoff = &C080 : REM stepper motor phase 0 off
+  360 mtroff = &C088 : REM turn motor off
+  370 mtron  = &C089 : REM turn motor on
+  380 drv1en = &C08A : REM enable drive 1
+  390 drv2en = &C08B : REM enable drive 2
+  400 Q6L    = &C08C : REM strobe data latch for I/O
+  410 Q6H    = &C08D : REM load data latch
+  420 Q7L    = &C08E : REM prepare latch for input
+  430 Q7H    = &C08F : REM prepare latch for output
+  440 
+ 1000REM DOS_RW1
+ 1010 
+ 1020 [OPT Z
+ 1030 
+ 1040.comnam \ (must be 30 characters long - pad with spaces)
+ 1050 EQUS "COMMANDER                     "
+ 1060 
+ 1070.rfile \ read a Commander file from a DOS disc into buffer
+ 1080 TSX
+ 1090 STX stkptr
+ 1100 JSR findf
+ 1110 LDA #5
+ 1120 BCS rfile3 \ branch if file not found
+ 1130 JSR gettsl \ get track/sector list of file
+ 1140 JSR rsect \ read first sector of file
+ 1150 LDY #0
+ 1160.rfile2
+ 1170 LDA buffer+4,Y
+ 1180 STA comfil,Y \ copy buffer to commander file
+ 1190 INY
+ 1200 CPY #comsiz \loop other way ## <2BS>
+ 1210 BNE rfile2
+ 1220 CLC
+ 1230.rfile3
+ 1240 RTS  \ C=1 file not found, C=0 file found and in buffer
+ 1250 
+ 1260.wfile \ write a commander file from buffer to a DOS disc
+ 1265 JSR MUTILATE
+ 1270 TSX
+ 1280 STX stkptr
+ 1290 JSR findf
+ 1300 BCC oldfil \ branch if file already exists
+ 1310 
+ 1320.newfil \ save a new commander file
+ 1330 JSR isfull \ check for at least two free sectors
+ 1340 LDA #2
+ 1350 BCS rfile3 \ branch if disc full
+ 1360 JSR finde \ find an empty file entry
+ 1370 LDA #3
+ 1380 BCS rfile3 \ branch if cat full
+ 1390 LDA tsltrk
+ 1400 STA buffer,Y \ tsl track field
+ 1410 LDA tslsct
+ 1420 STA buffer+1,Y \ tsl sector field
+ 1430 LDA #4
+ 1440 STA buffer+2,Y \ file type=BINARY file
+ 1450 LDA #2
+ 1460 STA buffer+&21,Y \ sectors lo=2
+ 1470 LDA #0
+ 1480 STA buffer+&22,Y \ sectors hi=0
+ 1490 TAX
+ 1500.newfl2
+ 1510 LDA comnam,X
+ 1520 ORA #&80
+ 1530 STA buffer+3,Y \ copy commander name to file name field
+ 1540 INY
+ 1550 INX
+ 1560 CPX #30
+ 1570 BNE newfl2
+ 1580 JSR wsect \ write catalog sector to disc
+ 1590 JSR isfull \ allocate two free sectors
+ 1600 JSR wsect \ write VTOC
+ 1610.newfl3
+ 1620 LDA #0
+ 1630 TAY
+ 1640.newfl4
+ 1650 STA buffer,Y \ init tsl
+ 1660 INY
+ 1670 BNE newfl4
+ 1680 LDA filtrk
+ 1690 STA buffer+12 \ track of commander file
+ 1700 LDA filsct
+ 1710 STA buffer+13 \ sector of commander file
+ 1720 LDA tsltrk
+ 1730 STA track
+ 1740 LDA tslsct
+ 1750 STA sector
+ 1760 JSR wsect \ write tsl sector
+ 1770 LDA filtrk
+ 1780 STA track
+ 1790 LDA filsct
+ 1800 STA sector
+ 1810 BPL oldfl2 \ always
+ 1820 
+ 1830.oldfil \ update an existing commander file
+ 1840 JSR gettsl \ get tsl of file
+ 1850.oldfl2
+ 1860 LDY #0
+ 1870.oldfl3
+ 1880 LDA comfil,Y
+ 1890 STA buffer+4,Y \ copy commander file to buffer
+ 1900 INY
+ 1910 CPY #comsiz
+ 1920 BNE oldfl3
+ 1930 JMP wsect \ write first sector of commander file
+ 1940 
+ 1950.findf \ find an existing file
+ 1960 CLC
+ 1970 BCC rentry \ always
+ 1980.finde \ find a new entry
+ 1990 SEC
+ 2000.rentry
+ 2010 ROR atemp0
+ 2020 JSR rvtoc \ read VTOC
+ 2030.rentr2
+ 2040 LDA buffer+1 \ read track of next catalog
+ 2050 STA track
+ 2060 LDA buffer+2 \ read sector of next catalog
+ 2070 STA sector
+ 2080 JSR rsect \ read catalog sector
+ 2090 LDY #&B \ point to first entry in sector
+ 2100.rentr3
+ 2110 LDA buffer,Y
+ 2120 BIT atemp0
+ 2130 BPL rentr4 \ branch if searching catalog for a file
+ 2140 TAX
+ 2150 BEQ rentr6 \ branch if found blank entry
+ 2160 CMP #&FF \INX ##
+ 2170 BEQ rentr6 \ branch if found deleted entry
+ 2180 BNE rentr8 \ branch if used entry
+ 2190.rentr4
+ 2200 TAX
+ 2210 BEQ rentr9 \ branch if last catalog entry
+ 2220 CMP #&FF
+ 2230 BEQ rentr8 \ branch if deleted file
+ 2240 TYA
+ 2250 PHA
+ 2260 LDX #0
+ 2270.rentr5
+ 2280 LDA buffer+3,Y
+ 2290 AND #&7F
+ 2300 CMP comnam,X
+ 2310 BNE rentr7 \ branch if names don't match
+ 2320 INY
+ 2330 INX
+ 2340 CPX #30
+ 2350 BNE rentr5
+ 2360 PLA
+ 2370 TAY \ Y points to start of file entry
+ 2380.rentr6
+ 2390 CLC \ signifies file found
+ 2400 RTS
+ 2410.rentr7
+ 2420 PLA
+ 2430 TAY
+ 2440.rentr8
+ 2450 TYA
+ 2460 CLC
+ 2470 ADC #35
+ 2480 TAY
+ 2490 BNE rentr3 \ branch if not reached last entry
+ 2500 LDA buffer+1
+ 2510 BNE rentr2 \ branch if not last catalog sector
+ 2520.rentr9
+ 2530 SEC \ signifies file not found
+ 2540 RTS
+ 2550 
+ 2560.getsct \ allocate one free sector from VTOC - doesn't update VTOC on disc
+ 2570 LDA #0
+ 2580 STA ztemp0 \ init allocation flag
+ 2590 BEQ getsc4 \ always
+ 2600.getsc3
+ 2610 LDA dirtrk
+ 2620.getsc4
+ 2630 CLC
+ 2640 ADC fretrk \ add last allocated track to direction of allocation
+ 2650 BEQ getsc5 \ branch if track 0
+ 2660 CMP tracks
+ 2670 BCC getsc7 \ branch if not last track+1
+ 2680 LDA #&FF
+ 2690 BNE getsc6 \ always - direction = backwards
+ 2700.getsc5
+ 2710 LDA ztemp0
+ 2720 BNE getscB \ branch if no free sectors - disc full
+ 2730 LDA #1 \ direction=forwards
+ 2740 STA ztemp0
+ 2750.getsc6
+ 2760 STA dirtrk \ change direction
+ 2770 CLC
+ 2780 ADC #17
+ 2790.getsc7
+ 2800 STA fretrk
+ 2810 ASL A
+ 2820 ASL A
+ 2830 TAY
+ 2840 LDX #16
+ 2850 LDA bitmap,Y
+ 2860 BNE getsc8 \ branch if not all allocated
+ 2870 INY
+ 2880 LDX #8
+ 2890 LDA bitmap,Y
+ 2900 BEQ getsc3 \ branch if all allocated
+ 2910.getsc8
+ 2920 STX ztemp0
+ 2930 LDX #0
+ 2940.getsc9
+ 2950 INX
+ 2960 DEC ztemp0 \ sector=sector-1
+ 2970 ROL A
+ 2980 BCC getsc9 \ loop until got a free sector
+ 2990 CLC \ allocate sector by clearing bit
+ 3000.getscA
+ 3010 ROR A \ shift bits back again
+ 3020 DEX
+ 3030 BNE getscA
+ 3040 STA bitmap,Y \ update VTOC
+ 3050 LDX fretrk \ next free track
+ 3060 LDY ztemp0 \ next free sector
+ 3070 CLC \ signifies one sector has been allocated
+ 3080 RTS
+ 3090.getscB
+ 3100 SEC \ signifies disc full
+ 3110 RTS
+ 3120 
+ 3130.isfull \ search VTOC for tsl sector and commander file sector
+ 3140 JSR rvtoc \ read VTOC
+ 3150 JSR getsct \ find free sector for tsl
+ 3160 BCS isful2 \ branch if disc full
+ 3170 STX tsltrk
+ 3180 STY tslsct
+ 3190 JSR getsct \ find free sector for commander file
+ 3200 STX filtrk
+ 3210 STY filsct
+ 3220.isful2
+ 3230 RTS \ C=0=disc full, C=1=enough space
+ 3240 
+ 3250.gettsl \ read a file's track sector list
+ 3260 LDA buffer,Y \ get track of tsl
+ 3270 STA track
+ 3280 LDA buffer+1,Y \ get sector of tsl
+ 3290 STA sector
+ 3300 JSR rsect \ read tsl
+ 3310 LDY #&C
+ 3320 LDA buffer,Y \ get track of first sector of file
+ 3330 STA track
+ 3340 LDA buffer+1,Y \ get sector of first sector of file
+ 3350 STA sector
+ 3360 RTS
+ 3370 
+ 3380.rvtoc \ read VTOC sector into buffer
+ 3390 LDA #17
+ 3400 STA track
+ 3410 LDA #0
+ 3420 STA sector
+ 3430 
+ 4000 \REM DOS_RW2
+ 4010 
+ 4030 
+ 4040.rsect \ read sector from disc into buffer
+ 4050 CLC
+ 4060 BCC wsect2 \ always
+ 4070.wsect \ write sector from buffer to disc
+ 4080 SEC
+ 4090.wsect2 \ drive=1, track=?track, sector=?sector
+ 4100 PHP
+ 4110 LDA #&60
+ 4120 STA slot16
+ 4130 LDA #2
+ 4140 STA recals \ init max number of arm recalibrations
+ 4150 LDA #4
+ 4160 STA seeks \ init max number of seeks
+ 4170 LDA #&D8
+ 4180 STA mtimeh \ init motor on time hi
+ 4190 LDX slot16 \ get slot number*16 of controller card
+ 4200 LDA Q7L,X \ prepare latch for input
+ 4210 LDA Q6L,X \ strobe data latch for I/O
+ 4220 LDY #8
+ 4230.rwts2
+ 4240 LDA Q6L,X \ read data
+ 4250 PHA \ short delay
+ 4260 PLA
+ 4270 PHA
+ 4280 PLA
+ 4290 CMP &100
+ 4300 CMP Q6L,X
+ 4310 BNE rwts3 \ branch if data latch changed ie. disc is spinning
+ 4320 DEY
+ 4330 BNE rwts2
+ 4340.rwts3
+ 4350 PHP \ save result - Z=0=disc is spinning, Z=1=disc not spinning
+ 4360 LDA mtron,X \ turn motor on - if disc was not spinning
+ 4370 LDA drv1en,X \ enable drive 1
+ 4380 PLP
+ 4390 PHP
+ 4400 BNE rwts5 \ branch if disc is spinning
+ 4410 LDY #7
+ 4420.rwts4
+ 4430 JSR armwat \ wait for capacitor to discharge
+ 4440 DEY
+ 4450 BNE rwts4
+ 4460 LDX slot16
+ 4470.rwts5
+ 4480 LDA track
+ 4490 JSR seek
+ 4500 PLP
+ 4510 BNE trytrk \ branch if disc is spinning
+ 4520 LDY mtimeh
+ 4530 BPL trytrk \ branch if motor reached correct speed
+ 4540.rwts6
+ 4550 LDY #18 \ delay for motor to reach correct speed
+ 4560.rwts7
+ 4570 DEY
+ 4580 BNE rwts7
+ 4590 INC mtimel
+ 4600 BNE rwts6
+ 4610 INC mtimeh
+ 4620 BNE rwts6
+ 4630.trytrk
+ 4640 PLP \ get read/write status
+ 4650 PHP
+ 4660 BCC trytr2 \ branch if read sector
+ 4670 JSR prenib \ convert sector to 6 bit 'nibbles'
+ 4680.trytr2
+ 4690 LDY #48
+ 4700 STY ztemp2
+ 4710.trytr3
+ 4720 LDX slot16
+ 4730 JSR rdaddr \ find track address
+ 4740 BCC rdrght \ branch if no error
+ 4750.trytr4
+ 4760 DEC ztemp2
+ 4770 BPL trytr3 \ branch if not last try
+ 4780.trytr5
+ 4790 DEC recals
+ 4800 BEQ drverr \ branch if last try
+ 4810 LDA #4
+ 4820 STA seeks
+ 4830 LDA #&60
+ 4840 STA curtrk
+ 4850 LDA #0
+ 4860 JSR seek \ reset head
+ 4870.trytr6
+ 4880 LDA track
+ 4890 JSR seek \ seek to desired track
+ 4900 JMP trytr2
+ 4910 
+ 4920.rdrght
+ 4930 LDY idfld+2
+ 4940 CPY track
+ 4950 BEQ rttrk \ branch if track does match track id
+ 4960 DEC seeks
+ 4970 BNE trytr6
+ 4980 BEQ trytr5 \ always
+ 4990 
+ 5000.prterr \ disc write protected
+ 5010 LDA #1
+ 5020 BPL drver2
+ 5030.drverr \ disc I/O error
+ 5040 LDA #4 \ I/O error
+ 5050.drver2
+ 5060 LDX stkptr
+ 5070 TXS
+ 5080 LDX slot16
+ 5090 LDY mtroff,X \ turn motor off
+ 5100 SEC \ signify error has occured
+ 5110 RTS
+ 5120 
+ 5130.rttrk
+ 5140 LDY sector
+ 5150 LDA scttab,Y
+ 5160 CMP idfld+1
+ 5170 BNE trytr4 \ branch if sector doesn't match sector id
+ 5180 PLP
+ 5190 BCS rttrk2 \ branch if write sector
+ 5200 JSR read
+ 5210 PHP
+ 5220 BCS trytr4 \ branch if read error
+ 5230 PLP
+ 5240 JSR pstnib \ convert sector to 8 bit bytes
+ 5250 JMP rttrk3
+ 5260.rttrk2
+ 5270 JSR write
+ 5280 BCC rttrk3 \ branch if no error
+ 5290 LDA #1
+ 5300 BPL drver2
+ 5310.drverr \ disc I/O error
+ 5320 LDA #4 \ I/O error
+ 5330.drver2
+ 5340 LDX stkptr
+ 5350 TXS
+ 5360 SEC
+ 5370 BCS rttrk4
+ 5380.rttrk3
+ 5390 LDA #0
+ 5400 CLC
+ 5410.rttrk4
+ 5420 LDX slot16
+ 5430 LDY mtroff,X \ turn motor off
+ 5440 RTS \ C=0=no error, C=1=error, A=error code
+ 5450 
+ 5460.read \ read sector
+ 5470 LDY #32
+ 5480.read2
+ 5490 DEY
+ 5500 BEQ readE
+ 5510.read3
+ 5520 LDA Q6L,X
+ 5530 BPL read3
+ 5540.read4
+ 5550 EOR #&D5
+ 5560 BNE read2
+ 5570 NOP
+ 5580.read5
+ 5590 LDA Q6L,X
+ 5600 BPL read5
+ 5610 CMP #&AA
+ 5620 BNE read4
+ 5630 LDY #&56
+ 5640.read6
+ 5650 LDA Q6L,X
+ 5660 BPL read6
+ 5670 CMP #&AD
+ 5680 BNE read4
+ 5690 LDA #0
+ 5700.read7
+ 5710 DEY
+ 5720 STY ztemp0
+ 5730.read8
+ 5740 LDY Q6L,X
+ 5750 BPL read8
+ 5760 EOR rtable-&96,Y
+ 5770 LDY ztemp0
+ 5780 STA buffr2+256,Y
+ 5790 BNE read7
+ 5800.read9
+ 5810 STY ztemp0
+ 5820.readA
+ 5830 LDY Q6L,X
+ 5840 BPL readA
+ 5850 EOR rtable-&96,Y
+ 5860 LDY ztemp0
+ 5870 STA buffr2,Y
+ 5880 INY
+ 5890 BNE read9
+ 5900.readB
+ 5910 LDY Q6L,X
+ 5920 BPL readB
+ 5930 CMP rtable-&96,Y
+ 5940 BNE readE
+ 5950.readC
+ 5960 LDA Q6L,X
+ 5970 BPL readC
+ 5980 CMP #&DE
+ 5990 BNE readE
+ 6000 NOP
+ 6010.readD
+ 6020 LDA Q6L,X
+ 6030 BPL readD
+ 6040 CMP #&AA
+ 6050 BEQ readF
+ 6060.readE
+ 6070 SEC
+ 6080 RTS
+ 6090.readF
+ 6100 CLC
+ 6110 RTS
+ 6120 ]
+ 6122 IFZ=4 OTEMP%=O%:PTEMP%=P% :ELSE O%=OTEMP%:P%=PTEMP%
+ 6123 [OPTZ
+ 6130.write \ write sector
+ 6140 SEC
+ 6150 STX ztemp1
+ 6160 LDA Q6H,X
+ 6170 LDA Q7L,X
+ 6180 BMI write6
+ 6190 LDA buffr2+256
+ 6200 STA ztemp0
+ 6210 LDA #&FF
+ 6220 STA Q7H,X
+ 6230 ORA Q6L,X
+ 6240 PHA
+ 6250 PLA
+ 6260 NOP
+ 6270 LDY #4
+ 6280.write2
+ 6290 PHA
+ 6300 PLA
+ 6310 JSR wbyte2
+ 6320 DEY
+ 6330 BNE write2
+ 6340 LDA #&D5
+ 6350 JSR wbyte
+ 6360 LDA #&AA
+ 6370 JSR wbyte
+ 6380 LDA #&AD
+ 6390 JSR wbyte
+ 6400 TYA
+ 6410 LDY #&56
+ 6420 BNE write4
+ 6430.write3
+ 6440 LDA buffr2+256,Y
+ 6450.write4
+ 6460 EOR buffr2+255,Y
+ 6470 TAX
+ 6480 LDA wtable,X
+ 6490 LDX ztemp1
+ 6500 STA Q6H,X
+ 6510 LDA Q6L,X
+ 6520 DEY
+ 6530 BNE write3
+ 6540 LDA ztemp0
+ 6550 NOP
+ 6560.write5
+ 6570 EOR buffr2,Y
+ 6580 TAX
+ 6590 LDA wtable,X
+ 6600 LDX slot16
+ 6610 STA Q6H,X
+ 6620 LDA Q6L,X
+ 6630 LDA buffr2,Y
+ 6640 INY
+ 6650 BNE write5
+ 6660 TAX
+ 6670 LDA wtable,X
+ 6680 LDX ztemp1
+ 6690 JSR wbyte3
+ 6700 LDA #&DE
+ 6710 JSR wbyte
+ 6720 LDA #&AA
+ 6730 JSR wbyte
+ 6740 LDA #&EB
+ 6750 JSR wbyte
+ 6760 LDA #&FF
+ 6770 JSR wbyte
+ 6780 LDA Q7L,X
+ 6790.write6
+ 6800 LDA Q6L,X
+ 6810 RTS
+ 6820 
+ 6830] IF (P%-write)>(P%ANDFF):EXTRABYT%=(P%AND&FF00)-PTEMP%:O%=OTEMP%+EXTRABYT%:P%=PTEMP%+EXTRABYT%:PRINT" ";EXTRABYT%;" bytes wasted ";:GOTO6122
+ 6840 [OPTZ
+ 7000 \REM DOS_RW3
+ 7010 
+ 7030 
+ 7040.rdaddr \ read track address field
+ 7050 LDY #&FC
+ 7060 STY ztemp0
+ 7070.rdadr2
+ 7080 INY
+ 7090 BNE rdadr3
+ 7100 INC ztemp0
+ 7110 BEQ rdadrD
+ 7120.rdadr3
+ 7130 LDA Q6L,X
+ 7140 BPL rdadr3
+ 7150.rdadr4
+ 7160 CMP #&D5
+ 7170 BNE rdadr2
+ 7180 NOP
+ 7190.rdadr5
+ 7200 LDA Q6L,X
+ 7210 BPL rdadr5
+ 7220 CMP #&AA
+ 7230 BNE rdadr4
+ 7240 LDY #3
+ 7250.rdadr6
+ 7260 LDA Q6L,X
+ 7270 BPL rdadr6
+ 7280 CMP #&96
+ 7290 BNE rdadr4
+ 7300 LDA #0
+ 7310.rdadr7
+ 7320 STA ztemp1
+ 7330.rdadr8
+ 7340 LDA Q6L,X
+ 7350 BPL rdadr8
+ 7360 ROL A
+ 7370 STA ztemp0
+ 7380.rdadr9
+ 7390 LDA Q6L,X
+ 7400 BPL rdadr9
+ 7410 AND ztemp0
+ 7420 STA idfld,Y
+ 7430 EOR ztemp1
+ 7440 DEY
+ 7450 BPL rdadr7
+ 7460 TAY
+ 7470 BNE rdadrD
+ 7480.rdadrA
+ 7490 LDA Q6L,X
+ 7500 BPL rdadrA
+ 7510 CMP #&DE
+ 7520 BNE rdadrD
+ 7530 NOP
+ 7540.rdadrB
+ 7550 LDA Q6L,X
+ 7560 BPL rdadrB
+ 7570 CMP #&AA
+ 7580 BNE rdadrD
+ 7590.rdadrC
+ 7600 CLC
+ 7610 RTS
+ 7620.rdadrD
+ 7630 SEC
+ 7640 RTS
+ 7650 
+ 7660.seek \ A=desired track
+ 7670 STX ztemp0
+ 7680 ASL A
+ 7690 CMP curtrk
+ 7700 BEQ step3 \ branch if head already over desired track
+ 7710 STA ztemp1 \ save desired track*2
+ 7720 LDA #0
+ 7730 STA ztemp2
+ 7740.seek2
+ 7750 LDA curtrk
+ 7760 STA ztemp3
+ 7770 SEC
+ 7780 SBC ztemp1
+ 7790 BEQ seek7 \ branch if reached desired track
+ 7800 BCS seek3 \ branch if step back
+ 7810 EOR #&FF
+ 7820 INC curtrk \ track=track+1
+ 7830 BCC seek4 \ always
+ 7840.seek3
+ 7850 ADC #&FE
+ 7860 DEC curtrk \ track=track-1
+ 7870.seek4
+ 7880 CMP ztemp2
+ 7890 BCC seek5
+ 7900 LDA ztemp2
+ 7910.seek5
+ 7920 CMP #12
+ 7930 BCS seek6
+ 7940 TAY
+ 7950.seek6
+ 7960 SEC
+ 7970 JSR step
+ 7980 LDA armtab,Y
+ 7990 JSR armwat
+ 8000 LDA ztemp3
+ 8010 CLC
+ 8020 JSR step2
+ 8030 LDA armtb2,Y
+ 8040 JSR armwat
+ 8050 INC ztemp2
+ 8060 BNE seek2 \ always
+ 8070.seek7
+ 8080 JSR armwat
+ 8090 CLC
+ 8100 
+ 8110.step \ step drive head
+ 8120 LDA curtrk
+ 8130.step2
+ 8140 AND #3
+ 8150 ROL A
+ 8160 ORA ztemp0
+ 8170 TAX
+ 8180 LDA phsoff,X \ stepper motor phase 0-3 on/off
+ 8190 LDX ztemp0
+ 8200.step3
+ 8210 RTS
+ 8220 
+ 8230.armwat \ arm move delay
+ 8240 LDX #17
+ 8250.armwt2
+ 8260 DEX
+ 8270 BNE armwt2
+ 8280 INC mtimel
+ 8290 BNE armwt3
+ 8300 INC mtimeh
+ 8310.armwt3
+ 8320 SEC
+ 8330 SBC #1
+ 8340 BNE armwat
+ 8350 RTS
+ 8360 
+ 8370.armtab
+ 8380 EQUB 1
+ 8390 EQUB &30
+ 8400 EQUB &28
+ 8410 EQUB &24
+ 8420 EQUB &20
+ 8430 EQUB &1E
+ 8440 EQUB &1D
+ 8450 EQUB &1C
+ 8460 EQUB &1C
+ 8470 EQUB &1C
+ 8480 EQUB &1C
+ 8490 EQUB &1C
+ 8500.armtb2
+ 8510 EQUB &70
+ 8520 EQUB &2C
+ 8530 EQUB &26
+ 8540 EQUB &22
+ 8550 EQUB &1F
+ 8560 EQUB &1E
+ 8570 EQUB &1D
+ 8580 EQUB &1C
+ 8590 EQUB &1C
+ 8600 EQUB &1C
+ 8610 EQUB &1C
+ 8620 EQUB &1C
+ 8630 
+ 8640.prenib \ comverts 256*8 bit bytes to 342*6 bit 'nibbles'
+ 8650 LDX #0
+ 8660 LDY #2
+ 8670.prenb2
+ 8680 DEY
+ 8690 LDA buffer,Y
+ 8700 LSR A
+ 8710 ROL buffr2+256,X
+ 8720 LSR A
+ 8730 ROL buffr2+256,X
+ 8740 STA buffr2,Y
+ 8750 INX
+ 8760 CPX #&56
+ 8770 BCC prenb2
+ 8780 LDX #0
+ 8790 TYA
+ 8800 BNE prenb2
+ 8810 LDX #&55
+ 8820.prenb3
+ 8830 LDA buffr2+256,X
+ 8840 AND #&3F
+ 8850 STA buffr2+256,X
+ 8860 DEX
+ 8870 BPL prenb3
+ 8880 RTS
+ 8890 
+ 8900.pstnib \ convert 342*6 bit 'nibbles' to 256*8 bit bytes
+ 8910 LDY #0
+ 8920.pstnb2
+ 8930 LDX #&56
+ 8940.pstnb3
+ 8950 DEX
+ 8960 BMI pstnb2
+ 8970 LDA buffr2,Y
+ 8980 LSR buffr2+256,X
+ 8990 ROL A
+ 9000 LSR buffr2+256,X
+ 9010 ROL A
+ 9020 STA buffer,Y
+ 9030 INY
+ 9040 BNE pstnb3
+ 9050 RTS
+ 9060 
+ 9070.wbyte \ write one byte to disc
+ 9080 CLC
+ 9090.wbyte2
+ 9100 PHA
+ 9110 PLA
+ 9120.wbyte3
+ 9130 STA Q6H,X
+ 9140 ORA Q6L,X
+ 9150 RTS
+ 9160 
+ 9170.scttab
+ 9180 EQUD &090B0D00
+ 9190 EQUD &01030507
+ 9200 EQUD &080A0C0E
+ 9210 EQUD &0F020406
+ 9220 
+ 9230.rtable
+ 9240 EQUD &99980100
+ 9250 EQUD &049C0302
+ 9260 EQUD &A1A00605
+ 9270 EQUD &A5A4A3A2
+ 9280 EQUD &A9A80807
+ 9290 EQUD &0B0A09AA
+ 9300 EQUD &B1B00D0C
+ 9310 EQUD &11100F0E
+ 9320 EQUD &14B81312
+ 9330 EQUD &18171615
+ 9340 EQUD &C1C01A19
+ 9350 EQUD &C5C4C3C2
+ 9360 EQUD &C9C8C7C6
+ 9370 EQUD &1CCC1BCA
+ 9380 EQUD &D1D01E1D
+ 9390 EQUD &D5D41FD2
+ 9400 EQUD &22D82120
+ 9410 EQUD &26252423
+ 9420 EQUD &E1E02827
+ 9430 EQUD &29E4E3E2
+ 9440 EQUD &2CE82B2A
+ 9450 EQUD &302F2E2D
+ 9460 EQUD &F1F03231
+ 9470 EQUD &36353433
+ 9480 EQUD &39F83837
+ 9490 EQUD &3D3C3B3A
+ 9500 EQUW &3F3E
+ 9510 
+ 9520.MUTILATE LDACHK3:EORRAND:STARAND:STAcomfil2:EOR#&A5:ORA#17:EORRAND+1:STARAND+1:STAcomfil2+1:EORRAND+2:EOR#&F8:STARAND+2:STAcomfil2+2:EORRAND+3:EOR#&12:STARAND+3:STAcomfil2+3
+ 9530.MUTIL3 LDY#comsiz-5:.MUTIL1 JSRDORND2:EORcomfil,Y:STAcomfil,Y:DEY:BPLMUTIL1:RTS
+ 9540.UNMUTILATE LDY#3:.MUTIL2 LDAcomfil2,Y:STARAND,Y:DEY:BPLMUTIL2:BMIMUTIL3
+ 9700 ]
+ 9910PRINT"J ";
+ 9920IFZ>4OSCLI"SAVE ELTJ "+STR$~W%+" "+STR$~O%+" "+STR$~BEGIN+" "+STR$~H%
+ 9930GOTO22
+ 9999END

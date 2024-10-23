@@ -1,0 +1,1 @@
+---------------------------------------FIREBIRD ELITEVERSION: APPLE IIVARIANT: IAN BELL'S GAME DISKSEE WWW.BBCELITE.COM FOR DETAILS---------------------------------------
