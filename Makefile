@@ -80,26 +80,20 @@ endif
 
 ifeq ($(variant), source-disk-build)
   variant-number=2
-  folder=/source-disk-build
+  folder=source-disk-build
   suffix=-source-disk-build
 else ifeq ($(variant), source-disk-code-files)
   variant-number=3
-  folder=/source-disk-code-files
+  folder=source-disk-code-files
   suffix=-source-disk-code-files
 else ifeq ($(variant), source-disk-elt-files)
   variant-number=4
-  folder=/source-disk-elt-files
+  folder=source-disk-elt-files
   suffix=-source-disk-elt-files
 else
   variant-number=1
-  folder=/ib-disk
+  folder=ib-disk
   suffix=-ib-disk
-endif
-
-ifeq ($(OS),Windows_NT)
-    RM = cmd //C del //Q //F
-else
-    RM = rm -fr
 endif
 
 .PHONY:all
@@ -119,14 +113,30 @@ apple-build:
 	$(BEEBASM) -i 1-source-files/main-sources/elite-transfer.asm -v >> 3-assembled-output/compile.txt
 	$(BEEBASM) -i 1-source-files/main-sources/elite-readme.asm -v >> 3-assembled-output/compile.txt
 ifneq ($(verify), no)
-	@$(PYTHON) 2-build-files/crc32.py 4-reference-binaries$(folder) 3-assembled-output
+	@$(PYTHON) 2-build-files/crc32.py 4-reference-binaries/$(folder) 3-assembled-output
 endif
 
 apple-disk:
 ifeq ($(variant-number), 1)
-	$(RM) 5-compiled-game-disks/*.bin
-	cp 1-source-files/other-files$(folder)/blank.dsk 5-compiled-game-disks/elite-apple$(suffix).dsk
-	cp 1-source-files/images$(folder)/A.SCREEN.bin 5-compiled-game-disks/elitepic#0x2000.bin
+ifeq ($(OS), Windows_NT)
+	del /Q /F 5-compiled-game-disks\*.bin
+	copy 1-source-files\other-files\$(folder)\blank.dsk 5-compiled-game-disks\elite-apple$(suffix).dsk
+	copy 1-source-files\images\$(folder)\A.SCREEN.bin 5-compiled-game-disks\elitepic#0x2000.bin
+	copy 3-assembled-output\DATA.bin 5-compiled-game-disks\bee#0x3b00.bin
+	copy 3-assembled-output\CODE1.bin 5-compiled-game-disks\four#0x4000.bin
+	copy 3-assembled-output\CODE2.bin 5-compiled-game-disks\nine#0x5000.bin
+	copy 3-assembled-output\MOVER.bin 5-compiled-game-disks\mover#0x0300.bin
+	$(DISKM8) -with-disk 5-compiled-game-disks\elite-apple$(suffix).dsk -file-put 5-compiled-game-disks\elitepic#0x2000.bin
+	$(DISKM8) -with-disk 5-compiled-game-disks\elite-apple$(suffix).dsk -file-put 5-compiled-game-disks\nine#0x5000.bin
+	$(DISKM8) -with-disk 5-compiled-game-disks\elite-apple$(suffix).dsk -file-put 5-compiled-game-disks\bee#0x3b00.bin
+	$(DISKM8) -with-disk 5-compiled-game-disks\elite-apple$(suffix).dsk -file-put 5-compiled-game-disks\four#0x4000.bin
+	$(DISKM8) -with-disk 5-compiled-game-disks\elite-apple$(suffix).dsk -file-put 5-compiled-game-disks\mover#0x0300.bin
+	$(DISKM8) -with-disk 5-compiled-game-disks\elite-apple$(suffix).dsk -file-put 3-assembled-output\readme.txt
+	del /Q /F 5-compiled-game-disks\*.bin
+else
+	rm -fr 5-compiled-game-disks/*.bin
+	cp 1-source-files/other-files/$(folder)/blank.dsk 5-compiled-game-disks/elite-apple$(suffix).dsk
+	cp 1-source-files/images/$(folder)/A.SCREEN.bin 5-compiled-game-disks/elitepic#0x2000.bin
 	cp 3-assembled-output/DATA.bin 5-compiled-game-disks/bee#0x3b00.bin
 	cp 3-assembled-output/CODE1.bin 5-compiled-game-disks/four#0x4000.bin
 	cp 3-assembled-output/CODE2.bin 5-compiled-game-disks/nine#0x5000.bin
@@ -137,5 +147,6 @@ ifeq ($(variant-number), 1)
 	$(DISKM8) -with-disk 5-compiled-game-disks/elite-apple$(suffix).dsk -file-put 5-compiled-game-disks/four#0x4000.bin
 	$(DISKM8) -with-disk 5-compiled-game-disks/elite-apple$(suffix).dsk -file-put 5-compiled-game-disks/mover#0x0300.bin
 	$(DISKM8) -with-disk 5-compiled-game-disks/elite-apple$(suffix).dsk -file-put 3-assembled-output/readme.txt
-	$(RM) 5-compiled-game-disks/*.bin
+	rm -fr 5-compiled-game-disks/*.bin
+endif
 endif
