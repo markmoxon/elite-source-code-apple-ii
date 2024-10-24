@@ -12605,7 +12605,7 @@ S.C.IANTOK &F40  &1CF9  &F40  &F40
 Saving file '3-assembled-output/IANTOK.bin'
 .FONT
 P% = &2000 
-S.C.DATA &B00 &2000  &B00 &B00 
+S.C.DATA &B00  &2000  &B00  &B00 
 Saving file '3-assembled-output/DATA.unprot.bin'
 .ZP
 .RAND
@@ -37791,9 +37791,8 @@ ships = &A300
      BFFD   30
      BFFE   00
      BFFF   00
-.end
 P% = &C000 
-S.A.CODE &4000 &C000  &4000 &4000 
+S.A.CODE &4000  &C000  &4000  &4000 
 Saving file '3-assembled-output/CODE.unprot.bin'
 Saving file '3-assembled-output/CODE1.unprot.bin'
 Saving file '3-assembled-output/CODE2.unprot.bin'
@@ -37866,9 +37865,9 @@ Saving file '3-assembled-output/MOVER.bin'
 .endA
 .endB
 P% = &C000 
-S.A.ELA &A00 &7000  &A00 &A00 
+S.A.ELA &A00  &7000  &A00  &A00 
 Saving file '3-assembled-output/ELA.bin'
-S.A.ELB &7000 &C000  &A00 &A00 
+S.A.ELB &7000  &C000  &A00  &A00 
 Saving file '3-assembled-output/ELB.bin'
 .readme
      0000   0D

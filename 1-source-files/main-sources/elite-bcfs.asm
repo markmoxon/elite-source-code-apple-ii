@@ -210,8 +210,6 @@ ELSE
 
 ENDIF
 
-.end
-
 ; ******************************************************************************
 ;
 ; Save CODE.unprot.bin
@@ -219,8 +217,8 @@ ENDIF
 ; ******************************************************************************
 
  PRINT "P% = ", ~P%
- PRINT "S.A.CODE ", ~LOAD%, ~end, " ", ~LOAD%, ~LOAD%
- SAVE "3-assembled-output/CODE.unprot.bin", CODE%, end, LOAD%
+ PRINT "S.A.CODE ", ~LOAD%, " ", ~P%, " ", ~LOAD%, " ", ~LOAD%
+ SAVE "3-assembled-output/CODE.unprot.bin", CODE%, P%, LOAD%
 
 ; ******************************************************************************
 ;
@@ -236,4 +234,4 @@ ENDIF
 ;
 ; ******************************************************************************
 
- SAVE "3-assembled-output/CODE2.unprot.bin", CODE% + $5000, end, LOAD%
+ SAVE "3-assembled-output/CODE2.unprot.bin", CODE% + $5000, P%, LOAD%

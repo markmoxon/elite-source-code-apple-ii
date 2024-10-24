@@ -196,7 +196,7 @@ ENDIF
 ; ******************************************************************************
 
  PRINT "P% = ", ~P%
- PRINT "S.A.ELA ", ~LOAD%, ~endA, " ", ~LOAD%, ~LOAD%
+ PRINT "S.A.ELA ", ~LOAD%, " ", ~endA, " ", ~LOAD%, " ", ~LOAD%
  SAVE "3-assembled-output/ELA.bin", CODE%, endA, LOAD%
 
 ; ******************************************************************************
@@ -205,5 +205,5 @@ ENDIF
 ;
 ; ******************************************************************************
 
- PRINT "S.A.ELB ", ~endA, ~endB, " ", ~LOAD%, ~LOAD%
+ PRINT "S.A.ELB ", ~endA, " ", ~endB, " ", ~LOAD%, " ", ~LOAD%
  SAVE "3-assembled-output/ELB.bin", endA, endB, LOAD%
