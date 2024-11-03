@@ -6696,33 +6696,122 @@ ENDIF
 
  RTS                    ; Return from the subroutine
 
+; ******************************************************************************
+;
+;       Name: MULT12
+;       Type: Subroutine
+;   Category: Maths (Arithmetic)
+;    Summary: Calculate (S R) = Q * A
+;
+; ------------------------------------------------------------------------------
+;
+; Calculate:
+;
+;   (S R) = Q * A
+;
+; ******************************************************************************
+
 .MULT12
 
- JSR MULT1
- STA S
- LDA P
+ JSR MULT1              ; Set (A P) = Q * A
+
+ STA S                  ; Set (S R) = (A P)
+ LDA P                  ;           = Q * A
  STA R
- RTS
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: TAS3
+;       Type: Subroutine
+;   Category: Maths (Geometry)
+;    Summary: Calculate the dot product of XX15 and an orientation vector
+;
+; ------------------------------------------------------------------------------
+;
+; Calculate the dot product of the vector in XX15 and one of the orientation
+; vectors, as determined by the value of Y. If vect is the orientation vector,
+; we calculate this:
+;
+;   (A X) = vect . XX15
+;         = vect_x * XX15 + vect_y * XX15+1 + vect_z * XX15+2
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   Y                   The orientation vector:
+;
+;                         * If Y = 10, calculate nosev . XX15
+;
+;                         * If Y = 16, calculate roofv . XX15
+;
+;                         * If Y = 22, calculate sidev . XX15
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   (A X)               The result of the dot product
+;
+; ******************************************************************************
 
 .TAS3
 
- LDX INWK,Y
+ LDX INWK,Y             ; Set Q = the Y-th byte of INWK, i.e. vect_x
  STX Q
- LDA XX15
- JSR MULT12
- LDX INWK+2,Y
+
+ LDA XX15               ; Set A = XX15
+
+ JSR MULT12             ; Set (S R) = Q * A
+                        ;           = vect_x * XX15
+
+ LDX INWK+2,Y           ; Set Q = the Y+2-th byte of INWK, i.e. vect_y
  STX Q
- LDA XX15+1
- JSR MAD
- STA S
+
+ LDA XX15+1             ; Set A = XX15+1
+
+ JSR MAD                ; Set (A X) = Q * A + (S R)
+                        ;           = vect_y * XX15+1 + vect_x * XX15
+
+ STA S                  ; Set (S R) = (A X)
  STX R
- LDX INWK+4,Y
+
+ LDX INWK+4,Y           ; Set Q = the Y+2-th byte of INWK, i.e. vect_z
  STX Q
- LDA XX15+2
+
+ LDA XX15+2             ; Set A = XX15+2
+
+                        ; Fall through into MAD to set:
+                        ;
+                        ;   (A X) = Q * A + (S R)
+                        ;           = vect_z * XX15+2 + vect_y * XX15+1 +
+                        ;             vect_x * XX15
+
+; ******************************************************************************
+;
+;       Name: MAD
+;       Type: Subroutine
+;   Category: Maths (Arithmetic)
+;    Summary: Calculate (A X) = Q * A + (S R)
+;
+; ------------------------------------------------------------------------------
+;
+; Calculate
+;
+;   (A X) = Q * A + (S R)
+;
+; ******************************************************************************
 
 .MAD
 
- JSR MULT1
+ JSR MULT1              ; Call MULT1 to set (A P) = Q * A
+
+                        ; Fall through into ADD to do:
+                        ;
+                        ;   (A X) = (A P) + (S R)
+                        ;         = Q * A + (S R)
 
 ; ******************************************************************************
 ;
@@ -6839,107 +6928,288 @@ ENDIF
 
  RTS                    ; Return from the subroutine
 
+; ******************************************************************************
+;
+;       Name: TIS1
+;       Type: Subroutine
+;   Category: Maths (Arithmetic)
+;    Summary: Calculate (A ?) = (-X * A + (S R)) / 96
+;  Deep dive: Shift-and-subtract division
+;
+; ------------------------------------------------------------------------------
+;
+; Calculate the following expression between sign-magnitude numbers, ignoring
+; the low byte of the result:
+;
+;   (A ?) = (-X * A + (S R)) / 96
+;
+; This uses the same shift-and-subtract algorithm as TIS2, just with the
+; quotient A hard-coded to 96.
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   Q                   Gets set to the value of argument X
+;
+; ******************************************************************************
+
 .TIS1
 
- STX Q
- EOR #128
- JSR MAD
+ STX Q                  ; Set Q = X
 
-.DVID96 ; A = A/96 
+ EOR #%10000000         ; Flip the sign bit in A
 
- TAX
- AND #128
+ JSR MAD                ; Set (A X) = Q * A + (S R)
+                        ;           = X * -A + (S R)
+
+.DVID96
+
+ TAX                    ; Set T to the sign bit of the result
+ AND #%10000000
  STA T
- TXA
- AND #127
- LDX #254
- STX T1
+
+ TXA                    ; Set A to the high byte of the result with the sign bit
+ AND #%01111111         ; cleared, so (A ?) = |X * A + (S R)|
+
+                        ; The following is identical to TIS2, except Q is
+                        ; hard-coded to 96, so this does A = A / 96
+
+ LDX #254               ; Set T1 to have bits 1-7 set, so we can rotate through
+ STX T1                 ; 7 loop iterations, getting a 1 each time, and then
+                        ; getting a 0 on the 8th iteration... and we can also
+                        ; use T1 to catch our result bits into bit 0 each time
 
 .DVL3
 
- ASL A
- CMP #96
+ ASL A                  ; Shift A to the left
+
+ CMP #96                ; If A < 96 skip the following subtraction
  BCC DV4
- SBC #96
+
+ SBC #96                ; Set A = A - 96
+                        ;
+                        ; Going into this subtraction we know the C flag is
+                        ; set as we passed through the BCC above, and we also
+                        ; know that A >= 96, so the C flag will still be set
+                        ; once we are done
 
 .DV4
 
- ROL T1
- BCS DVL3
- LDA T1
- ORA T
- RTS
+ ROL T1                 ; Rotate the counter in T1 to the left, and catch the
+                        ; result bit into bit 0 (which will be a 0 if we didn't
+                        ; do the subtraction, or 1 if we did)
+
+ BCS DVL3               ; If we still have set bits in T1, loop back to DVL3 to
+                        ; do the next iteration of 7
+
+ LDA T1                 ; Fetch the result from T1 into A
+
+ ORA T                  ; Give A the sign of the result that we stored above
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: DV42
+;       Type: Subroutine
+;   Category: Maths (Arithmetic)
+;    Summary: Calculate (P R) = 256 * DELTA / z_hi
+;
+; ------------------------------------------------------------------------------
+;
+; Calculate the following division and remainder:
+;
+;   P = DELTA / (the Y-th stardust particle's z_hi coordinate)
+;
+;   R = remainder as a fraction of A, where 1.0 = 255
+;
+; Another way of saying the above is this:
+;
+;   (P R) = 256 * DELTA / z_hi
+;
+; DELTA is a value between 1 and 40, and the minimum z_hi is 16 (dust particles
+; are removed at lower values than this), so this means P is between 0 and 2
+; (as 40 / 16 = 2.5, so the maximum result is P = 2 and R = 128.
+;
+; This uses the same shift-and-subtract algorithm as TIS2, but this time we
+; keep the remainder.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   Y                   The number of the stardust particle to process
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              The C flag is cleared
+;
+; ******************************************************************************
 
 .DV42
 
- LDA SZ,Y
+ LDA SZ,Y               ; Fetch the Y-th dust particle's z_hi coordinate into A
+
+                        ; Fall through into DV41 to do:
+                        ;
+                        ;   (P R) = 256 * DELTA / A
+                        ;         = 256 * DELTA / Y-th stardust particle's z_hi
+
+; ******************************************************************************
+;
+;       Name: DV41
+;       Type: Subroutine
+;   Category: Maths (Arithmetic)
+;    Summary: Calculate (P R) = 256 * DELTA / A
+;
+; ------------------------------------------------------------------------------
+;
+; Calculate the following division and remainder:
+;
+;   P = DELTA / A
+;
+;   R = remainder as a fraction of A, where 1.0 = 255
+;
+; Another way of saying the above is this:
+;
+;   (P R) = 256 * DELTA / A
+;
+; This uses the same shift-and-subtract algorithm as TIS2, but this time we
+; keep the remainder.
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              The C flag is cleared
+;
+; ******************************************************************************
 
 .DV41
 
- STA Q
- LDA DELTA
+ STA Q                  ; Store A in Q
 
-.DVID4 ; P-R = A/Qunsg
+ LDA DELTA              ; Fetch the speed from DELTA into A
 
-;LDX #8
- ASL A
- STA P
- LDA #0
- \.DVL4
- ROL A
+                        ; Fall through into DVID4 to do:
+                        ;
+                        ;   (P R) = 256 * A / Q
+                        ;         = 256 * DELTA / A
+
+; ******************************************************************************
+;
+;       Name: DVID4
+;       Type: Subroutine
+;   Category: Maths (Arithmetic)
+;    Summary: Calculate (P R) = 256 * A / Q
+;  Deep dive: Shift-and-subtract division
+;
+; ------------------------------------------------------------------------------
+;
+; Calculate the following division and remainder:
+;
+;   P = A / Q
+;
+;   R = remainder as a fraction of Q, where 1.0 = 255
+;
+; Another way of saying the above is this:
+;
+;   (P R) = 256 * A / Q
+;
+; This uses the same shift-and-subtract algorithm as TIS2, but this time we
+; keep the remainder and the loop is unrolled.
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              The C flag is cleared
+;
+; ******************************************************************************
+
+.DVID4
+
+;LDX #8                 ; This instruction is commented out in the original
+                        ; source
+
+ ASL A                  ; Shift A left and store in P (we will build the result
+ STA P                  ; in P)
+
+ LDA #0                 ; Set A = 0 for us to build a remainder
+
+;.DVL4                  ; This label is commented out in the original source
+
+                        ; We now repeat the following five instruction block
+                        ; eight times, one for each bit in P. In the cassette
+                        ; and disc versions of Elite the following is done with
+                        ; a loop, but it is marginally faster to unroll the loop
+                        ; and have eight copies of the code, though it does take
+                        ; up a bit more memory (though that isn't a concern when
+                        ; you have a 6502 Second Processor)
+
+ ROL A                  ; Shift A to the left
+
+ CMP Q                  ; If A < Q skip the following subtraction
+ BCC P%+4
+
+ SBC Q                  ; A >= Q, so set A = A - Q
+
+ ROL P                  ; Shift P to the left, pulling the C flag into bit 0
+
+ ROL A                  ; Repeat for the second time
  CMP Q
  BCC P%+4
  SBC Q
  ROL P
- \7
- ROL A
+
+ ROL A                  ; Repeat for the third time
  CMP Q
  BCC P%+4
  SBC Q
  ROL P
- \6
- ROL A
+
+ ROL A                  ; Repeat for the fourth time
  CMP Q
  BCC P%+4
  SBC Q
  ROL P
- \5
- ROL A
+
+ ROL A                  ; Repeat for the fifth time
  CMP Q
  BCC P%+4
  SBC Q
  ROL P
- \4
- ROL A
+
+ ROL A                  ; Repeat for the sixth time
  CMP Q
  BCC P%+4
  SBC Q
  ROL P
- \3
- ROL A
+
+ ROL A                  ; Repeat for the seventh time
  CMP Q
  BCC P%+4
  SBC Q
  ROL P
- \2
- ROL A
+
+ ROL A                  ; Repeat for the eighth time
  CMP Q
  BCC P%+4
  SBC Q
  ROL P
- \1
- ROL A
- CMP Q
- BCC P%+4
- SBC Q
- ROL P
- LDX #0
- STA widget
- TAX
- BEQ LLfix22
- LDA logL,X
- LDX Q
- SEC
+
+ LDX #0                 ; Set X = 0 so this unrolled version of DVID4 also
+                        ; returns X = 0
+
+ STA widget             ; This contains the code from the LL28+4 routine, so
+ TAX                    ; this section is exactly equivalent to a JMP LL28+4
+ BEQ LLfix22            ; call, but is slightly faster as it's been inlined
+ LDA logL,X             ; (so it converts the remainder in A into an integer
+ LDX Q                  ; representation of the fractional value A / Q, in R,
+ SEC                    ; where 1.0 = 255, and it also clears the C flag
  SBC logL,X
  LDX widget
  LDA log,X
@@ -6951,86 +7221,176 @@ ENDIF
 
 .LLfix22
 
- STA R
+ STA R                  ; This is also part of the inline LL28+4 routine
  RTS
 
 .LL222
 
- LDA #$FF
+ LDA #255               ; This is also part of the inline LL28+4 routine
  STA R
  RTS
 
+; ******************************************************************************
+;
+;       Name: DVID3B2
+;       Type: Subroutine
+;   Category: Maths (Arithmetic)
+;    Summary: Calculate K(3 2 1 0) = (A P+1 P) / (z_sign z_hi z_lo)
+;  Deep dive: Shift-and-subtract division
+;
+; ------------------------------------------------------------------------------
+;
+; Calculate the following:
+;
+;   K(3 2 1 0) = (A P+1 P) / (z_sign z_hi z_lo)
+;
+; The actual division here is done as an 8-bit calculation using LL31, but this
+; routine shifts both the numerator (the top part of the division) and the
+; denominator (the bottom part of the division) around to get the multi-byte
+; result we want.
+;
+; Specifically, it shifts both of them to the left as far as possible, keeping a
+; tally of how many shifts get done in each one - and specifically, the
+; difference in the number of shifts between the top and bottom (as shifting
+; both of them once in the same direction won't change the result). It then
+; divides the two highest bytes with the simple 8-bit routine in LL31, and
+; shifts the result by the difference in the number of shifts, which acts as a
+; scale factor to get the correct result.
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   K(3 2 1 0)          The result of the division
+;
+;   X                   X is preserved
+;
+; ******************************************************************************
+
 .DVID3B2
 
- STA P+2
- LDA INWK+6
+ STA P+2                ; Set P+2 = A
+
+ LDA INWK+6             ; Set Q = z_lo, making sure Q is at least 1
  ORA #1
  STA Q
- LDA INWK+7
+
+ LDA INWK+7             ; Set R = z_hi
  STA R
- LDA INWK+8
+
+ LDA INWK+8             ; Set S = z_sign
  STA S
 
-.DVID3B ; K+1(3)-K = P(3)/SRQaprx
+.DVID3B
 
- LDA P
+                        ; Given the above assignments, we now want to calculate
+                        ; the following to get the result we want:
+                        ;
+                        ;   K(3 2 1 0) = P(2 1 0) / (S R Q)
+
+ LDA P                  ; Make sure P(2 1 0) is at least 1
  ORA #1
  STA P
- LDA P+2
- EOR S
- AND #128
+
+ LDA P+2                ; Set T to the sign of P+2 * S (i.e. the sign of the
+ EOR S                  ; result) and store it in T
+ AND #%10000000
  STA T
- LDY #0
- LDA P+2
- AND #127
+
+ LDY #0                 ; Set Y = 0 to store the scale factor
+
+ LDA P+2                ; Clear the sign bit of P+2, so the division can be done
+ AND #%01111111         ; with positive numbers and we'll set the correct sign
+                        ; below, once all the maths is done
+                        ;
+                        ; This also leaves A = P+2, which we use below
 
 .DVL9
 
- CMP #$40
+                        ; We now shift (A P+1 P) left until A >= 64, counting
+                        ; the number of shifts in Y. This makes the top part of
+                        ; the division as large as possible, thus retaining as
+                        ; much accuracy as we can.  When we come to return the
+                        ; final result, we shift the result by the number of
+                        ; places in Y, and in the correct direction
+
+ CMP #64                ; If A >= 64, jump down to DV14
  BCS DV14
- ASL P
+
+ ASL P                  ; Shift (A P+1 P) to the left
  ROL P+1
  ROL A
- INY
- BNE DVL9
+
+ INY                    ; Increment the scale factor in Y
+
+ BNE DVL9               ; Loop up to DVL9 (this BNE is effectively a JMP, as Y
+                        ; will never be zero)
 
 .DV14
 
- STA P+2
- LDA S
- AND #127
-;BMI DV9
+                        ; If we get here, A >= 64 and contains the highest byte
+                        ; of the numerator, scaled up by the number of left
+                        ; shifts in Y
+
+ STA P+2                ; Store A in P+2, so we now have the scaled value of
+                        ; the numerator in P(2 1 0)
+
+ LDA S                  ; Set A = |S|
+ AND #%01111111
+
+;BMI DV9                ; This label is commented out in the original source
 
 .DVL6
 
- DEY
- ASL Q
+                        ; We now shift (S R Q) left until bit 7 of S is set,
+                        ; reducing Y by the number of shifts. This makes the
+                        ; bottom part of the division as large as possible, thus
+                        ; retaining as much accuracy as we can. When we come to
+                        ; return the final result, we shift the result by the
+                        ; total number of places in Y, and in the correct
+                        ; direction, to give us the correct result
+                        ;
+                        ; We set A to |S| above, so the following actually
+                        ; shifts (A R Q)
+
+ DEY                    ; Decrement the scale factor in Y
+
+ ASL Q                  ; Shift (A R Q) to the left
  ROL R
  ROL A
- BPL DVL6
+
+ BPL DVL6               ; Loop up to DVL6 to do another shift, until bit 7 of A
+                        ; is set and we can't shift left any further
 
 .DV9
 
- STA Q
- LDA #254
- STA R
- LDA P+2
+                        ; We have now shifted both the numerator and denominator
+                        ; left as far as they will go, keeping a tally of the
+                        ; overall scale factor of the various shifts in Y. We
+                        ; can now divide just the two highest bytes to get our
+                        ; result
+
+ STA Q                  ; Set Q = A, the highest byte of the denominator
+
+ LDA #254               ; Set R to have bits 1-7 set, so we can pass this to
+ STA R                  ; LL31 to act as the bit counter in the division
+
+ LDA P+2                ; Set A to the highest byte of the numerator
 
 .LL31new
 
- ASL A
- BCS LL29new
-
- CMP Q
- BCC P%+4
- SBC Q
- ROL R
- BCS LL31new
+ ASL A                  ; This contains the code from the LL31 routine, so
+ BCS LL29new            ; this section is exactly equivalent to a JSR LL31
+ CMP Q                  ; call, but is slightly faster as it's been inlined,
+ BCC P%+4               ; so it calculates:
+ SBC Q                  ;
+ ROL R                  ;   R = 256 * A / Q
+ BCS LL31new            ;     = 256 * numerator / denominator
  JMP LL312new
 
 .LL29new
 
- SBC Q
+ SBC Q                  ; This is also part of the inline LL31 routine
  SEC
  ROL R
  BCS LL31new
@@ -7038,465 +7398,1135 @@ ENDIF
 
 .LL312new
 
- \was JSRLL31
- LDA #0
- STA K+1
+                        ; The result of our division is now in R, so we just
+                        ; need to shift it back by the scale factor in Y
+
+ LDA #0                 ; Set K(3 2 1) = 0 to hold the result (we populate K
+ STA K+1                ; next)
  STA K+2
  STA K+3
- TYA
+
+ TYA                    ; If Y is positive, jump to DV12
  BPL DV12
- LDA R
+
+                        ; If we get here then Y is negative, so we need to shift
+                        ; the result R to the left by Y places, and then set the
+                        ; correct sign for the result
+
+ LDA R                  ; Set A = R
 
 .DVL8
 
- ASL A
+ ASL A                  ; Shift (K+3 K+2 K+1 A) left
  ROL K+1
  ROL K+2
  ROL K+3
- INY
- BNE DVL8
- STA K
- LDA K+3
- ORA T
+
+ INY                    ; Increment the scale factor in Y
+
+ BNE DVL8               ; Loop back to DVL8 until we have shifted left by Y
+                        ; places
+
+ STA K                  ; Store A in K so the result is now in K(3 2 1 0)
+
+ LDA K+3                ; Set K+3 to the sign in T, which we set above to the
+ ORA T                  ; correct sign for the result
  STA K+3
- RTS
+
+ RTS                    ; Return from the subroutine
 
 .DV13
 
- LDA R
+                        ; If we get here then Y is zero, so we don't need to
+                        ; shift the result R, we just need to set the correct
+                        ; sign for the result
+
+ LDA R                  ; Store R in K so the result is now in K(3 2 1 0)
  STA K
- LDA T
- STA K+3
- RTS
+
+ LDA T                  ; Set K+3 to the sign in T, which we set above to the
+ STA K+3                ; correct sign for the result
+
+ RTS                    ; Return from the subroutine
 
 .DV12
 
- BEQ DV13
- LDA R
+ BEQ DV13               ; We jumped here having set A to the scale factor in Y,
+                        ; so this jumps up to DV13 if Y = 0
+
+                        ; If we get here then Y is positive and non-zero, so we
+                        ; need to shift the result R to the right by Y places
+                        ; and then set the correct sign for the result. We also
+                        ; know that K(3 2 1) will stay 0, as we are shifting the
+                        ; lowest byte to the right, so no set bits will make
+                        ; their way into the top three bytes
+
+ LDA R                  ; Set A = R
 
 .DVL10
 
- LSR A
- DEY
- BNE DVL10
- STA K
- LDA T
- STA K+3
- RTS
+ LSR A                  ; Shift A right
+
+ DEY                    ; Decrement the scale factor in Y
+
+ BNE DVL10              ; Loop back to DVL10 until we have shifted right by Y
+                        ; places
+
+ STA K                  ; Store the shifted A in K so the result is now in
+                        ; K(3 2 1 0)
+
+ LDA T                  ; Set K+3 to the sign in T, which we set above to the
+ STA K+3                ; correct sign for the result
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: cntr
+;       Type: Subroutine
+;   Category: Dashboard
+;    Summary: Apply damping to the pitch or roll dashboard indicator
+;
+; ------------------------------------------------------------------------------
+;
+; Apply damping to the value in X, where X ranges from 1 to 255 with 128 as the
+; centre point (so X represents a position on a centre-based dashboard slider,
+; such as pitch or roll). If the value is in the left-hand side of the slider
+; (1-127) then it bumps the value up by 1 so it moves towards the centre, and
+; if it's in the right-hand side, it reduces it by 1, also moving it towards the
+; centre.
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   RE1                 Contains an RTS
+;
+; ******************************************************************************
 
 .cntr
 
- LDA auto
- BNE cnt2
- LDA DAMP
- BNE RE1
+ LDA auto               ; If the docking computer is currently activated, jump
+ BNE cnt2               ; to cnt2 to skip the following as we always want to
+                        ; enable damping for the docking computer
+
+ LDA DAMP               ; If DAMP is non-zero, then keyboard damping is not
+ BNE RE1                ; enabled, so jump to RE1 to return from the subroutine
 
 .cnt2
 
- TXA
- BPL BUMP
- DEX
- BMI RE1
+ TXA                    ; If X < 128, then it's in the left-hand side of the
+ BPL BUMP               ; dashboard slider, so jump to BUMP to bump it up by 1,
+                        ; to move it closer to the centre
+
+ DEX                    ; Otherwise X >= 128, so it's in the right-hand side
+ BMI RE1                ; of the dashboard slider, so decrement X by 1, and if
+                        ; it's still >= 128, jump to RE1 to return from the
+                        ; subroutine, otherwise fall through to BUMP to undo
+                        ; the bump and then return
 
 .BUMP
 
- INX
- BNE RE1
+ INX                    ; Bump X up by 1, and if it hasn't overshot the end of
+ BNE RE1                ; the dashboard slider, jump to RE1 to return from the
+                        ; subroutine, otherwise fall through to REDU to drop
+                        ; it down by 1 again
 
 .REDU
 
- DEX
- BEQ BUMP
+ DEX                    ; Reduce X by 1, and if we have reached 0 jump up to
+ BEQ BUMP               ; BUMP to add 1, because we need the value to be in the
+                        ; range 1 to 255
 
 .RE1
 
- RTS
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: BUMP2
+;       Type: Subroutine
+;   Category: Dashboard
+;    Summary: Bump up the value of the pitch or roll dashboard indicator
+;
+; ------------------------------------------------------------------------------
+;
+; Increase ("bump up") X by A, where X is either the current rate of pitch or
+; the current rate of roll.
+;
+; The rate of pitch or roll ranges from 1 to 255 with 128 as the centre point.
+; This is the amount by which the pitch or roll is currently changing, so 1
+; means it is decreasing at the maximum rate, 128 means it is not changing,
+; and 255 means it is increasing at the maximum rate. These values correspond
+; to the line on the DC or RL indicators on the dashboard, with 1 meaning full
+; left, 128 meaning the middle, and 255 meaning full right.
+;
+; If bumping up X would push it past 255, then X is set to 255.
+;
+; If keyboard auto-recentre is configured and the result is less than 128, we
+; bump X up to the mid-point, 128. This is the equivalent of having a roll or
+; pitch in the left half of the indicator, when increasing the roll or pitch
+; should jump us straight to the mid-point.
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   RE2+2               Restore A from T and return from the subroutine
+;
+; ******************************************************************************
 
 .BUMP2
 
- STA T
- TXA
- CLC
- ADC T
+ STA T                  ; Store argument A in T so we can restore it later
+
+ TXA                    ; Copy argument X into A
+
+ CLC                    ; Clear the C flag so we can do addition without the
+                        ; C flag affecting the result
+
+ ADC T                  ; Set X = A = argument X + argument A
  TAX
- BCC RE2
- LDX #$FF
+
+ BCC RE2                ; If the C flag is clear, then we didn't overflow, so
+                        ; jump to RE2 to auto-recentre and return the result
+
+ LDX #255               ; We have an overflow, so set X to the maximum possible
+                        ; value of 255
 
 .RE2
 
- BPL djd1
- LDA T
- RTS
+ BPL djd1               ; If X has bit 7 clear (i.e. the result < 128), then
+                        ; jump to djd1 in routine REDU2 to do an auto-recentre,
+                        ; if configured, because the result is on the left side
+                        ; of the centre point of 128
+
+                        ; Jumps to RE2+2 end up here
+
+ LDA T                  ; Restore the original argument A from T into A
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: REDU2
+;       Type: Subroutine
+;   Category: Dashboard
+;    Summary: Reduce the value of the pitch or roll dashboard indicator
+;
+; ------------------------------------------------------------------------------
+;
+; Reduce X by A, where X is either the current rate of pitch or the current
+; rate of roll.
+;
+; The rate of pitch or roll ranges from 1 to 255 with 128 as the centre point.
+; This is the amount by which the pitch or roll is currently changing, so 1
+; means it is decreasing at the maximum rate, 128 means it is not changing,
+; and 255 means it is increasing at the maximum rate. These values correspond
+; to the line on the DC or RL indicators on the dashboard, with 1 meaning full
+; left, 128 meaning the middle, and 255 meaning full right.
+;
+; If reducing X would bring it below 1, then X is set to 1.
+;
+; If keyboard auto-recentre is configured and the result is greater than 128, we
+; reduce X down to the mid-point, 128. This is the equivalent of having a roll
+; or pitch in the right half of the indicator, when decreasing the roll or pitch
+; should jump us straight to the mid-point.
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   djd1                Auto-recentre the value in X, if keyboard auto-recentre
+;                       is configured
+;
+; ******************************************************************************
 
 .REDU2
 
- STA T
- TXA
- SEC
- SBC T
+ STA T                  ; Store argument A in T so we can restore it later
+
+ TXA                    ; Copy argument X into A
+
+ SEC                    ; Set the C flag so we can do subtraction without the
+                        ; C flag affecting the result
+
+ SBC T                  ; Set X = A = argument X - argument A
  TAX
- BCS RE3
- LDX #1
+
+ BCS RE3                ; If the C flag is set, then we didn't underflow, so
+                        ; jump to RE3 to auto-recentre and return the result
+
+ LDX #1                 ; We have an underflow, so set X to the minimum possible
+                        ; value, 1
 
 .RE3
 
- BPL RE2+2
+ BPL RE2+2              ; If X has bit 7 clear (i.e. the result < 128), then
+                        ; jump to RE2+2 above to return the result as is,
+                        ; because the result is on the left side of the centre
+                        ; point of 128, so we don't need to auto-centre
 
 .djd1
 
- LDA DJD
- BNE RE2+2
- LDX #128
- BMI RE2+2
+                        ; If we get here, then we need to apply auto-recentre,
+                        ; if it is configured
+
+ LDA DJD                ; If keyboard auto-recentre is disabled, then
+ BNE RE2+2              ; jump to RE2+2 to restore A and return
+
+ LDX #128               ; If we get here then keyboard auto-recentre is enabled,
+ BMI RE2+2              ; so set X to 128 (the middle of our range) and jump to
+                        ; RE2+2 to restore A and return from the subroutine
+                        ; (this BMI is effectively a JMP as bit 7 of X is always
+                        ; set)
+
+; ******************************************************************************
+;
+;       Name: LASLI
+;       Type: Subroutine
+;   Category: Drawing lines
+;    Summary: Draw the laser lines for when we fire our lasers
+;
+; ------------------------------------------------------------------------------
+;
+; Draw the laser lines, aiming them to slightly different place each time so
+; they appear to flicker and dance. Also heat up the laser temperature and drain
+; some energy.
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   LASLI2              Just draw the current laser lines without moving the
+;                       centre point, draining energy or heating up. This has
+;                       the effect of removing the lines from the screen
+;
+;   LASLI-1             Contains an RTS
+;
+; ******************************************************************************
 
 .LASLI
 
- JSR DORND
- AND #7
- ADC #Y-4
- STA LASY
- JSR DORND
- AND #7
- ADC #X-4
- STA LASX
- LDA GNTMP
+ JSR DORND              ; Set A and X to random numbers
+
+ AND #7                 ; Restrict A to a random value in the range 0 to 7
+
+ ADC #Y-4               ; Set LASY to four pixels above the centre of the
+ STA LASY               ; screen (#Y), plus our random number, so the laser
+                        ; dances above and below the centre point
+
+ JSR DORND              ; Set A and X to random numbers
+
+ AND #7                 ; Restrict A to a random value in the range 0 to 7
+
+ ADC #X-4               ; Set LASX to four pixels left of the centre of the
+ STA LASX               ; screen (#X), plus our random number, so the laser
+                        ; dances to the left and right of the centre point
+
+ LDA GNTMP              ; Add 8 to the laser temperature in GNTMP
  ADC #8
  STA GNTMP
- JSR DENGY
 
-.LASLI2 
+ JSR DENGY              ; Call DENGY to deplete our energy banks by 1
 
- LDA QQ11
- BNE RE1
-;LDA #RED
-;JSR DOCOL
- LDA #32
- LDY #224
- JSR las
- LDA #48
- LDY #208
+.LASLI2
+
+ LDA QQ11               ; If this is not a space view (i.e. QQ11 is non-zero)
+ BNE RE1                ; then jump to MA9 to return from the main flight loop
+                        ; (as RE1 is an RTS)
+
+;LDA #RED               ; These instructions are commented out in the original
+;STA COL                ; source; they would switch to colour 2, which is red in
+                        ; the space view
+
+ LDA #32                ; Set A = 32 and Y = 224 for the first set of laser
+ LDY #224               ; lines (the wider pair of lines)
+
+ JSR las                ; Call las below to draw the first set of laser lines
+
+ LDA #48                ; Fall through into las with A = 48 and Y = 208 to draw
+ LDY #208               ; a second set of lines (the narrower pair)
+
+                        ; The following routine draws two laser lines, one from
+                        ; the centre point down to point A on the bottom row,
+                        ; and the other from the centre point down to point Y
+                        ; on the bottom row. We therefore get lines from the
+                        ; centre point to points 32, 48, 208 and 224 along the
+                        ; bottom row, giving us the triangular laser effect
+                        ; we're after
 
 .las
 
- STA X2
- LDA LASX
+ STA X2                 ; Set X2 = A
+
+ LDA LASX               ; Set (X1, Y1) to the random centre point we set above
  STA X1
  LDA LASY
  STA Y1
- LDA #2*Y-1
- STA Y2
- JSR LL30
- LDA LASX
+
+ LDA #2*Y-1             ; Set Y2 = 2 * #Y - 1. The constant #Y is 96, the
+ STA Y2                 ; y-coordinate of the mid-point of the space view, so
+                        ; this sets Y2 to 191, the y-coordinate of the bottom
+                        ; pixel row of the space view
+
+ JSR LL30               ; Draw a line from (X1, Y1) to (X2, Y2), so that's from
+                        ; the centre point to (A, 191)
+
+ LDA LASX               ; Set (X1, Y1) to the random centre point we set above
  STA X1
  LDA LASY
  STA Y1
- STY X2
- LDA #2*Y-1
- STA Y2
- JMP LL30
+
+ STY X2                 ; Set X2 = Y
+
+ LDA #2*Y-1             ; Set Y2 = 2 * #Y - 1, the y-coordinate of the bottom
+ STA Y2                 ; pixel row of the space view (as before)
+
+ JMP LL30               ; Draw a line from (X1, Y1) to (X2, Y2), so that's from
+                        ; the centre point to (Y, 191), and return from
+                        ; the subroutine using a tail call
+
+; ******************************************************************************
+;
+;       Name: PDESC
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Print the system's extended description or a mission 1 directive
+;  Deep dive: Extended system descriptions
+;             Extended text tokens
+;
+; ------------------------------------------------------------------------------
+;
+; This prints a specific system's extended description. This is called the "pink
+; volcanoes string" in a comment in the original source, and the "goat soup"
+; recipe by Ian Bell on his website (where he also refers to the species string
+; as the "pink felines" string).
+;
+; For some special systems, when you are docked at them, the procedurally
+; generated extended description is overridden and a text token from the RUTOK
+; table is shown instead. If mission 1 is in progress, then a number of systems
+; along the route of that mission's story will show custom mission-related
+; directives in place of that system's normal "goat soup" phrase.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   ZZ                  The system number (0-255)
+;
+; ******************************************************************************
 
 .PDESC
 
- \pink volcanoes string
- LDA QQ8
- ORA QQ8+1
- BNE PD1
- LDA QQ12
- BPL PD1
- LDY #NRU%
+ LDA QQ8                ; If either byte in QQ18(1 0) is non-zero, meaning that
+ ORA QQ8+1              ; the distance from the current system to the selected
+ BNE PD1                ; is non-zero, jump to PD1 to show the standard "goat
+                        ; soup" description
+
+ LDA QQ12               ; If QQ12 does not have bit 7 set, which means we are
+ BPL PD1                ; not docked, jump to PD1 to show the standard "goat
+                        ; soup" description
+
+                        ; If we get here, then the current system is the same as
+                        ; the selected system and we are docked, so now to check
+                        ; whether there is a special override token for this
+                        ; system
+
+ LDY #NRU%              ; Set Y as a loop counter as we work our way through the
+                        ; system numbers in RUPLA, starting at NRU% (which is
+                        ; the number of entries in RUPLA, 26) and working our
+                        ; way down to 1
 
 .PDL1
 
- LDA RUPLA-1,Y
- CMP ZZ
- BNE PD2
- LDA RUGAL-1,Y
- AND #127
- CMP GCNT
- BNE PD2
- LDA RUGAL-1,Y
- BMI PD3
- LDA TP
- LSR A
- BCC PD1
- JSR MT14
- LDA #1
- EQUB $2C
+ LDA RUPLA-1,Y          ; Fetch the Y-th byte from RUPLA-1 into A (we use
+                        ; RUPLA-1 because Y is looping from 26 to 1)
+
+ CMP ZZ                 ; If A doesn't match the system whose description we
+ BNE PD2                ; are printing (in ZZ), jump to PD2 to keep looping
+                        ; through the system numbers in RUPLA
+
+                        ; If we get here we have found a match for this system
+                        ; number in RUPLA
+
+ LDA RUGAL-1,Y          ; Fetch the Y-th byte from RUGAL-1 into A
+
+ AND #%01111111         ; Extract bits 0-6 of A
+
+ CMP GCNT               ; If the result does not equal the current galaxy
+ BNE PD2                ; number, jump to PD2 to keep looping through the system
+                        ; numbers in RUPLA
+
+ LDA RUGAL-1,Y          ; Fetch the Y-th byte from RUGAL-1 into A, once again
+
+ BMI PD3                ; If bit 7 is set, jump to PD3 to print the extended
+                        ; token in A from the second table in RUTOK
+
+ LDA TP                 ; Fetch bit 0 of TP into the C flag, and skip to PD1 if
+ LSR A                  ; it is clear (i.e. if mission 1 is not in progress) to
+ BCC PD1                ; print the "goat soup" extended description
+
+                        ; If we get here then mission 1 is in progress, so we
+                        ; print out the corresponding token from RUTOK
+
+ JSR MT14               ; Call MT14 to switch to justified text
+
+ LDA #1                 ; Set A = 1 so that extended token 1 (an empty string)
+                        ; gets printed below instead of token 176, followed by
+                        ; the Y-th token in RUTOK
+
+ EQUB $2C               ; Skip the next instruction by turning it into
+                        ; $2C $A9 $B0, or BIT $B0A9, which does nothing apart
+                        ; from affect the flags
 
 .PD3
 
- LDA #176
- JSR DETOK2
- TYA
- JSR DETOK3
- LDA #177
- BNE PD4
+ LDA #176               ; Print extended token 176 ("{lower case}{justify}
+ JSR DETOK2             ; {single cap}")
+
+ TYA                    ; Print the extended token in Y from the second table
+ JSR DETOK3             ; in RUTOK
+
+ LDA #177               ; Set A = 177 so when we jump to PD4 in the next
+                        ; instruction, we print token 177 (".{cr}{left align}")
+
+ BNE PD4                ; Jump to PD4 to print the extended token in A and
+                        ; return from the subroutine using a tail call
 
 .PD2
 
- DEY
- BNE PDL1
+ DEY                    ; Decrement the byte counter in Y
+
+ BNE PDL1               ; Loop back to check the next byte in RUPLA until we
+                        ; either find a match for the system in ZZ, or we fall
+                        ; through into the "goat soup" extended description
+                        ; routine
 
 .PD1
 
- LDX #3
+                        ; We now print the "goat soup" extended description
+
+ LDX #3                 ; We now want to seed the random number generator with
+                        ; the s1 and s2 16-bit seeds from the current system, so
+                        ; we get the same extended description for each system
+                        ; every time we call PDESC, so set a counter in X for
+                        ; copying 4 bytes
 
 {
-.PDL1
+.PDL1                   ; This label is a duplicate of the label above (which is
+                        ; why we need to surround it with braces, as BeebAsm
+                        ; doesn't allow us to redefine labels, unlike BBC BASIC)
 
- LDA QQ15+2,X
+ LDA QQ15+2,X           ; Copy QQ15+2 to QQ15+5 (s1 and s2) to RAND to RAND+3
  STA RAND,X
- DEX
- BPL PDL1 ;set DORND seed
-}
 
- LDA #5
+ DEX                    ; Decrement the loop counter
+
+ BPL PDL1               ; Loop back to PDL1 until we have copied all
+
+ LDA #5                 ; Set A = 5, so we print extended token 5 in the next
+                        ; instruction ("{lower case}{justify}{single cap}[86-90]
+                        ; IS [140-144].{cr}{left align}"
+}
 
 .PD4
 
- JMP DETOK
- \.....
+ JMP DETOK              ; Print the extended token given in A, and return from
+                        ; the subroutine using a tail call
+
+; ******************************************************************************
+;
+;       Name: BRIEF2
+;       Type: Subroutine
+;   Category: Missions
+;    Summary: Start mission 2
+;  Deep dive: The Thargoid Plans mission
+;
+; ******************************************************************************
 
 .BRIEF2
 
- LDA TP
- ORA #4
+ LDA TP                 ; Set bit 2 of TP to indicate mission 2 is in progress
+ ORA #%00000100         ; but plans have not yet been picked up
  STA TP
- LDA #11
+
+ LDA #11                ; Set A = 11 so the call to BRP prints extended token 11
+                        ; (the initial contact at the start of mission 2, asking
+                        ; us to head for Ceerdi for a mission briefing)
+
+                        ; Fall through into BRP to print the extended token in A
+                        ; and show the Status Mode screen
+
+; ******************************************************************************
+;
+;       Name: BRP
+;       Type: Subroutine
+;   Category: Missions
+;    Summary: Print an extended token and show the Status Mode screen
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   BAYSTEP             Go to the docking bay (i.e. show the Status Mode screen)
+;
+; ******************************************************************************
 
 .BRP
 
- JSR DETOK
+ JSR DETOK              ; Print the extended token in A
 
 .BAYSTEP
 
- JMP BAY
- \....
+ JMP BAY                ; Jump to BAY to go to the docking bay (i.e. show the
+                        ; Status Mode screen) and return from the subroutine
+                        ; using a tail call
+
+; ******************************************************************************
+;
+;       Name: BRIEF3
+;       Type: Subroutine
+;   Category: Missions
+;    Summary: Receive the briefing and plans for mission 2
+;  Deep dive: The Thargoid Plans mission
+;
+; ******************************************************************************
 
 .BRIEF3
 
- LDA TP
- AND #$F0
- ORA #10
+ LDA TP                 ; Set bits 1 and 3 of TP to indicate that mission 1 is
+ AND #%11110000         ; complete, and mission 2 is in progress and the plans
+ ORA #%00001010         ; have been picked up
  STA TP
- LDA #222
- BNE BRP
- \....
+
+ LDA #222               ; Set A = 222 so the call to BRP prints extended token
+                        ; 222 (the briefing for mission 2 where we pick up the
+                        ; plans we need to take to Birera)
+
+ BNE BRP                ; Jump to BRP to print the extended token in A and show
+                        ; the Status Mode screen), returning from the subroutine
+                        ; using a tail call (this BNE is effectively a JMP as A
+                        ; is never zero)
+
+; ******************************************************************************
+;
+;       Name: DEBRIEF2
+;       Type: Subroutine
+;   Category: Missions
+;    Summary: Finish mission 2
+;  Deep dive: The Thargoid Plans mission
+;
+; ******************************************************************************
 
 .DEBRIEF2
 
- LDA TP
- ORA #4
+ LDA TP                 ; Set bit 2 of TP to indicate mission 2 is complete (so
+ ORA #%00000100         ; both bits 2 and 3 are now set)
  STA TP
- LDA #2
- STA ENGY
- INC TALLY+1
- LDA #223
- BNE BRP
- \....
+
+ LDA #2                 ; Set ENGY to 2 so our energy banks recharge at a faster
+ STA ENGY               ; rate, as our mission reward is a special navy energy
+                        ; unit that recharges at a rate of 3 units of energy on
+                        ; each iteration of the main loop, compared to a rate of
+                        ; 2 units of energy for the standard energy unit
+
+ INC TALLY+1            ; Award 256 kill points for completing the mission
+
+ LDA #223               ; Set A = 223 so the call to BRP prints extended token
+                        ; 223 (the thank you message at the end of mission 2)
+
+ BNE BRP                ; Jump to BRP to print the extended token in A and show
+                        ; the Status Mode screen), returning from the subroutine
+                        ; using a tail call (this BNE is effectively a JMP as A
+                        ; is never zero)
+
+; ******************************************************************************
+;
+;       Name: DEBRIEF
+;       Type: Subroutine
+;   Category: Missions
+;    Summary: Finish mission 1
+;  Deep dive: The Constrictor mission
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   BRPS                Print the extended token in A, show the Status Mode
+;                       screen and return from the subroutine
+;
+; ******************************************************************************
 
 .DEBRIEF
 
- LSR TP
- ASL TP
-;INC TALLY+1
- LDX #(50000 MOD 256)
- LDY #(50000 DIV 256)
+ LSR TP                 ; Clear bit 0 of TP to indicate that mission 1 is no
+ ASL TP                 ; longer in progress, as we have completed it
+
+;INC TALLY+1            ; This instruction is commented out in the original
+                        ; source
+
+ LDX #LO(50000)         ; Increase our cash reserves by the generous mission
+ LDY #HI(50000)         ; reward of 5,000 CR
  JSR MCASH
- LDA #15
+
+ LDA #15                ; Set A = 15 so the call to BRP prints extended token 15
+                        ; (the thank you message at the end of mission 1)
 
 .BRPS
 
- BNE BRP
- \....
- \TBRIEF
-;LDA TP
+ BNE BRP                ; Jump to BRP to print the extended token in A and show
+                        ; the Status Mode screen, returning from the subroutine
+                        ; using a tail call (this BNE is effectively a JMP as A
+                        ; is never zero)
+
+; ******************************************************************************
+;
+;       Name: TBRIEF
+;       Type: Subroutine
+;   Category: Missions
+;    Summary: Start mission 3
+;  Deep dive: The Trumbles mission
+;
+; ******************************************************************************
+
+;.TBRIEF                ; These instructions are commented out in the original
+;LDA TP                 ; source
 ;ORA #$10
 ;STA TP
 ;LDA #199
 ;JSR DETOK
 ;JSR YESNO
 ;BCC BAYSTEP
-;LDY #(50000 DIV 256)
-;LDX #(50000 MOD 256)
+;LDY #HI(50000)
+;LDX #LO(50000)
 ;JSR LCASH
 ;INC TRIBBLE
 ;JMP BAY
- \..................
+
+; ******************************************************************************
+;
+;       Name: BRIEF
+;       Type: Subroutine
+;   Category: Missions
+;    Summary: Start mission 1 and show the mission briefing
+;  Deep dive: The Constrictor mission
+;
+; ------------------------------------------------------------------------------
+;
+; This routine does the following:
+;
+;   * Clear the screen
+;   * Display "INCOMING MESSAGE" in the middle of the screen
+;   * Wait for 2 seconds
+;   * Clear the screen
+;   * Show the Constrictor rolling and pitching in the middle of the screen
+;   * Do this for 64 loop iterations
+;   * Move the ship away from us and up until it's near the top of the screen
+;   * Show the mission 1 briefing in extended token 10
+;
+; The mission briefing ends with a "{display ship, wait for key press}" token,
+; which calls the PAUSE routine. This continues to display the rotating ship,
+; waiting until a key is pressed, and then removes the ship from the screen.
+;
+; ******************************************************************************
 
 .BRIEF
 
- LSR TP
- SEC
+ LSR TP                 ; Set bit 0 of TP to indicate that mission 1 is now in
+ SEC                    ; progress
  ROL TP
- JSR BRIS
- JSR ZINF
- LDA #CON
+
+ JSR BRIS               ; Call BRIS to clear the screen, display "INCOMING
+                        ; MESSAGE" and wait for 2 seconds
+
+ JSR ZINF               ; Call ZINF to reset the INWK ship workspace
+
+ LDA #CON               ; Set the ship type in TYPE to the Constrictor
  STA TYPE
- JSR NWSHP
- LDA #1
+
+ JSR NWSHP              ; Add a new Constrictor to the local bubble (in this
+                        ; case, the briefing screen)
+
+ LDA #1                 ; Set A = 1 to set as the text cursor column
 
 IF _IB_DISK
 
- STA XC
+ STA XC                 ; Move the text cursor to column 1
 
 ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
 
- JSR DOXC
+ JSR DOXC               ; Move the text cursor to column 1
 
 ENDIF
 
- STA INWK+7
- LDA #13
- JSR TT66
- LDA #64
- STA MCNT
+ STA INWK+7             ; Set z_hi = 1, the distance at which we show the
+                        ; rotating ship
+
+ LDA #13                ; Clear the top part of the screen, draw a white border,
+ JSR TT66               ; and set the current view type in QQ11 to 13 (rotating
+                        ; ship view)
+
+ LDA #64                ; Set the main loop counter to 64, so the ship rotates
+ STA MCNT               ; for 64 iterations through MVEIT
 
 .BRL1
 
- LDX #127
- STX INWK+29
- STX INWK+30
- JSR LL9
- JSR MVEIT
- DEC MCNT
- BNE BRL1
+ LDX #%01111111         ; Set the ship's roll counter to a positive roll that
+ STX INWK+29            ; doesn't dampen (a clockwise roll)
+
+ STX INWK+30            ; Set the ship's pitch counter to a positive pitch that
+                        ; doesn't dampen (a diving pitch)
+
+ JSR LL9                ; Draw the ship on screen
+
+ JSR MVEIT              ; Call MVEIT to rotate the ship in space
+
+ DEC MCNT               ; Decrease the counter in MCNT
+
+ BNE BRL1               ; Loop back to keep moving the ship until we have done
+                        ; all 64 iterations
 
 .BRL2
 
- LSR INWK
- INC INWK+6
- BEQ BR2
- INC INWK+6
- BEQ BR2
- LDX INWK+3
+ LSR INWK               ; Halve x_lo so the Constrictor moves towards the centre
+
+ INC INWK+6             ; Increment z_lo so the Constrictor moves away from us
+
+ BEQ BR2                ; If z_lo = 0 (i.e. it just went past 255), jump to BR2
+                        ; to show the briefing
+
+ INC INWK+6             ; Increment z_lo so the Constrictor moves a bit further
+                        ; away from us
+
+ BEQ BR2                ; If z_lo = 0 (i.e. it just went past 255), jump out of
+                        ; the loop to BR2 to stop moving the ship up the screen
+                        ; and show the briefing
+
+ LDX INWK+3             ; Set X = y_lo + 1
  INX
- CPX #conhieght
+
+ CPX #conhieght         ; If X < conhieght then skip the next instruction
  BCC P%+4
- LDX #conhieght
- STX INWK+3
- JSR LL9
- JSR MVEIT
- DEC MCNT
- JMP BRL2
+
+ LDX #conhieght         ; X is bigger than conhieght, so set X = conhieght so
+                        ; that X has a maximum value of conhieght
+
+ STX INWK+3             ; Set y_lo = X
+                        ;          = y_lo + 1
+                        ;
+                        ; so the ship moves up the screen (as space coordinates
+                        ; have the y-axis going up)
+
+ JSR LL9                ; Draw the ship on screen
+
+ JSR MVEIT              ; Call MVEIT to move and rotate the ship in space
+
+ DEC MCNT               ; Decrease the counter in MCNT
+
+ JMP BRL2               ; Loop back to keep moving the ship up the screen and
+                        ; away from us
 
 .BR2
 
- INC INWK+7
- JSR PAS1
- LDA #10
- BNE BRPS
+ INC INWK+7             ; Increment z_hi, to keep the ship at the same distance
+                        ; as we just incremented z_lo past 255
+
+ JSR PAS1               ; Call PAS1 to display the rotating ship at space
+                        ; coordinates (0, 112, 256) and scan the keyboard,
+                        ; returning the ASCII code of the key in X (or 0 for no
+                        ; key press)
+
+ LDA #10                ; Set A = 10 so the call to BRP prints extended token 10
+                        ; (the briefing for mission 1 where we find out all
+                        ; about the stolen Constrictor)
+
+ BNE BRPS               ; Jump to BRP via BRPS to print the extended token in A
+                        ; and show the Status Mode screen, returning from the
+                        ; subroutine using a tail call (this BNE is effectively
+                        ; a JMP as A is never zero)
+
+; ******************************************************************************
+;
+;       Name: BRIS
+;       Type: Subroutine
+;   Category: Missions
+;    Summary: Clear the screen, display "INCOMING MESSAGE" and wait for 2
+;             seconds
+;
+; ******************************************************************************
 
 .BRIS
 
- LDA #216
- JSR DETOK
- LDY #100
- JMP DELAY
- \.........
+ LDA #216               ; Print extended token 216 ("{clear screen}{tab 6}{move
+ JSR DETOK              ; to row 10, white, lower case}{white}{all caps}INCOMING
+                        ; MESSAGE"
+
+ LDY #100               ; Delay for 100 vertical syncs (100/50 = 2 seconds) and
+ JMP DELAY              ; return from the subroutine using a tail call
+
+; ******************************************************************************
+;
+;       Name: PAUSE
+;       Type: Subroutine
+;   Category: Missions
+;    Summary: Wait until a key is pressed for the Constrictor mission briefing
+;
+; ******************************************************************************
 
 .PAUSE
 
- JSR PAUSE2
+ JSR PAUSE2             ; ???
+
+; ******************************************************************************
+;
+;       Name: PAS1
+;       Type: Subroutine
+;   Category: Missions
+;    Summary: Scan the keyboard for the Constrictor mission briefing
+;
+; ******************************************************************************
 
 .PAS1
 
- LDA #1
+ LDA #1                 ; ???
  JMP TT66
+
+; ******************************************************************************
+;
+;       Name: MT23
+;       Type: Subroutine
+;   Category: Text
+;    Summary: Move to row 9 and switch to lower case
+;             when printing extended tokens
+;  Deep dive: Extended text tokens
+;
+; ******************************************************************************
 
 .MT23
 
- LDA #9
- EQUB $2C
+ LDA #9                 ; Set A = 9, so when we fall through into MT29, the
+                        ; text cursor gets moved to row 9
+
+ EQUB $2C               ; Skip the next instruction by turning it into
+                        ; $2C $A9 $06, or BIT $06A9, which does nothing apart
+                        ; from affect the flags
+
+                        ; Fall through into MT29 to move to the row in A and
+                        ; switch to lower case
+
+; ******************************************************************************
+;
+;       Name: MT29
+;       Type: Subroutine
+;   Category: Text
+;    Summary: Move to row 5 and switch to lower case when printing extended
+;             tokens
+;  Deep dive: Extended text tokens
+;
+; ******************************************************************************
 
 .MT29
 
- LDA #5
+ LDA #5                 ; Move the text cursor to row 5
  STA YC
- JMP MT13
+
+ JMP MT13               ; Jump to MT13 to set bit 7 of DTW6 and bit 5 of DTW1,
+                        ; returning from the subroutine using a tail call
+
+; ******************************************************************************
+;
+;       Name: PAUSE2
+;       Type: Subroutine
+;   Category: Keyboard
+;    Summary: Wait until a key is pressed, ignoring any existing key press
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   X                   The ASCII code of the key that was pressed
+;
+; ******************************************************************************
 
 .PAUSE2
 
- JSR RDKEY
- BNE PAUSE2
- JSR RDKEY
- BEQ PAUSE2
+ JSR RDKEY              ; Scan the keyboard for a key press and return the
+                        ; ASCII code of the key pressed in X (or 0 for no key
+                        ; press)
+
+ BNE PAUSE2             ; If a key was already being held down when we entered
+                        ; this routine, keep looping back up to PAUSE2, until
+                        ; the key is released
+
+ JSR RDKEY              ; Any pre-existing key press is now gone, so we can
+                        ; start scanning the keyboard again, returning the
+                        ; ASCII code of the key pressed in X (or 0 for no key
+                        ; press)
+
+ BEQ PAUSE2             ; Keep looping up to PAUSE2 until a key is pressed
 
 .newyearseve
 
- RTS
- \..............
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: GINF
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Fetch the address of a ship's data block into INF
+;
+; ------------------------------------------------------------------------------
+;
+; Get the address of the data block for ship slot X and store it in INF. This
+; address is fetched from the UNIV table, which stores the addresses of the 13
+; ship data blocks in workspace K%.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   X                   The ship slot number for which we want the data block
+;                       address
+;
+; ******************************************************************************
 
 .GINF
 
- TXA
+ TXA                    ; Set Y = X * 2
  ASL A
  TAY
- LDA UNIV,Y
- STA INF
- LDA UNIV+1,Y
- STA INF+1
- RTS
+
+ LDA UNIV,Y             ; Get the high byte of the address of the X-th ship
+ STA INF                ; from UNIV and store it in INF
+
+ LDA UNIV+1,Y           ; Get the low byte of the address of the X-th ship
+ STA INF+1              ; from UNIV and store it in INF
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: ping
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Set the selected system to the current system
+;
+; ******************************************************************************
 
 .ping
 
- LDX #1
+ LDX #1                 ; We want to copy the X- and Y-coordinates of the
+                        ; current system in (QQ0, QQ1) to the selected system's
+                        ; coordinates in (QQ9, QQ10), so set up a counter to
+                        ; copy two bytes
 
 .pl1
 
- LDA QQ0,X
- STA QQ9,X
- DEX
- BPL pl1
- RTS
+ LDA QQ0,X              ; Load byte X from the current system in QQ0/QQ1
+
+ STA QQ9,X              ; Store byte X in the selected system in QQ9/QQ10
+
+ DEX                    ; Decrement the loop counter
+
+ BPL pl1                ; Loop back for the next byte to copy
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: DELAY
+;       Type: Subroutine
+;   Category: Utility routines
+;    Summary: Wait for a specified time, in 1/50s of a second
+;
+; ------------------------------------------------------------------------------
+;
+; Wait for the number of vertical syncs given in Y, so this effectively waits
+; for Y/50 of a second (as the vertical sync occurs 50 times a second).
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   Y                   The number of vertical sync events to wait for
+;
+; ******************************************************************************
 
 .DELAY
 
- JSR WSCAN
- DEY
- BNE DELAY
- RTS
+ JSR WSCAN              ; Call WSCAN to wait for the vertical sync, so the whole
+                        ; screen gets drawn
+
+ DEY                    ; Decrement the counter in Y
+
+ BNE DELAY              ; If Y isn't yet at zero, jump back to DELAY to wait
+                        ; for another vertical sync
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: MTIN
+;       Type: Variable
+;   Category: Text
+;    Summary: Lookup table for random tokens in the extended token table (0-37)
+;  Deep dive: Extended text tokens
+;
+; ------------------------------------------------------------------------------
+;
+; The ERND token type, which is part of the extended token system, takes an
+; argument between 0 and 37, and returns a randomly chosen token in the range
+; specified in this table. This is used to generate the extended description of
+; each system.
+;
+; For example, the entry at position 13 in this table (counting from 0) is 66,
+; so ERND 14 will expand into a random token in the range 66-70, i.e. one of
+; "JUICE", "BRANDY", "WATER", "BREW" and "GARGLE BLASTERS".
+;
+; ******************************************************************************
 
 .MTIN
 
- EQUB 16
- EQUB 21
- EQUB 26
- EQUB 31
- EQUB 155
- EQUB 160
- EQUB 46
- EQUB 165
- EQUB 36
- EQUB 41
- EQUB 61
- EQUB 51
- EQUB 56
- EQUB 170
- EQUB 66
- EQUB 71
- EQUB 76
- EQUB 81
- EQUB 86
- EQUB 140
- EQUB 96
- EQUB 101
- EQUB 135
- EQUB 130
- EQUB 91
- EQUB 106
- EQUB 180
- EQUB 185
- EQUB 190
- EQUB 225
- EQUB 230
- EQUB 235
- EQUB 240
- EQUB 245
- EQUB 250
- EQUB 115
- EQUB 120
- EQUB 125
+ EQUB 16                ; Token  0: a random extended token between 16 and 20
+ EQUB 21                ; Token  1: a random extended token between 21 and 25
+ EQUB 26                ; Token  2: a random extended token between 26 and 30
+ EQUB 31                ; Token  3: a random extended token between 31 and 35
+ EQUB 155               ; Token  4: a random extended token between 155 and 159
+ EQUB 160               ; Token  5: a random extended token between 160 and 164
+ EQUB 46                ; Token  6: a random extended token between 46 and 50
+ EQUB 165               ; Token  7: a random extended token between 165 and 169
+ EQUB 36                ; Token  8: a random extended token between 36 and 40
+ EQUB 41                ; Token  9: a random extended token between 41 and 45
+ EQUB 61                ; Token 10: a random extended token between 61 and 65
+ EQUB 51                ; Token 11: a random extended token between 51 and 55
+ EQUB 56                ; Token 12: a random extended token between 56 and 60
+ EQUB 170               ; Token 13: a random extended token between 170 and 174
+ EQUB 66                ; Token 14: a random extended token between 66 and 70
+ EQUB 71                ; Token 15: a random extended token between 71 and 75
+ EQUB 76                ; Token 16: a random extended token between 76 and 80
+ EQUB 81                ; Token 17: a random extended token between 81 and 85
+ EQUB 86                ; Token 18: a random extended token between 86 and 90
+ EQUB 140               ; Token 19: a random extended token between 140 and 144
+ EQUB 96                ; Token 20: a random extended token between 96 and 100
+ EQUB 101               ; Token 21: a random extended token between 101 and 105
+ EQUB 135               ; Token 22: a random extended token between 135 and 139
+ EQUB 130               ; Token 23: a random extended token between 130 and 134
+ EQUB 91                ; Token 24: a random extended token between 91 and 95
+ EQUB 106               ; Token 25: a random extended token between 106 and 110
+ EQUB 180               ; Token 26: a random extended token between 180 and 184
+ EQUB 185               ; Token 27: a random extended token between 185 and 189
+ EQUB 190               ; Token 28: a random extended token between 190 and 194
+ EQUB 225               ; Token 29: a random extended token between 225 and 229
+ EQUB 230               ; Token 30: a random extended token between 230 and 234
+ EQUB 235               ; Token 31: a random extended token between 235 and 239
+ EQUB 240               ; Token 32: a random extended token between 240 and 244
+ EQUB 245               ; Token 33: a random extended token between 245 and 249
+ EQUB 250               ; Token 34: a random extended token between 250 and 254
+ EQUB 115               ; Token 35: a random extended token between 115 and 119
+ EQUB 120               ; Token 36: a random extended token between 120 and 124
+ EQUB 125               ; Token 37: a random extended token between 125 and 129
 
 ; ******************************************************************************
 ;
@@ -7526,42 +8556,146 @@ ENDIF
 
  LOAD_D% = LOAD% + P% - CODE%
 
- \ SCALE Scans by 3/4 to fit in 
+; ******************************************************************************
+;
+;       Name: SCALEY
+;       Type: Subroutine
+;   Category: Maths (Geometry)
+;    Summary: Scale the y-coordinate in A
+;
+; ------------------------------------------------------------------------------
+;
+; This routine (and the related SCALEY2 and SCALEX routines) are called from
+; various places in the code to scale the value in A. This code is different in
+; the Apple II and BBC Master versions, and allows coordinates to be scaled
+; correctly on different platforms.
+;
+; The original source contains the comment "SCALE Scans by 3/4 to fit in".
+;
+; ******************************************************************************
 
 .SCALEY
 
- LSR A
+ LSR A                  ; Halve the value in A
+
+; ******************************************************************************
+;
+;       Name: SCALEY2
+;       Type: Subroutine
+;   Category: Maths (Geometry)
+;    Summary: Scale the y-coordinate in A
+;
+; ------------------------------------------------------------------------------
+;
+; This routine (and the related SCALEY and SCALEX routines) are called from
+; various places in the code to scale the value in A. This code is different in
+; the Apple II and BBC Master versions, and allows coordinates to be scaled
+; correctly on different platforms.
+;
+; ******************************************************************************
 
 .SCALEY2
 
- STA T3
+ STA T3					\ ???
  LSR A
  LSR A
  SEC
  SBC T3
  EOR #$FF
  ADC #1
- RTS
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: SCALEX
+;       Type: Subroutine
+;   Category: Maths (Geometry)
+;    Summary: Scale the x-coordinate in A
+;
+; ------------------------------------------------------------------------------
+;
+; This routine (and the related SCALEY and SCALEY2 routines) are called from
+; various places in the code to scale the value in A. This code is different in
+; the Apple II and BBC Master versions, and allows coordinates to be scaled
+; correctly on different platforms.
+;
+; ******************************************************************************
 
 .SCALEX
 
- JSR SCALEY2
+ JSR SCALEY2			\ ???
  ADC #32
- RTS
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: DVLOIN
+;       Type: Subroutine
+;   Category: Drawing lines
+;    Summary: Draw a vertical line from (A, GCYT) to (A, GCYB)
+;
+; ******************************************************************************
 
 .DVLOIN
 
- STA X1
+ STA X1					\ Draw a vertical line from (A, GCYT) to (A, GCYB)
  LDA #GCYT
  STA Y1
  LDA #GCYB
  STA Y2
  JMP VLOIN
 
+; ******************************************************************************
+;
+;       Name: tnpr1
+;       Type: Subroutine
+;   Category: Market
+;    Summary: Work out if we have space for one tonne of cargo
+;
+; ------------------------------------------------------------------------------
+;
+; Given a market item, work out whether there is room in the cargo hold for one
+; tonne of this item.
+;
+; For standard tonne canisters, the limit is given by the type of cargo hold we
+; have, with a standard cargo hold having a capacity of 20t and an extended
+; cargo bay being 35t.
+;
+; For items measured in kg (gold, platinum), g (gem-stones) and alien items,
+; the individual limit on each of these is 200 units.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   A                   The type of market item (see QQ23 for a list of market
+;                       item numbers)
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   A                   A = 1
+;
+;   C flag              Returns the result:
+;
+;                         * Set if there is no room for this item
+;
+;                         * Clear if there is room for this item
+;
+; ******************************************************************************
+
 .tnpr1
 
- STA QQ29
- LDA #1
+ STA QQ29               ; Store the type of market item in QQ29
+
+ LDA #1                 ; Set the number of units of this market item to 1
+
+                        ; Fall through into tnpr to work out whether there is
+                        ; room in the cargo hold for A tonnes of the item of
+                        ; type QQ29
 
 .tnpr
 
