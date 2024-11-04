@@ -19293,6 +19293,7 @@ Saving file '3-assembled-output/ELTC.bin'
      6914   A9 6B      LDA #&6B
      6916   20 44 71   JSR &7144
      6919   4C 3A 68   JMP &683A
+.TT214
 .TT221
      691C   20 44 71   JSR &7144
      691F   A9 CE      LDA #&CE
@@ -19865,6 +19866,7 @@ Saving file '3-assembled-output/ELTC.bin'
      6D27   8D F2 02   STA &02F2
      6D2A   A5 D8      LDA &D8
      6D2C   8D F1 02   STA &02F1
+.GVL
      6D2F   20 7C 7B   JSR &7B7C
      6D32   8D D5 02   STA &02D5
      6D35   A2 00      LDX #&00
