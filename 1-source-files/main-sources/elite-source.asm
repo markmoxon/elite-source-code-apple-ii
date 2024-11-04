@@ -8596,7 +8596,7 @@ ENDIF
 
 .SCALEY2
 
- STA T3					\ ???
+ STA T3                 ; ???
  LSR A
  LSR A
  SEC
@@ -8624,7 +8624,7 @@ ENDIF
 
 .SCALEX
 
- JSR SCALEY2			\ ???
+ JSR SCALEY2            ; ???
  ADC #32
 
  RTS                    ; Return from the subroutine
@@ -8640,7 +8640,7 @@ ENDIF
 
 .DVLOIN
 
- STA X1					\ Draw a vertical line from (A, GCYT) to (A, GCYB)
+ STA X1                 ; Draw a vertical line from (A, GCYT) to (A, GCYB)
  LDA #GCYT
  STA Y1
  LDA #GCYB
@@ -9670,8 +9670,8 @@ ENDIF
 
  JSR SCALEY             ; Scale the y-coordinate ???
 
- CLC                    ; Add GCYT to the scaled y-coordinate in A (as the top
- ADC #GCYT              ; of the chart is on pixel row GCYT ???)
+ CLC                    ; Add GCYT to the scaled y-coordinate in A (so the top
+ ADC #GCYT              ; of the chart is on pixel row GCYT)
 
  JSR PIXEL              ; Call PIXEL to draw a point at (X, A), with the size of
                         ; the point dependent on the distance specified in ZZ

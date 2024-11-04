@@ -47,15 +47,15 @@
 
 IF _IB_DISK
 
- CODE% = $0B00    		\ The address where the code will be run
+ CODE% = $0B00          ; The address where the code will be run
 
- LOAD% = $0B00    		\ The address where the code will be loaded
+ LOAD% = $0B00          ; The address where the code will be loaded
 
 ELSE
 
- CODE% = $0B60    		\ The address where the code will be run
+ CODE% = $0B60          ; The address where the code will be run
 
- LOAD% = $0B60    		\ The address where the code will be loaded
+ LOAD% = $0B60          ; The address where the code will be loaded
 
 ENDIF
 
