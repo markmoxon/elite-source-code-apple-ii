@@ -18856,7 +18856,7 @@ ENDIF
                         ; from the subroutine using a tail call
 
 ;BCS PL20               ; These instructions are commented out in the original
-;LDA K+1                ; source, as the Apple version only has circles for
+;LDA K+1                ; source, as the Apple II version only has circles for
 ;BEQ PL25               ; planets, with no meridians or craters
 ;.PL20
 ;RTS
@@ -22138,81 +22138,151 @@ ENDIF
  JMP TT100              ; Otherwise jump to TT100 to restart the main loop from
                         ; the start
 
+; ******************************************************************************
+;
+;       Name: TT102
+;       Type: Subroutine
+;   Category: Keyboard
+;    Summary: Process function key, save key, hyperspace and chart key presses
+;             and update the hyperspace counter
+;
+; ------------------------------------------------------------------------------
+;
+; Process function key presses, plus "@" (save commander), "H" (hyperspace),
+; "D" (show distance to system) and "O" (move chart cursor back to current
+; system). We can also pass cursor position deltas in X and Y to indicate that
+; the cursor keys or joystick have been used (i.e. the values that are returned
+; by routine TT17).
+;
+; This routine also checks for the "F" key press (search for a system), which
+; applies to enhanced versions only.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   A                   The key number of the key pressed
+;
+;   X                   The amount to move the crosshairs in the x-axis
+;
+;   Y                   The amount to move the crosshairs in the y-axis
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   T95                 Print the distance to the selected system
+;
+; ******************************************************************************
+
 .TT102
 
- CMP #f8
- BNE P%+5
- JMP STATUS
- CMP #f4
- BNE P%+5
- JMP TT22
- CMP #f5
- BNE P%+5
- JMP TT23
- CMP #f6
- BNE TT92
- JSR TT111
- JMP TT25
+ CMP #f8                ; If red key f8 was pressed, jump to STATUS to show the
+ BNE P%+5               ; Status Mode screen, returning from the subroutine
+ JMP STATUS             ; using a tail call
+
+ CMP #f4                ; If red key f4 was pressed, jump to TT22 to show the
+ BNE P%+5               ; Long-range Chart, returning from the subroutine using
+ JMP TT22               ; a tail call
+
+ CMP #f5                ; If red key f5 was pressed, jump to TT23 to show the
+ BNE P%+5               ; Short-range Chart, returning from the subroutine using
+ JMP TT23               ; a tail call
+
+ CMP #f6                ; If red key f6 was pressed, call TT111 to select the
+ BNE TT92               ; system nearest to galactic coordinates (QQ9, QQ10)
+ JSR TT111              ; (the location of the chart crosshairs) and set ZZ to
+ JMP TT25               ; the system number, and then jump to TT25 to show the
+                        ; Data on System screen (along with an extended system
+                        ; description for the system in ZZ if we're docked),
+                        ; returning from the subroutine using a tail call
 
 .TT92
 
- CMP #f9
- BNE P%+5
- JMP TT213
- CMP #f7
- BNE P%+5
- JMP TT167
- CMP #f0
- BNE fvw
- JMP TT110
+ CMP #f9                ; If red key f9 was pressed, jump to TT213 to show the
+ BNE P%+5               ; Inventory screen, returning from the subroutine
+ JMP TT213              ; using a tail call
+
+ CMP #f7                ; If red key f7 was pressed, jump to TT167 to show the
+ BNE P%+5               ; Market Price screen, returning from the subroutine
+ JMP TT167              ; using a tail call
+
+ CMP #f0                ; If red key f0 was pressed, jump to TT110 to launch our
+ BNE fvw                ; ship (if docked), returning from the subroutine using
+ JMP TT110              ; a tail call
 
 .fvw
 
- BIT QQ12
- BPL INSP
- CMP #f3
- BNE P%+5
- JMP EQSHP
- CMP #f1
- BNE P%+5
- JMP TT219
- CMP #'I'
+ BIT QQ12               ; If bit 7 of QQ12 is clear (i.e. we are not docked, but
+ BPL INSP               ; in space), jump to INSP to skip the following checks
+                        ; for f1-f3 and "@" (save commander file) key presses
+
+ CMP #f3                ; If red key f3 was pressed, jump to EQSHP to show the
+ BNE P%+5               ; Equip Ship screen, returning from the subroutine using
+ JMP EQSHP              ; a tail call
+
+ CMP #f1                ; If red key f1 was pressed, jump to TT219 to show the
+ BNE P%+5               ; Buy Cargo screen, returning from the subroutine using
+ JMP TT219              ; a tail call
+
+ CMP #'I'               ; If "I" was not pressed, skip to nosave
  BNE nosave
- JSR SVE
- BCC P%+5
- JMP QU5
- JMP BAY
+
+ JSR SVE                ; "@" was pressed, so call SVE to show the disc access
+                        ; menu
+
+ BCC P%+5               ; If the C flag was set by SVE, then we loaded a new
+ JMP QU5                ; commander file, so jump to QU5 to restart the game
+                        ; with the newly loaded commander
+
+ JMP BAY                ; Otherwise the C flag was clear, so jump to BAY to go
+                        ; to the docking bay (i.e. show the Status Mode screen)
 
 .nosave
 
- CMP #f2
- BNE LABEL_3
- JMP TT208
+ CMP #f2                ; If red key f2 was pressed, jump to TT208 to show the
+ BNE LABEL_3            ; Sell Cargo screen, returning from the subroutine using
+ JMP TT208              ; a tail call
 
 .INSP
 
- CMP #f12
+ CMP #f12               ; If key ??? was pressed, jump to chview1
  BEQ chview1
- CMP #f22
+
+ CMP #f22               ; If key ??? was pressed, jump to chview2
  BEQ chview2
- CMP #f32
- BNE LABEL_3
- LDX #3
- EQUB $2C
+
+ CMP #f32               ; If key ??? was not pressed, jump to LABEL_3 to keep
+ BNE LABEL_3            ; checking for which key was pressed
+
+ LDX #3                 ; Key ??? was pressed, so set the view number in X to
+                        ; 3 for the right view
+
+ EQUB $2C               ; Skip the next instruction by turning it into
+                        ; $2C $A2 $02, or BIT $02A2, which does nothing apart
+                        ; from affect the flags
 
 .chview2
 
- LDX #2
- EQUB $2C
+ LDX #2                 ; If we jump to here, key ??? was pressed, so set the
+                        ; view number in X to 2 for the left view
+
+ EQUB $2C               ; Skip the next instruction by turning it into
+                        ; $2C $A2 $01, or BIT $02A2, which does nothing apart
+                        ; from affect the flags
 
 .chview1
 
- LDX #1
- JMP LOOK1
+ LDX #1                 ; If we jump to here, key ??? was pressed, so set the
+                        ; view number in X to 1 for the rear view
+
+ JMP LOOK1              ; Jump to LOOK1 to switch to view X (rear, left or
+                        ; right), returning from the subroutine using a tail
+                        ; call
 
 .LABEL_3
 
- LDA KL
+ LDA KL                 ; ???
  CMP #'H'
  BNE P%+5
  JMP hyp
@@ -22220,199 +22290,518 @@ ENDIF
  BNE P%+5
  JMP hyp
 
-.NWDAV5 
+.NWDAV5
 
- CMP #'D'
- BEQ T95
- CMP #'F'\Find
- BNE HME1
- LDA QQ12
- BEQ t95
- LDA QQ11
- AND #192
- BEQ t95
- JMP HME2
+ CMP #'D'               ; If "D" was pressed, jump to T95 to print the distance
+ BEQ T95                ; to a system (if we are in one of the chart screens)
+
+ CMP #'F'               ; If "F" was not pressed, jump down to HME1, otherwise
+ BNE HME1               ; keep going to process searching for systems
+
+ LDA QQ12               ; If QQ12 = 0 (we are not docked), we can't search for
+ BEQ t95                ; systems, so return from the subroutine (as t95
+                        ; contains an RTS)
+
+ LDA QQ11               ; If the current view is a chart (QQ11 = 64 or 128),
+ AND #%11000000         ; keep going, otherwise return from the subroutine (as
+ BEQ t95                ; t95 contains an RTS)
+
+ JMP HME2               ; Jump to HME2 to let us search for a system, returning
+                        ; from the subroutine using a tail call
 
 .HME1
 
- STA T1
- LDA QQ11
- AND #192
- BEQ TT107
- LDA QQ22+1
- BNE TT107
- LDA T1
- CMP #'O'
- BNE ee2
- JSR TT103
- JSR ping
- JMP TT103
+ STA T1                 ; Store A (the key that's been pressed) in T1
+
+ LDA QQ11               ; If the current view is a chart (QQ11 = 64 or 128),
+ AND #%11000000         ; keep going, otherwise jump down to TT107 to skip the
+ BEQ TT107              ; following
+
+ LDA QQ22+1             ; If the on-screen hyperspace counter is non-zero,
+ BNE TT107              ; then we are already counting down, so jump to TT107
+                        ; to skip the following
+
+ LDA T1                 ; Restore the original value of A (the key that's been
+                        ; pressed) from T1
+
+ CMP #'O'               ; If "O" was pressed, do the following three jumps,
+ BNE ee2                ; otherwise skip to ee2 to continue
+
+ JSR TT103              ; Draw small crosshairs at coordinates (QQ9, QQ10),
+                        ; which will erase the crosshairs currently there
+
+ JSR ping               ; Set the target system to the current system (which
+                        ; will move the location in (QQ9, QQ10) to the current
+                        ; home system
+
+ JMP TT103              ; Draw small crosshairs at coordinates (QQ9, QQ10),
+                        ; which will draw the crosshairs at our current home
+                        ; system, and return from the subroutine using a tail
+                        ; call
 
 .ee2
 
- JSR TT16
+ JSR TT16               ; Call TT16 to move the crosshairs by the amount in X
+                        ; and Y, which were passed to this subroutine as
+                        ; arguments
 
-.TT107 
+.TT107
 
- LDA QQ22+1
- BEQ t95
- DEC QQ22
- BNE t95
- LDX QQ22+1
- DEX
- JSR ee3
- LDA #5
+ LDA QQ22+1             ; If the on-screen hyperspace counter is zero, return
+ BEQ t95                ; from the subroutine (as t95 contains an RTS), as we
+                        ; are not currently counting down to a hyperspace jump
+
+ DEC QQ22               ; Decrement the internal hyperspace counter
+
+ BNE t95                ; If the internal hyperspace counter is still non-zero,
+                        ; then we are still counting down, so return from the
+                        ; subroutine (as t95 contains an RTS)
+
+                        ; If we get here then the internal hyperspace counter
+                        ; has just reached zero and it wasn't zero before, so
+                        ; we need to reduce the on-screen counter and update
+                        ; the screen. We do this by first printing the next
+                        ; number in the countdown sequence, and then printing
+                        ; the old number, which will erase the old number
+                        ; and display the new one because printing uses EOR
+                        ; logic
+
+ LDX QQ22+1             ; Set X = the on-screen hyperspace counter - 1
+ DEX                    ; (i.e. the next number in the sequence)
+
+ JSR ee3                ; Print the 8-bit number in X at text location (0, 1)
+
+ LDA #5                 ; Reset the internal hyperspace counter to 5
  STA QQ22
- LDX QQ22+1
- JSR ee3
- DEC QQ22+1
- BNE t95
- JMP TT18
+
+ LDX QQ22+1             ; Set X = the on-screen hyperspace counter (i.e. the
+                        ; current number in the sequence, which is already
+                        ; shown on-screen)
+
+ JSR ee3                ; Print the 8-bit number in X at text location (0, 1),
+                        ; i.e. print the hyperspace countdown in the top-left
+                        ; corner
+
+ DEC QQ22+1             ; Decrement the on-screen hyperspace countdown
+
+ BNE t95                ; If the countdown is not yet at zero, return from the
+                        ; subroutine (as t95 contains an RTS)
+
+ JMP TT18               ; Otherwise the countdown has finished, so jump to TT18
+                        ; to do a hyperspace jump, returning from the subroutine
+                        ; using a tail call
 
 .t95
 
- RTS
+ RTS                    ; Return from the subroutine
 
 .T95
 
- LDA QQ11
- AND #$C0
- BEQ t95
- JSR hm
-;STA QQ17
- JSR cpl
- LDA #128
- STA QQ17
- LDA #12
+                        ; If we get here, "D" was pressed, so we need to show
+                        ; the distance to the selected system (if we are in a
+                        ; chart view)
+
+ LDA QQ11               ; If the current view is a chart (QQ11 = 64 or 128),
+ AND #%11000000         ; keep going, otherwise return from the subroutine (as
+ BEQ t95                ; t95 contains an RTS)
+
+ JSR hm                 ; Call hm to move the crosshairs to the target system
+                        ; in (QQ9, QQ10), returning with A = 0
+
+;STA QQ17               ; This instruction is commented out in the original
+                        ; source
+
+ JSR cpl                ; Print control code 3 (the selected system name)
+
+ LDA #%10000000         ; Set bit 7 of QQ17 to switch to Sentence Case, with the
+ STA QQ17               ; next letter in capitals
+
+ LDA #12                ; Print a line feed to move the text cursor down a line
  JSR TT26
- JMP TT146
+
+ JMP TT146              ; Print the distance to the selected system and return
+                        ; from the subroutine using a tail call
+
+; ******************************************************************************
+;
+;       Name: BAD
+;       Type: Subroutine
+;   Category: Status
+;    Summary: Calculate how bad we have been
+;
+; ------------------------------------------------------------------------------
+;
+; Work out how bad we are from the amount of contraband in our hold. The
+; formula is:
+;
+;   (slaves + narcotics) * 2 + firearms
+;
+; so slaves and narcotics are twice as illegal as firearms. The value in FIST
+; (our legal status) is set to at least this value whenever we launch from a
+; space station, and a FIST of 50 or more gives us fugitive status, so leaving a
+; station carrying 25 tonnes of slaves/narcotics, or 50 tonnes of firearms
+; across multiple trips, is enough to make us a fugitive.
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   A                   A value that determines how bad we are from the amount
+;                       of contraband in our hold
+;
+; ******************************************************************************
 
 .BAD
 
- LDA QQ20+3
- CLC
- ADC QQ20+6
- ASL A
- ADC QQ20+10
- RTS
+ LDA QQ20+3             ; Set A to the number of tonnes of slaves in the hold
+
+ CLC                    ; Clear the C flag so we can do addition without the
+                        ; C flag affecting the result
+
+ ADC QQ20+6             ; Add the number of tonnes of narcotics in the hold
+
+ ASL A                  ; Double the result and add the number of tonnes of
+ ADC QQ20+10            ; firearms in the hold
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: FAROF
+;       Type: Subroutine
+;   Category: Maths (Geometry)
+;    Summary: Compare x_hi, y_hi and z_hi with 224
+;
+; ------------------------------------------------------------------------------
+;
+; Compare x_hi, y_hi and z_hi with 224, and set the C flag if all three <= 224,
+; otherwise clear the C flag.
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              Set if x_hi <= 224 and y_hi <= 224 and z_hi <= 224
+;
+;                       Clear otherwise (i.e. if any one of them are bigger than
+;                       224)
+;
+; ******************************************************************************
 
 .FAROF
 
- LDA #$E0
+ LDA #224               ; Set A = 224 and fall through into FAROF2 to do the
+                        ; comparison
+
+; ******************************************************************************
+;
+;       Name: FAROF2
+;       Type: Subroutine
+;   Category: Maths (Geometry)
+;    Summary: Compare x_hi, y_hi and z_hi with A
+;
+; ------------------------------------------------------------------------------
+;
+; Compare x_hi, y_hi and z_hi with A, and set the C flag if all three <= A,
+; otherwise clear the C flag.
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              Set if x_hi <= A and y_hi <= A and z_hi <= A
+;
+;                       Clear otherwise (i.e. if any one of them are bigger than
+;                       A)
+;
+; ******************************************************************************
 
 .FAROF2
 
- CMP INWK+1
- BCC FA1
- CMP INWK+4
- BCC FA1
- CMP INWK+7
+ CMP INWK+1             ; If A < x_hi, C will be clear so jump to FA1 to
+ BCC FA1                ; return from the subroutine with C clear, otherwise
+                        ; C will be set so move on to the next one
+
+ CMP INWK+4             ; If A < y_hi, C will be clear so jump to FA1 to
+ BCC FA1                ; return from the subroutine with C clear, otherwise
+                        ; C will be set so move on to the next one
+
+ CMP INWK+7             ; If A < z_hi, C will be clear, otherwise C will be set
 
 .FA1
 
- RTS
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: MAS4
+;       Type: Subroutine
+;   Category: Maths (Geometry)
+;    Summary: Calculate a cap on the maximum distance to a ship
+;
+; ------------------------------------------------------------------------------
+;
+; Logical OR the value in A with the high bytes of the ship's position (x_hi,
+; y_hi and z_hi).
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   A                   A OR x_hi OR y_hi OR z_hi
+;
+; ******************************************************************************
 
 .MAS4
 
- ORA INWK+1
+ ORA INWK+1             ; OR A with x_hi, y_hi and z_hi
  ORA INWK+4
  ORA INWK+7
- RTS
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: brkd
+;       Type: Variable
+;   Category: Utility routines
+;    Summary: The brkd counter for error handling
+;
+; ------------------------------------------------------------------------------
+;
+; This counter starts at zero, and is decremented whenever the BRKV handler at
+; BRBR prints an error message. It is incremented every time an error message
+; is printed out as part of the TITLE routine.
+;
+; ******************************************************************************
 
 .brkd
 
  EQUB 0
 
+; ******************************************************************************
+;
+;       Name: BRBR
+;       Type: Subroutine
+;   Category: Utility routines
+;    Summary: The standard BRKV handler for the game
+;
+; ------------------------------------------------------------------------------
+;
+; This routine is used to display error messages, before restarting the game.
+; When called, it makes a beep and prints the system error message in the block
+; pointed to by ($FD $FE), which is where the MOS will put any system errors. It
+; then waits for a key press and restarts the game.
+;
+; ******************************************************************************
+
 .BRBR
 
- DEC brkd
- LDX #$FF
- TXS
- JSR backtonormal
- TAY
- LDA #7
+ DEC brkd               ; Decrement the brkd counter
+
+ LDX #$FF               ; Set the stack pointer to $01FF, which is the standard
+ TXS                    ; location for the 6502 stack, so this instruction
+                        ; effectively resets the stack
+
+ JSR backtonormal       ; Disable the keyboard and set the SVN flag to 0
+
+ TAY                    ; The call to backtonormal sets A to 0, so this sets Y
+                        ; to 0, which we use as a loop counter below
+
+ LDA #7                 ; Set A = 7 to generate a beep before we print the error
+                        ; message
 
 .BRBRLOOP
 
- JSR CHPR
- INY
- LDA ($FD),Y
- BNE BRBRLOOP
- JMP BR1
+ JSR CHPR               ; Print the character in A, which contains a line feed
+                        ; on the first loop iteration, and then any non-zero
+                        ; characters we fetch from the error message
+
+ INY                    ; Increment the loop counter
+
+ LDA ($FD),Y            ; Fetch the Y-th byte of the block pointed to by
+                        ; ($FD $FE), so that's the Y-th character of the message
+                        ; pointed to by the MOS error message pointer
+
+ BNE BRBRLOOP           ; If the fetched character is non-zero, loop back to the
+                        ; JSR OSWRCH above to print the it, and keep looping
+                        ; until we fetch a zero (which marks the end of the
+                        ; message)
+
+ JMP BR1                ; Jump to BR1 to restart the game
+
+; ******************************************************************************
+;
+;       Name: DEATH
+;       Type: Subroutine
+;   Category: Start and end
+;    Summary: Display the death screen
+;
+; ------------------------------------------------------------------------------
+;
+; We have been killed, so display the chaos of our destruction above a "GAME
+; OVER" sign, and clean up the mess ready for the next attempt.
+;
+; ******************************************************************************
 
 .DEATH
 
- LDY #210
- JSR SOEXPL ; @@
- JSR RES2
+ LDY #210               ; Call the SOEXPL routine with Y = 210 to make the sound
+ JSR SOEXPL             ; of us dying
+
+ JSR RES2               ; Reset a number of flight variables and workspaces
+
+ ASL DELTA              ; Divide our speed in DELTA by 4
  ASL DELTA
- ASL DELTA
-;LDX #24
-;JSR DET1
- LDA #0
- JSR TT66
- JSR nWq
- LDA #12
+
+;LDX #24                ; These instructions are commented out in the original
+;JSR DET1               ; source (they would hide the dashboard)
+
+ LDA #0                 ; Clear the top part of the screen, draw a white border,
+ JSR TT66               ; and set the current view type in QQ11 to 0 ???
+
+ JSR nWq                ; Create a cloud of stardust containing the correct
+                        ; number of dust particles (i.e. NOSTM of them)
+
+ LDA #12                ; Move the text cursor to column 12 on row 12
  STA XC
  STA YC
- LDA #146
+
+ LDA #146               ; Print recursive token 146 ("{all caps}GAME OVER")
  JSR ex
 
 .D1
 
- JSR Ze
- LSR A
- LSR A
+ JSR Ze                 ; Call Ze to initialise INWK to a potentially hostile
+                        ; ship, and set A and X to random values
+
+ LSR A                  ; Set A = A / 4, so A is now between 0 and 63, and
+ LSR A                  ; store in byte #0 (x_lo)
  STA INWK
- LDY #0
- STY INWK+1
+
+ LDY #0                 ; Set the following to 0: x_hi, y_hi, z_hi and the AI
+ STY INWK+1             ; flag (no AI or E.C.M. and not hostile)
  STY INWK+4
  STY INWK+7
  STY INWK+32
- DEY
- STY MCNT
- EOR #42
- STA INWK+3
- ORA #80
- STA INWK+6
- TXA
- AND #$8F
- STA INWK+29
- LDY #$40
- STY LASCT
- SEC
- ROR A
- AND #$87
- STA INWK+30
- LDX #OIL
- LDA XX21-1+2*PLT
- BEQ D3
- BCC D3
- DEX
+
+ DEY                    ; Set Y = 255
+
+ STY MCNT               ; Reset the main loop counter to 255, so all timer-based
+                        ; calls will be stopped
+
+ EOR #%00101010         ; Flip bits 1, 3 and 5 in A (x_lo) to get another number
+ STA INWK+3             ; between 48 and 63, and store in byte #3 (y_lo)
+
+ ORA #%01010000         ; Set bits 4 and 6 of A to bump it up to between 112 and
+ STA INWK+6             ; 127, and store in byte #6 (z_lo)
+
+ TXA                    ; Set A to the random number in X and keep bits 0-3 and
+ AND #%10001111         ; the sign in bit 7 to get a number between -15 and +15,
+ STA INWK+29            ; and store in byte #29 (roll counter) to give our ship
+                        ; a gentle roll with damping
+
+ LDY #64                ; Set the laser count to 64 to act as a counter in the
+ STY LASCT              ; D2 loop below, so this setting determines how long the
+                        ; death animation lasts (it's 64 * 2 iterations of the
+                        ; main flight loop)
+
+ SEC                    ; Set the C flag
+
+ ROR A                  ; This sets A to a number between 0 and +7, which we
+ AND #%10000111         ; store in byte #30 (the pitch counter) to give our ship
+ STA INWK+30            ; a very gentle downwards pitch with damping
+
+ LDX #OIL               ; Set X to #OIL, the ship type for a cargo canister
+
+ LDA XX21-1+2*PLT       ; Fetch the byte from location XX21 - 1 + 2 * PLT, which
+                        ; equates to XX21 + 7 (the high byte of the address of
+                        ; SHIP_PLATE), which seems a bit odd. It might make more
+                        ; sense to do LDA (XX21-2+2*PLT) as this would fetch the
+                        ; first byte of the alloy plate's blueprint (which
+                        ; determines what happens when alloys are destroyed),
+                        ; but there aren't any brackets, so instead this always
+                        ; returns $D0, which is never zero, so the following
+                        ; BEQ is never true. (If the brackets were there, then
+                        ; we could stop plates from spawning on death by setting
+                        ; byte #0 of the blueprint to 0... but then scooping
+                        ; plates wouldn't give us alloys, so who knows what this
+                        ; is all about?)
+
+ BEQ D3                 ; If A = 0, jump to D3 to skip the following instruction
+
+ BCC D3                 ; If the C flag is clear, which will be random following
+                        ; the above call to Ze, jump to D3 to skip the following
+                        ; instruction
+
+ DEX                    ; Decrement X, which sets it to #PLT, the ship type for
+                        ; an alloy plate
 
 .D3
 
- JSR fq1
- JSR DORND
- AND #128
- LDY #31
- STA (INF),Y
- LDA FRIN+4
- BEQ D1
-;JSR U%\@@
- LDA #0
- STA DELTA
- JSR M%
-;JSR NOSPRITES
+ JSR fq1                ; Call fq1 with X set to #OIL or #PLT, which adds a new
+                        ; cargo canister or alloy plate to our local bubble of
+                        ; universe and points it away from us with double DELTA
+                        ; speed (i.e. 6, as DELTA was set to 3 by the call to
+                        ; RES2 above). INF is set to point to the new arrival's
+                        ; ship data block in K%
+
+ JSR DORND              ; Set A and X to random numbers and extract bit 7 from A
+ AND #%10000000
+
+ LDY #31                ; Store this in byte #31 of the ship's data block, so it
+ STA (INF),Y            ; has a 50% chance of marking our new arrival as being
+                        ; killed (so it will explode)
+
+ LDA FRIN+4             ; The call we made to RES2 before we entered the loop at
+ BEQ D1                 ; D1 will have reset all the ship slots at FRIN, so this
+                        ; checks to see if the fifth slot is empty, and if it
+                        ; is we loop back to D1 to add another canister, until
+                        ; we have added five of them
+
+;JSR U%                 ; This instruction is commented out in the original
+                        ; source
+
+ LDA #0                 ; Set our speed in DELTA to 0, as we aren't going
+ STA DELTA              ; anywhere any more
+
+ JSR M%                 ; Call the M% routine to do the main flight loop once,
+                        ; which will display our exploding canister scene and
+                        ; move everything about, as well as decrementing the
+                        ; value in LASCT
+
+;JSR NOSPRITES          ; This instruction is commented out in the original
+                        ; source
 
 .D2
 
- JSR M%
- DEC LASCT
- BNE D2
-;LDX #31
-;JSR DET1
- JMP DEATH2
+ JSR M%                 ; Call the M% routine to do the main flight loop once,
+                        ; which will display our exploding canister scene and
+                        ; move everything about, as well as decrementing the
+                        ; value in LASCT
+
+ DEC LASCT              ; Decrement the counter in LASCT, which we set above,
+                        ; so for each loop around D2, we decrement LASCT by 5
+                        ; (the main loop decrements it by 4, and this one makes
+                        ; it 5)
+
+ BNE D2                 ; Loop back to call the main flight loop again, until we
+                        ; have called it 127 times
+
+;LDX #31                ; These instructions are commented out in the original
+;JSR DET1               ; source (they would show the dashboard)
+
+ JMP DEATH2             ; Jump to DEATH2 to reset and restart the game
+
+; ******************************************************************************
+;
+;       Name: spasto
+;       Type: Variable
+;   Category: Universe
+;    Summary: Contains the address of the Coriolis space station's ship
+;             blueprint
+;
+; ******************************************************************************
 
 .spasto
 
@@ -22423,224 +22812,546 @@ IF _IB_DISK
 ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
 
  EQUW $8888
- \.......
 
 ENDIF
 
+; ******************************************************************************
+;
+;       Name: BEGIN
+;       Type: Subroutine
+;   Category: Loader
+;    Summary: Initialise the configuration variables and start the game
+;
+; ******************************************************************************
+
 .BEGIN
 
- LDX #(DISK-COMC)
- LDA #0
+ LDX #(DISK-COMC)       ; We start by zeroing all the configuration variables
+                        ; between COMC and DISK, to set them to their default
+                        ; values, so set a counter in X for DISK - COMC bytes
+
+ LDA #0                 ; Set A = 0 so we can zero the variables
 
 .BEL1
 
- STA COMC,X
- DEX
- BPL BEL1
- LDA XX21+SST*2-2
- STA spasto
- LDA XX21+SST*2-1
+ STA COMC,X             ; Zero the X-th configuration variable
+
+ DEX                    ; Decrement the loop counter
+
+ BPL BEL1               ; Loop back to BEL1 to zero the next byte, until we have
+                        ; zeroed them all
+
+ LDA XX21+SST*2-2       ; Set spasto(1 0) to the Coriolis space station entry
+ STA spasto             ; from the ship blueprint lookup table at XX21 (so
+ LDA XX21+SST*2-1       ; spasto(1 0) points to the Coriolis blueprint)
  STA spasto+1
- JSR JAMESON
+
+ JSR JAMESON            ; Call JAMESON to set the last saved commander to the
+                        ; default "JAMESON" commander
+
+                        ; Fall through into TT170 to start the game
+
+; ******************************************************************************
+;
+;       Name: TT170
+;       Type: Subroutine
+;   Category: Start and end
+;    Summary: Main entry point for the Elite game code
+;  Deep dive: Program flow of the main game loop
+;
+; ------------------------------------------------------------------------------
+;
+; This is the main entry point for the main game code.
+;
+; ******************************************************************************
 
 .TT170
 
- LDX #$FF
- TXS
- JSR RESET
+ LDX #$FF               ; Set the stack pointer to $01FF, which is the standard
+ TXS                    ; location for the 6502 stack, so this instruction
+                        ; effectively resets the stack
 
-.DEATH2 
+ JSR RESET              ; Call RESET to initialise most of the game variables
 
- LDX #$FF
- TXS
- JSR RES2
+                        ; Fall through into DEATH2 to start the game
+
+; ******************************************************************************
+;
+;       Name: DEATH2
+;       Type: Subroutine
+;   Category: Start and end
+;    Summary: Reset most of the game and restart from the title screen
+;
+; ------------------------------------------------------------------------------
+;
+; This routine is called following death, and when the game is quit by pressing
+; ESCAPE when paused.
+;
+; ******************************************************************************
+
+.DEATH2
+
+ LDX #$FF               ; Set the stack pointer to $01FF, which is the standard
+ TXS                    ; location for the 6502 stack, so this instruction
+                        ; effectively resets the stack
+
+ JSR RES2               ; Reset a number of flight variables and workspaces
+                        ; and fall through into the entry code for the game
+                        ; to restart from the title screen
+
+; ******************************************************************************
+;
+;       Name: BR1 (Part 1 of 2)
+;       Type: Subroutine
+;   Category: Start and end
+;    Summary: Show the "Load New Commander (Y/N)?" screen and start the game
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   QU5                 Restart the game using the last saved commander without
+;                       asking whether to load a new commander file
+;
+; ******************************************************************************
 
 .BR1
 
- JSR ZEKTRAN
- LDA #3
+ JSR ZEKTRAN            ; Call ZEKTRAN to clear the key logger
+
+ LDA #3                 ; Set XC = 3 (set text cursor to column 3)
  STA XC
-;JSR startat
- LDX #CYL
- LDA #6
- LDY #250 ; @@
- JSR TITLE
- CPX #'Y'
- BNE QU5
-;JSR stopat
- JSR DFAULT
- JSR SVE
-;JSR startat
+
+;JSR startat            ; This instruction is commented out in the original
+                        ; source
+
+;JSR startat            ; This instruction is commented out in the original
+                        ; source
+
+ LDX #CYL               ; Call TITLE to show a rotating Cobra Mk III (#CYL) and
+ LDA #6                 ; token 6 ("LOAD NEW {single cap}COMMANDER {all caps}
+ LDY #250               ; (Y/N)?{sentence case}{cr}{cr}"), with the ship at a
+ JSR TITLE              ; distance of 250, returning with the internal number
+                        ; of the key pressed in A
+
+ CPX #'Y'               ; Did we press "Y"? If not, jump to QU5, otherwise
+ BNE QU5                ; continue on to load a new commander
+
+;JSR stopat             ; This instruction is commented out in the original
+                        ; source
+
+ JSR DFAULT             ; Call DFAULT to reset the current commander data block
+                        ; to the last saved commander
+
+ JSR SVE                ; Call SVE to load a new commander into the last saved
+                        ; commander data block
+
+;JSR startat            ; This instruction is commented out in the original
+                        ; source
 
 .QU5
 
- JSR DFAULT
- JSR msblob
- LDA #7
- LDX #SH3 ;ADA
- LDY #75 ;48
- JSR TITLE
-;JSR stopat
- JSR ping
-;JSR hyp1 was here...
- JSR TT111
- JSR jmp
- LDX #5
+ JSR DFAULT             ; Call DFAULT to reset the current commander data block
+                        ; to the last saved commander
+
+; ******************************************************************************
+;
+;       Name: BR1 (Part 2 of 2)
+;       Type: Subroutine
+;   Category: Start and end
+;    Summary: Show the "Press Fire or Space, Commander" screen and start the
+;             game
+;
+; ------------------------------------------------------------------------------
+;
+; BRKV is set to point to BR1 by the loading process.
+;
+; ******************************************************************************
+
+ JSR msblob             ; Reset the dashboard's missile indicators so none of
+                        ; them are targeted
+
+ LDA #7                 ; Call TITLE to show a rotating Sidewinder (#SH3) and
+ LDX #SH3               ; token 7 ("PRESS SPACE OR FIRE,{single cap}COMMANDER.
+ LDY #75                ; {cr}{cr}"), with the ship at a distance of 75,
+ JSR TITLE              ; returning with the internal number of the key pressed
+                        ; in A
+
+;JSR stopat             ; This instruction is commented out in the original
+                        ; source
+
+ JSR ping               ; Set the target system coordinates (QQ9, QQ10) to the
+                        ; current system coordinates (QQ0, QQ1) we just loaded
+
+ JSR TT111              ; Select the system closest to galactic coordinates
+                        ; (QQ9, QQ10)
+
+ JSR jmp                ; Set the current system to the selected system
+
+ LDX #5                 ; We now want to copy the seeds for the selected system
+                        ; in QQ15 into QQ2, where we store the seeds for the
+                        ; current system, so set up a counter in X for copying
+                        ; 6 bytes (for three 16-bit seeds)
+
+                        ; The label below is called likeTT112 because this code
+                        ; is almost identical to the TT112 loop in the hyp1
+                        ; routine
 
 .likeTT112
 
- LDA QQ15,X
+ LDA QQ15,X             ; Copy the X-th byte in QQ15 to the X-th byte in QQ2
  STA QQ2,X
- DEX
- BPL likeTT112
- INX
- STX EV
- LDA QQ3
- STA QQ28
- LDA QQ5
- STA tek
- LDA QQ4
- STA gov
+
+ DEX                    ; Decrement the counter
+
+ BPL likeTT112          ; Loop back to likeTT112 if we still have more bytes to
+                        ; copy
+
+ INX                    ; Set X = 0 (as we ended the above loop with X = $FF)
+
+ STX EV                 ; Set EV, the extra vessels spawning counter, to 0, as
+                        ; we are entering a new system with no extra vessels
+                        ; spawned
+
+ LDA QQ3                ; Set the current system's economy in QQ28 to the
+ STA QQ28               ; selected system's economy from QQ3
+
+ LDA QQ5                ; Set the current system's tech level in tek to the
+ STA tek                ; selected system's economy from QQ5
+
+ LDA QQ4                ; Set the current system's government in gov to the
+ STA gov                ; selected system's government from QQ4
+
+                        ; Fall through into the docking bay routine below
+
+; ******************************************************************************
+;
+;       Name: BAY
+;       Type: Subroutine
+;   Category: Status
+;    Summary: Go to the docking bay (i.e. show the Status Mode screen)
+;
+; ------------------------------------------------------------------------------
+;
+; We end up here after the start-up process (load commander etc.), as well as
+; after a successful save, an escape pod launch, a successful docking, the end
+; of a cargo sell, and various errors (such as not having enough cash, entering
+; too many items when buying, trying to fit an item to your ship when you
+; already have it, running out of cargo space, and so on).
+;
+; ******************************************************************************
 
 .BAY
 
- LDA #$FF
- STA QQ12
- LDA #f8
- JMP FRCE
+ LDA #$FF               ; Set QQ12 = $FF (the docked flag) to indicate that we
+ STA QQ12               ; are docked
+
+ LDA #f8                ; Jump into the main loop at FRCE, setting the key
+ JMP FRCE               ; that's "pressed" to the Status Mode key
+
+; ******************************************************************************
+;
+;       Name: DFAULT
+;       Type: Subroutine
+;   Category: Start and end
+;    Summary: Reset the current commander data block to the last saved commander
+;
+; ******************************************************************************
 
 .DFAULT
 
- LDX #NT%+8
+ LDX #NT%+8             ; The size of the last saved commander data block is NT%
+                        ; bytes, and it is preceded by the 8 bytes of the
+                        ; commander name (seven characters plus a carriage
+                        ; return). The commander data block at NAME is followed
+                        ; by the commander data block, so we need to copy the
+                        ; name and data from the "last saved" buffer at NA% to
+                        ; the current commander workspace at NAME. So we set up
+                        ; a counter in X for the NT% + 8 bytes that we want to
+                        ; copy
 
 .QUL1
 
- LDA NA%-1,X
- STA NAME-1,X
- DEX
- BNE QUL1
- STX QQ11
+ LDA NA%-1,X            ; Copy the X-th byte of NA%-1 to the X-th byte of
+ STA NAME-1,X           ; NAME-1 (the -1 is because X is counting down from
+                        ; NT% + 8 to 1)
+
+ DEX                    ; Decrement the loop counter
+
+ BNE QUL1               ; Loop back for the next byte of the commander data
+                        ; block
+
+ STX QQ11               ; X is 0 by the end of the above loop, so this sets QQ11
+                        ; to 0, which means we will be showing a view without a
+                        ; boxed title at the top (i.e. we're going to use the
+                        ; screen layout of a space view in the following)
+
+                        ; If the commander check below fails, we keep jumping
+                        ; back to here to crash the game with an infinite loop
 
 .doitagain
 
- JSR CHECK
- CMP CHK
- BNE doitagain
- EOR #$A9
+ JSR CHECK              ; Call the CHECK subroutine to calculate the checksum
+                        ; for the current commander block at NA%+8 and put it
+                        ; in A
+
+ CMP CHK                ; Test the calculated checksum against CHK
+
+IF _REMOVE_CHECKSUMS
+
+ NOP                    ; If we have disabled checksums, then ignore the result
+ NOP                    ; of the comparison and fall through into the next part
+
+ELSE
+
+ BNE doitagain          ; If the calculated checksum does not match CHK, then
+                        ; loop back to repeat the check - in other words, we
+                        ; enter an infinite loop here, as the checksum routine
+                        ; will keep returning the same incorrect value
+
+ENDIF
+
+                        ; The checksum CHK is correct, so now we check whether
+                        ; CHK2 = CHK EOR A9, and if this check fails, bit 7 of
+                        ; the competition flags at COK gets set, to indicate
+                        ; to Acornsoft via the competition code that there has
+                        ; been some hacking going on with this competition entry
+
+ EOR #$A9               ; X = checksum EOR $A9
  TAX
- LDA COK
- CPX CHK2
+
+ LDA COK                ; Set A to the competition flags in COK
+
+ CPX CHK2               ; If X = CHK2, then skip the next instruction
  BEQ tZ
- ORA #128
+
+ ORA #%10000000         ; Set bit 7 of A to indicate this commander file has
+                        ; been tampered with
 
 .tZ
 
- ORA #8
- STA COK
- JSR CHECK2
+ ORA #%00001000         ; Set bit 3 of A to denote that this is the Apple II
+                        ; version (which is the same flag as the BBC Master
+                        ; version)
+
+ STA COK                ; Store the updated competition flags in COK
+
+ JSR CHECK2             ; ???
  CMP CHK3
  BNE doitagain
- RTS
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: TITLE
+;       Type: Subroutine
+;   Category: Start and end
+;    Summary: Display a title screen with a rotating ship and prompt
+;
+; ------------------------------------------------------------------------------
+;
+; Display the title screen, with a rotating ship and a text token at the bottom
+; of the screen.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   A                   The number of the extended token to show below the
+;                       rotating ship (see variable TKN1 for details of
+;                       recursive tokens)
+;
+;   X                   The type of the ship to show (see variable XX21 for a
+;                       list of ship types)
+;
+;   Y                   The distance to show the ship rotating, once it has
+;                       finished moving towards us
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   X                   If a key is being pressed, X contains the ASCII code
+;                       of the key pressed
+;
+; ******************************************************************************
 
 .TITLE
 
- STY distaway
- PHA
- STX TYPE
- LDA #$FF
+ STY distaway           ; Store the ship distance in distaway
+
+ PHA                    ; Store the token number on the stack for later
+
+ STX TYPE               ; Store the ship type in location TYPE
+
+ LDA #$FF               ; ???
  STA MULIE
- JSR RESET
- LDA #0
+
+ JSR RESET              ; Reset our ship so we can use it for the rotating
+                        ; title ship
+
+ LDA #0                 ; ???
  STA MULIE
- JSR ZEKTRAN
-;LDA #32
-;JSR DOVDU19
- LDA #13
- JSR TT66
-;LDA #RED
-;JSR DOCOL
- lda #0
- sta QQ11
- LDA #96
- STA INWK+14
- LDA #96
- STA INWK+7
- LDX #127
- STX INWK+29
- STX INWK+30
- INX
- STX QQ17
- LDA TYPE
+
+ JSR ZEKTRAN            ; Call ZEKTRAN to clear the key logger
+
+;LDA #32                ; These instructions are commented out in the original
+;JSR DOVDU19            ; source
+
+ LDA #13                ; Clear the top part of the screen, draw a white border,
+ JSR TT66               ; and set the current view type in QQ11 to 13 (rotating
+                        ; ship view)
+
+;LDA #RED               ; These instructions are commented out in the original
+;JSR DOCOL              ; source (they are left over from the 6502 Second
+                        ; Processor version of Elite and would change the colour
+                        ; to red)
+
+ LDA #0                 ; Set QQ11 to 0, so from here on we are using a space
+ STA QQ11               ; view
+
+ LDA #96                ; Set nosev_z hi = 96 (96 is the value of unity in the
+ STA INWK+14            ; rotation vector)
+
+ LDA #96                ; Set A = 96 as the distance that the ship starts at
+
+ STA INWK+7             ; Set z_hi, the high byte of the ship's z-coordinate,
+                        ; to 96, which is the distance at which the rotating
+                        ; ship starts out before coming towards us
+
+ LDX #127               ; Set roll counter = 127, so don't dampen the roll and
+ STX INWK+29            ; make the roll direction clockwise
+
+ STX INWK+30            ; Set pitch counter = 127, so don't dampen the pitch and
+                        ; set the pitch direction to dive
+
+ INX                    ; Set QQ17 to 128 (so bit 7 is set) to switch to
+ STX QQ17               ; Sentence Case, with the next letter printing in upper
+                        ; case
+
+ LDA TYPE               ; Set up a new ship, using the ship type in TYPE
  JSR NWSHP
- LDA #6
+
+ LDA #6                 ; Move the text cursor to column 6
  STA XC
- LDA #30
- JSR plf
- LDA #10
+
+ LDA #30                ; Print recursive token 144 ("---- E L I T E ----")
+ JSR plf                ; followed by a newline
+
+ LDA #10                ; Print a line feed to move the text cursor down a line
  JSR TT26
- LDA #6
+
+ LDA #6                 ; Move the text cursor to column 6 again
  STA XC
- LDA PATG
- BEQ awe
- LDA #13
+
+ LDA PATG               ; If PATG = 0, skip the following two lines, which
+ BEQ awe                ; print the author credits (PATG can be toggled by
+                        ; pausing the game and pressing "X")
+
+ LDA #13                ; Print extended token 13 ("BY D.BRABEN & I.BELL")
  JSR DETOK
 
 .awe
 
- LDA brkd
- BEQ BRBR2
- INC brkd
- LDA #7
+ LDA brkd               ; If brkd = 0, jump to BRBR2 to skip the following, as
+ BEQ BRBR2              ; we do not have a system error message to display
+
+ INC brkd               ; Increment the brkd counter
+
+ LDA #7                 ; Move the text cursor to column 7
  STA XC
- LDA #9
+
+ LDA #9                 ; Move the text cursor to row 9
  STA YC
- LDY #0
- JSR CHPR
- INY
- LDA ($FD),Y
- BNE P%-6
+
+                        ; The following loop prints out the null-terminated
+                        ; message pointed to by ($FD $FE), which is the OS
+                        ; error message pointer - so this prints the error
+                        ; message on the next line
+
+ LDY #0                 ; Set Y = 0 to act as a character counter
+
+ JSR CHPR               ; Print the character in A (which contains a line feed
+                        ; on the first loop iteration), and then any non-zero
+                        ; characters we fetch from the error message
+
+ INY                    ; Increment the loop counter
+
+ LDA ($FD),Y            ; Fetch the Y-th byte of the block pointed to by
+                        ; ($FD $FE), so that's the Y-th character of the message
+                        ; pointed to by the OS error message pointer
+
+ BNE P%-6               ; If the fetched character is non-zero, loop back to the
+                        ; JSR CHPR above to print it, and keep looping until
+                        ; we fetch a zero (which marks the end of the message)
 
 .BRBR2
 
- LDY #0
+ LDY #0                 ; Set DELTA = 0 (i.e. ship speed = 0)
  STY DELTA
- STY JSTK
- LDA #14
+
+ STY JSTK               ; Set JSTK = 0 (i.e. keyboard, not joystick)
+
+ LDA #14                ; Move the text cursor to row 14
  STA YC
- LDA #1
+
+ LDA #1                 ; Move the text cursor to column 1
  STA XC
- PLA
- JSR DETOK
- LDA #3
+
+ PLA                    ; Restore the recursive token number we stored on the
+                        ; stack at the start of this subroutine
+
+ JSR DETOK              ; Print the extended token in A
+
+ LDA #3                 ; Move the text cursor to column 3
  STA XC
- LDA #12
- JSR DETOK
- LDA #12
- STA CNT2
- LDA #5
- STA MCNT
+
+ LDA #12                ; Print extended token 12 ("{single cap}C) {single
+ JSR DETOK              ; cap}D.{single cap}BRABEN & {single cap}I.{single
+                        ; cap}BELL 1985")
+
+ LDA #12                ; Set CNT2 = 12 as the outer loop counter for the loop
+ STA CNT2               ; starting at TLL2
+
+ LDA #5                 ; Set the main loop counter in MCNT to 5, to act as the
+ STA MCNT               ; inner loop counter for the loop starting at TLL2
 
 .TLL2
 
- LDA INWK+7
- CMP #1
+ LDA INWK+7             ; If z_hi (the ship's distance) is 1, jump to TL1 to
+ CMP #1                 ; skip the following decrement
  BEQ TL1
- DEC INWK+7
+
+ DEC INWK+7             ; Decrement the ship's distance, to bring the ship
+                        ; a bit closer to us
 
 .TL1
 
- JSR MVEIT
- LDX distaway
- STX INWK+6
- LDA MCNT
- AND #3
- lda #0
- sta INWK
- sta INWK+3
- JSR LL9
- JSR RDKEY
- DEC MCNT
- LDA $C061
+ JSR MVEIT              ; Move the ship in space according to the orientation
+                        ; vectors and the new value in z_hi
+
+ LDX distaway           ; Set z_lo to the distance value we passed to the
+ STX INWK+6             ; routine, so this is the closest the ship gets to us
+
+ LDA MCNT               ; This has no effect - it is presumably left over from
+ AND #3                 ; the other versions of Elite which only scan the
+                        ; keyboard once every four loops, but that isn't the
+                        ; case here as the result is not acted upon
+
+ LDA #0                 ; Set x_lo = 0, so the ship remains in the screen centre
+ STA INWK
+
+ STA INWK+3             ; Set y_lo = 0, so the ship remains in the screen centre
+
+ JSR LL9                ; Call LL9 to display the ship
+
+ JSR RDKEY              ; Scan the keyboard for a key press and return the
+                        ; key in X (or 0 for no key press)
+
+ DEC MCNT               ; Decrement the main loop counter
+
+ LDA $C061              ; ???
  ORA $C062
 
 IF _IB_DISK
@@ -22650,63 +23361,166 @@ IF _IB_DISK
 ENDIF
 
  BMI TL3
- BCC TLL2
- RTS
+
+ BCC TLL2               ; ???
+
+ RTS                    ; Return from the subroutine
 
 .TL3
 
- DEC JSTK
- RTS
- \.............
+ DEC JSTK               ; Joystick fire button was pressed, so set JSTK to $FF
+                        ; (it was set to 0 above), to disable keyboard and
+                        ; enable joysticks
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: CHECK
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Calculate the checksum for the last saved commander data block
+;  Deep dive: Commander save files
+;
+; ------------------------------------------------------------------------------
+;
+; The checksum for the last saved commander data block is saved as part of the
+; commander file, in two places (CHK AND CHK2), to protect against file
+; tampering. This routine calculates the checksum and returns it in A.
+;
+; This algorithm is also implemented in elite-checksum.py.
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   A                   The checksum for the last saved commander data block
+;
+; ******************************************************************************
 
 .CHECK
 
- LDX #NT%-3
- CLC
- TXA
+ LDX #NT%-3             ; Set X to the size of the commander data block, less
+                        ; 3 (as there are two checksum bytes and the save count)
+
+ CLC                    ; Clear the C flag so we can do addition without the
+                        ; C flag affecting the result
+
+ TXA                    ; Seed the checksum calculation by setting A to the
+                        ; size of the commander data block, less 2
+
+                        ; We now loop through the commander data block,
+                        ; starting at the end and looping down to the start
+                        ; (so at the start of this loop, the X-th byte is the
+                        ; last byte of the commander data block, i.e. the save
+                        ; count)
 
 .QUL2
 
- ADC NA%+7,X
- EOR NA%+8,X
- DEX
- BNE QUL2
- RTS
+ ADC NA%+7,X            ; Add the X-1-th byte of the data block to A, plus the
+                        ; C flag
+
+ EOR NA%+8,X            ; EOR A with the X-th byte of the data block
+
+ DEX                    ; Decrement the loop counter
+
+ BNE QUL2               ; Loop back for the next byte in the calculation, until
+                        ; we have added byte #0 and EOR'd with byte #1 of the
+                        ; data block
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: CHECK2
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Calculate the second checksum for the last saved commander data
+;             block (Commodore 64 and Apple II versions onlt)
+;
+; ******************************************************************************
 
 .CHECK2
 
- LDX #NT%-3
- CLC
- TXA
+ LDX #NT%-3             ; Set X to the size of the commander data block, less
+                        ; 3 (as there are two checksum bytes and the save count)
+
+ CLC                    ; Clear the C flag so we can do addition without the
+                        ; C flag affecting the result
+
+ TXA                    ; Seed the checksum calculation by setting A to the
+                        ; size of the commander data block, less 2
+
+                        ; We now loop through the commander data block,
+                        ; starting at the end and looping down to the start
+                        ; (so at the start of this loop, the X-th byte is the
+                        ; last byte of the commander data block, i.e. the save
+                        ; count)
 
 .QU2L2
 
- STX T
- EOR T
- ROR A
- ADC NA%+7,X
- EOR NA%+8,X
- DEX
- BNE QU2L2
- RTS
+ STX T					\ Set A = A EOR X
+ EOR T					\
+ ROR A					\ This additional step is the only difference between
+						\ the original checksum from BBC Micro Elite (in CHECK),
+						\ and this additional checksum in the Commodore 64 and
+						\ Apple II versions
+
+ ADC NA%+7,X            ; Add the X-1-th byte of the data block to A, plus the
+                        ; C flag
+
+ EOR NA%+8,X            ; EOR A with the X-th byte of the data block
+
+ DEX                    ; Decrement the loop counter
+
+ BNE QU2L2              ; Loop back for the next byte in the calculation, until
+                        ; we have added byte #0 and EOR'd with byte #1 of the
+                        ; data block
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: JAMESON
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Restore the default JAMESON commander
+;
+; ******************************************************************************
 
 .JAMESON
 
- LDY #(NAEND%-NA2%)
+ LDY #(NAEND%-NA2%)     ; We are going to copy the default commander at NA2%
+                        ; over the top of the last saved commander at NA%, so
+                        ; set a counter to copy all the bytes between NA2% and
+                        ; NAEND%
 
 .JAMEL1
 
- LDA NA2%,Y
+ LDA NA2%,Y             ; Copy the Y-th byte of NA2% to the Y-th byte of NA%
  STA NA%,Y
- DEY
- BPL JAMEL1
- LDY #7
- STY oldlong
- RTS
+
+ DEY                    ; Decrement the loop counter
+
+ BPL JAMEL1             ; Loop back until we have copied the whole commander
+
+ LDY #7                 ; Set oldlong to 7, the length of the commander name
+ STY oldlong            ; "JAMESON"
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: COPYNAME
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Copy  the last saved commander's name from ??? to ???
+;
+; ******************************************************************************
 
 .COPYNAME
 
- LDX #0
+ LDX #0                 ; ???
 
 .COPYL1
 
@@ -22730,115 +23544,254 @@ ENDIF
  BCC COPYL3
  RTS
 
+; ******************************************************************************
+;
+;       Name: TRNME
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Copy the last saved commander's name from INWK to NA%
+;
+; ******************************************************************************
+
 .TRNME
 
- LDX #7
- LDA thislong
- STA oldlong
+ LDX #7                 ; The commander's name can contain a maximum of 7
+                        ; characters, and is terminated by a carriage return,
+                        ; so set up a counter in X to copy 8 characters
+
+ LDA thislong           ; Copy the length of the commander's name from thislong
+ STA oldlong            ; to oldlong (though this is never used, so this
+                        ; doesn't have any effect)
 
 .GTL1
 
- LDA INWK+5,X
+ LDA INWK+5,X           ; Copy the X-th byte of INWK+5 to the X-th byte of NA%
  STA NA%,X
- DEX
- BPL GTL1
+
+ DEX                    ; Decrement the loop counter
+
+ BPL GTL1               ; Loop back until we have copied all 8 bytes
+
+                        ; Fall through into TR1 to copy the name back from NA%
+                        ; to INWK. This isn't necessary as the name is already
+                        ; there, but it does save one byte, as we don't need an
+                        ; RTS here
+
+; ******************************************************************************
+;
+;       Name: TR1
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Copy the last saved commander's name from NA% to INWK
+;
+; ******************************************************************************
 
 .TR1
 
- LDX #7
+ LDX #7                 ; The commander's name can contain a maximum of 7
+                        ; characters, and is terminated by a carriage return,
+                        ; so set up a counter in X to copy 8 characters
 
 .GTL2
 
- LDA NA%,X
+ LDA NA%,X              ; Copy the X-th byte of NA% to the X-th byte of INWK+5
  STA INWK+5,X
- DEX
- BPL GTL2
- RTS
 
-.GTNMEW 
+ DEX                    ; Decrement the loop counter
+
+ BPL GTL2               ; Loop back until we have copied all 8 bytes
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: GTNMEW
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Fetch the name of a commander file to save or load
+;
+; ------------------------------------------------------------------------------
+;
+; Get the commander's name for loading or saving a commander file. The name is
+; stored in the INWK workspace and is terminated by a return character (13).
+;
+; If ESCAPE is pressed or a blank name is entered, then the name stored is set
+; to the name from the last saved commander block.
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   INWK                The full filename, including drive and directory, in
+;                       the form ":0.E.JAMESON", for example, terminated by a
+;                       return character (13)
+;
+; ******************************************************************************
+
+.GTNMEW
+
+;LDY #8                 ; These instructions are commented out in the original
+;JSR DELAY              ; source
 
 .GTNME
 
- LDX #4
+ LDX #4                 ; First we want to copy the drive and directory part of
+                        ; the commander file from NA%-5, so set a counter in X
+                        ; for 5 bytes, as the string is of the form ":0.E."
 
 .GTL3
 
- LDA NA%-5,X
+ LDA NA%-5,X            ; Copy the X-th byte from NA%-5 to INWK
  STA INWK,X
- DEX
- BPL GTL3
- LDA #7
- STA RLINE+2
- LDA #8
- JSR DETOK
- JSR MT26
- LDA #9
- STA RLINE+2
- TYA
- BEQ TR1
- STY thislong
- RTS
+
+ DEX                    ; Decrement the loop counter
+
+ BPL GTL3               ; Loop back until the whole drive and directory string
+                        ; has been copied to INWK to INWK+4
+
+ LDA #7                 ; The call to MT26 below uses the OSWORD block at RLINE
+ STA RLINE+2            ; to fetch the line, and RLINE+2 defines the maximum
+                        ; line length allowed, so this changes the maximum
+                        ; length to 7 (as that's the longest commander name
+                        ; allowed)
+
+ LDA #8                 ; Print extended token 8 ("{single cap}COMMANDER'S
+ JSR DETOK              ; NAME? ")
+
+ JSR MT26               ; Call MT26 to fetch a line of text from the keyboard
+                        ; to INWK+5, with the text length in Y, so INWK now
+                        ; contains the full pathname of the file, as in
+                        ; ":0.E.JAMESON", for example
+
+ LDA #9                 ; Reset the maximum length in RLINE+2 to the original
+ STA RLINE+2            ; value of 9
+
+ TYA                    ; The OSWORD call returns the length of the commander's
+                        ; name in Y, so transfer this to A
+
+ BEQ TR1                ; If A = 0, no name was entered, so jump to TR1 to copy
+                        ; the last saved commander's name from NA% to INWK
+                        ; and return from the subroutine there
+
+ STY thislong           ; Store the length of the length of the commander's that
+                        ; was entered in thislong
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: MT26
+;       Type: Subroutine
+;   Category: Text
+;    Summary: Fetch a line of text from the keyboard
+;  Deep dive: Extended text tokens
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   Y                   The size of the entered text, or 0 if none was entered
+;
+;   INWK+5              The entered text, terminated by a carriage return
+;
+;   C flag              Set if ESCAPE was pressed
+;
+; ******************************************************************************
 
 .MT26
 
- \OSWORD 0 mimic to INWK+5
-;LDA #MAG2
-;STA COL2
- LDY #8
+;LDA #MAG2              ; These instructions are commented out in the original
+;STA COL                ; source
+
+ LDY #8                 ; Wait for 8/50 of a second (0.16 seconds)
  JSR DELAY
- JSR FLKB
- LDY #0
+
+ JSR FLKB               ; Call FLKB to flush the keyboard buffer
+
+ LDY #0                 ; Set Y = 0 to hold the length of the text entered
 
 .OSW0L
 
- JSR TT217
- CMP #13
+ JSR TT217              ; Scan the keyboard until a key is pressed, and return
+                        ; the key's ASCII code in A (and X)
+
+ CMP #13                ; If RETURN was pressed, jump to OSW03
  BEQ OSW03
- CMP #27
+
+ CMP #27                ; If ESCAPE was pressed, jump to OSW04
  BEQ OSW04
- CMP #$7F
+
+ CMP #127               ; If DELETE was pressed, jump to OSW05
  BEQ OSW05
- CPY RLINE+2
- BCS OSW01
- CMP RLINE+3
- BCC OSW01
- CMP RLINE+4
- BCS OSW01
- STA INWK+5,Y
- INY
- EQUB $2C
+
+ CPY RLINE+2            ; If Y >= RLINE+2 (the maximum line length from the
+ BCS OSW01              ; OSWORD configuration block at RLINE), then jump to
+                        ; OSW01 to give an error beep as we have reached the
+                        ; character limit
+
+ CMP RLINE+3            ; If the key pressed is less than the character in
+ BCC OSW01              ; RLINE+3 (the lowest allowed character from the OSWORD
+                        ; configuration block at RLINE), then jump to OSW01
+                        ; to give an error beep as the key pressed is out of
+                        ; range
+
+ CMP RLINE+4            ; If the key pressed is greater than or equal to the
+ BCS OSW01              ; character in RLINE+4 (the highest allowed character
+                        ; from the OSWORD configuration block at RLINE), then
+                        ; jump to OSW01 to give an error beep as the key
+                        ; pressed is out of range
+
+ STA INWK+5,Y           ; Store the key's ASCII code in the Y-th byte of INWK+5
+
+ INY                    ; Increment Y to point to the next free byte in INWK+5
+
+ EQUB $2C               ; Skip the next instruction by turning it into
+                        ; $2C $A9 $07, or BIT $07A9, which does nothing apart
+                        ; from affect the flags
 
 .OSW01
 
- LDA #7
+ LDA #7                 ; Set A to the beep character, so the next instruction
+                        ; makes a system beep
 
 .OSW06
 
- JSR CHPR
- BCC OSW0L
+ JSR CHPR               ; Print the character in A (and clear the C flag)
+
+ BCC OSW0L              ; Loop back to OSW0L to fetch another key press (this
+                        ; BCC is effectively a JMP as CHPR clears the C flag)
 
 .OSW03
 
- STA INWK+5,Y
-;LDA #$10
-;STA COL2
- LDA #12
- JMP CHPR
+ STA INWK+5,Y           ; Store the return character in the Y-th byte of INWK+5
+
+;LDA #$10               ; These instructions are commented out in the original
+;STA COL2               ; source
+
+ LDA #12                ; Print a newline and return from the subroutine using a
+ JMP CHPR               ; tail call
 
 .OSW04
 
-;LDA #$10
-;STA COL2
- SEC
- RTS
+;LDA #$10               ; These instructions are commented out in the original
+;STA COL2               ; source
+
+ SEC                    ; Set the C flag as ESCAPE was pressed
+
+ RTS                    ; Return from the subroutine
 
 .OSW05
 
- TYA
- BEQ OSW01
- DEY
- LDA #$7F
- BNE OSW06
+ TYA                    ; If the length of the line so far in Y is 0, then we
+ BEQ OSW01              ; just pressed DELETE on an empty line, so jump to
+                        ; OSW01 give an error beep
+
+ DEY                    ; Otherwise we want to delete a character, so decrement
+                        ; the length of the line so far in Y
+
+ LDA #127               ; Set A = 127 and jump back to OSW06 to print the
+ BNE OSW06              ; character in A (i.e. the DELETE character) and listen
+                        ; for the next key press
 
 .RLINE
 
