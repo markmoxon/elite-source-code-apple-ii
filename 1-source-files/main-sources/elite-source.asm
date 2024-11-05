@@ -16878,135 +16878,280 @@ ENDIF
 
  RTS                    ; Return from the subroutine
 
+; ******************************************************************************
+;
+;       Name: DOEXP
+;       Type: Subroutine
+;   Category: Drawing ships
+;    Summary: Draw an exploding ship
+;  Deep dive: Drawing explosion clouds
+;             Generating random numbers
+;
+; ******************************************************************************
+
 .EX2
 
- LDA INWK+31
- ORA #$A0
+ LDA INWK+31            ; Set bits 5 and 7 of the ship's byte #31 to denote that
+ ORA #%10100000         ; the ship is exploding and has been killed
  STA INWK+31
- RTS
+
+ RTS                    ; Return from the subroutine
 
 .DOEXP
 
- LDA INWK+31
- AND #64
- BEQ P%+5
- JSR PTCLS
- LDA INWK+6
+ LDA INWK+31            ; If bit 6 of the ship's byte #31 is clear, then the
+ AND #%01000000         ; ship is not already exploding so there is no existing
+ BEQ P%+5               ; explosion cloud to remove, so skip the following
+                        ; instruction
+
+ JSR PTCLS              ; Call PTCLS to remove the existing cloud by drawing it
+                        ; again
+
+ LDA INWK+6             ; Set T = z_lo
  STA T
- LDA INWK+7
- CMP #$20
+
+ LDA INWK+7             ; Set A = z_hi, so (A T) = z
+
+ CMP #32                ; If z_hi < 32, skip the next two instructions
  BCC P%+6
- LDA #$FE
- BNE yy
- ASL T
+
+ LDA #$FE               ; Set A = 254 and jump to yy (this BNE is effectively a
+ BNE yy                 ; JMP, as A is never zero)
+
+ ASL T                  ; Shift (A T) left twice
  ROL A
  ASL T
  ROL A
- SEC
- ROL A
+
+ SEC                    ; And then shift A left once more, inserting a 1 into
+ ROL A                  ; bit 0
+
+                        ; Overall, the above multiplies A by 8 and makes sure it
+                        ; is at least 1, to leave a one-byte distance in A. We
+                        ; can use this as the distance for our cloud, to ensure
+                        ; that the explosion cloud is visible even for ships
+                        ; that blow up a long way away
 
 .yy
 
- STA Q
- LDY #1
- LDA (XX19),Y
- STA frump
- ADC #4
- BCS EX2
- STA (XX19),Y
- JSR DVID4
- LDA P
- CMP #$1C
+ STA Q                  ; Store the distance to the explosion in Q
+
+ LDY #1                 ; Fetch byte #1 of the ship line heap, which contains
+ LDA (XX19),Y           ; the cloud counter
+
+ STA frump              ; Store the cloud counter in frump (though this value is
+                        ; never read, so this has no effect)
+
+ ADC #4                 ; Add 4 to the cloud counter, so it ticks onwards every
+                        ; we redraw it
+
+ BCS EX2                ; If the addition overflowed, jump up to EX2 to update
+                        ; the explosion flags and return from the subroutine
+
+ STA (XX19),Y           ; Store the updated cloud counter in byte #1 of the ship
+                        ; line heap
+
+ JSR DVID4              ; Calculate the following:
+                        ;
+                        ;   (P R) = 256 * A / Q
+                        ;         = 256 * cloud counter / distance
+                        ;
+                        ; We are going to use this as our cloud size, so the
+                        ; further away the cloud, the smaller it is, and as the
+                        ; cloud counter ticks onward, the cloud expands
+
+ LDA P                  ; Set A = P, so we now have:
+                        ;
+                        ;   (A R) = 256 * cloud counter / distance
+
+ CMP #$1C               ; If A < 28, skip the next two instructions
  BCC P%+6
- LDA #$FE
- BNE LABEL_1
- ASL R
+
+ LDA #$FE               ; Set A = 254 and skip the following (this BNE is
+ BNE LABEL_1            ; effectively a JMP as A is never zero)
+
+ ASL R                  ; Shift (A R) left three times to multiply by 8
  ROL A
  ASL R
  ROL A
  ASL R
  ROL A
+
+                        ; Overall, the above multiplies (A R) by 8 to leave a
+                        ; one-byte cloud size in A, given by the following:
+                        ;
+                        ;   A = 8 * cloud counter / distance
 
 .LABEL_1
 
- DEY
- STA (XX19),Y
- LDA INWK+31
- AND #$BF
+ DEY                    ; Decrement Y to 0
+
+ STA (XX19),Y           ; Store the cloud size in byte #0 of the ship line heap
+
+ LDA INWK+31            ; Clear bit 6 of the ship's byte #31 to denote that the
+ AND #%10111111         ; explosion has not yet been drawn
  STA INWK+31
- AND #8
- BEQ TT48
- LDY #2
- LDA (XX19),Y
- TAY
+
+ AND #%00001000         ; If bit 3 of the ship's byte #31 is clear, then nothing
+ BEQ TT48               ; is being drawn on-screen for this ship anyway, so
+                        ; return from the subroutine (as TT48 contains an RTS)
+
+ LDY #2                 ; Otherwise it's time to draw an explosion cloud, so
+ LDA (XX19),Y           ; fetch byte #2 of the ship line heap into Y, which we
+ TAY                    ; set to the explosion count for this ship (i.e. the
+                        ; number of vertices used as origins for explosion
+                        ; clouds)
+                        ;
+                        ; The explosion count is stored as 4 * n + 6, where n is
+                        ; the number of vertices, so the following loop copies
+                        ; the coordinates of the first n vertices from the heap
+                        ; at XX3, which is where we stored all the visible
+                        ; vertex coordinates in part 8 of the LL9 routine, and
+                        ; sticks them in the ship line heap pointed to by XX19,
+                        ; starting at byte #7 (so it leaves the first 6 bytes of
+                        ; the ship line heap alone)
 
 .EXL1
 
- LDA XX3-7,Y
- STA (XX19),Y
- DEY
- CPY #6
- BNE EXL1
- LDA INWK+31
- ORA #64
+ LDA XX3-7,Y            ; Copy byte Y-7 from the XX3 heap, into the Y-th byte of
+ STA (XX19),Y           ; the ship line heap
+
+ DEY                    ; Decrement the loop counter
+
+ CPY #6                 ; Keep copying vertex coordinates into the ship line
+ BNE EXL1               ; heap until Y = 6 (which will copy n vertices, where n
+                        ; is the number of vertices we should be exploding)
+
+ LDA INWK+31            ; Set bit 6 of the ship's byte #31 to denote that the
+ ORA #%01000000         ; explosion has been drawn (as it's about to be)
  STA INWK+31
 
 .PTCLS
 
- LDY #0
- LDA (XX19),Y
+                        ; This part of the routine actually draws the explosion
+                        ; cloud
+
+ LDY #0                 ; Fetch byte #0 of the ship line heap, which contains
+ LDA (XX19),Y           ; the cloud size we stored above, and store it in Q
  STA Q
- INY
- LDA (XX19),Y
- BPL P%+4
- EOR #$FF
+
+ INY                    ; Increment the index in Y to point to byte #1
+
+ LDA (XX19),Y           ; Fetch byte #1 of the ship line heap, which contains
+                        ; the cloud counter. We are now going to process this
+                        ; into the number of particles in each vertex's cloud
+
+ BPL P%+4               ; If the cloud counter < 128, then we are in the first
+                        ; half of the cloud's existence, so skip the next
+                        ; instruction
+
+ EOR #$FF               ; Flip the value of A so that in the second half of the
+                        ; cloud's existence, A counts down instead of up
+
+ LSR A                  ; Divide A by 16 so that is has a maximum value of 7
  LSR A
  LSR A
  LSR A
- LSR A
- ORA #1
- STA U
- INY
- LDA (XX19),Y
- STA TGT
- LDA RAND+1
- PHA
- LDY #6
+
+ ORA #1                 ; Make sure A is at least 1 and store it in U, to
+ STA U                  ; give us the number of particles in the explosion for
+                        ; each vertex
+
+ INY                    ; Increment the index in Y to point to byte #2
+
+ LDA (XX19),Y           ; Fetch byte #2 of the ship line heap, which contains
+ STA TGT                ; the explosion count for this ship (i.e. the number of
+                        ; vertices used as origins for explosion clouds) and
+                        ; store it in TGT
+
+ LDA RAND+1             ; Fetch the current random number seed in RAND+1 and
+ PHA                    ; store it on the stack, so we can re-randomise the
+                        ; seeds when we are done
+
+ LDY #6                 ; Set Y = 6 to point to the byte before the first vertex
+                        ; coordinate we stored on the ship line heap above (we
+                        ; increment it below so it points to the first vertex)
 
 .EXL5
 
- LDX #3
+ LDX #3                 ; We are about to fetch a pair of coordinates from the
+                        ; ship line heap, so set a counter in X for 4 bytes
 
 .EXL3
 
- INY
- LDA (XX19),Y
- STA K3,X
- DEX
- BPL EXL3
- STY CNT
- LDY #2
+ INY                    ; Increment the index in Y so it points to the next byte
+                        ; from the coordinate we are copying
+
+ LDA (XX19),Y           ; Copy the Y-th byte from the ship line heap to the X-th
+ STA K3,X               ; byte of K3
+
+ DEX                    ; Decrement the X index
+
+ BPL EXL3               ; Loop back to EXL3 until we have copied all four bytes
+
+                        ; The above loop copies the vertex coordinates from the
+                        ; ship line heap to K3, reversing them as we go, so it
+                        ; sets the following:
+                        ;
+                        ;   K3+3 = x_lo
+                        ;   K3+2 = x_hi
+                        ;   K3+1 = y_lo
+                        ;   K3+0 = y_hi
+
+ STY CNT                ; Set CNT to the index that points to the next vertex on
+                        ; the ship line heap
+
+ LDY #2                 ; Set Y = 2, which we will use to point to bytes #3 to
+                        ; #6, after incrementing it
+
+                        ; This next loop copies bytes #3 to #6 from the ship
+                        ; line heap into the four random number seeds in RAND to
+                        ; RAND+3, EOR'ing them with the vertex index so they are
+                        ; different for every vertex. This enables us to
+                        ; generate random numbers for drawing each vertex that
+                        ; are random but repeatable, which we need when we
+                        ; redraw the cloud to remove it
+                        ;
+                        ; Note that we haven't actually set the values of bytes
+                        ; #3 to #6 in the ship line heap, so we have no idea
+                        ; what they are, we just use what's already there. But
+                        ; the fact that those bytes are stored for this ship
+                        ; means we can repeat the random generation of the
+                        ; cloud, which is the important bit
 
 .EXL2
 
- INY
- LDA (XX19),Y
- EOR CNT
- STA $FFFF,Y
- CPY #6
- BNE EXL2
- LDY U
- STY CNT2
+ INY                    ; Increment the index in Y so it points to the next
+                        ; random number seed to copy
 
-.EXL4 
+ LDA (XX19),Y           ; Fetch the Y-th byte from the ship line heap
 
-; OPT  FNdornd2
+ EOR CNT                ; EOR with the vertex index, so the seeds are different
+                        ; for each vertex
 
- CLC
- LDA RAND
- ROL A
- TAX
- ADC RAND+2
+ STA $FFFF,Y            ; Y is going from 3 to 6, so this stores the four bytes
+                        ; in memory locations $02, $03, $04 and $05, which are
+                        ; the memory locations of RAND through RAND+3
+
+ CPY #6                 ; Loop back to EXL2 until Y = 6, which means we have
+ BNE EXL2               ; copied four bytes
+
+ LDY U                  ; Set Y to the number of particles in the explosion for
+                        ; each vertex, which we stored in U above. We will now
+                        ; use this as a loop counter to iterate through all the
+                        ; particles in the explosion
+
+ STY CNT2               ; Store the number of explosion particles in CNT2, to
+                        ; use this as a loop counter to iterate through all the
+                        ; particles in the explosion
+
+.EXL4
+
+ CLC                    ; This contains the code from the DORND2 routine, so
+ LDA RAND               ; this section is exactly equivalent to a JSR DORND2
+ ROL A                  ; call, but is slightly faster as it's been inlined
+ TAX                    ; (so it sets A and X to random values, making sure
+ ADC RAND+2             ; the C flag doesn't affect the outcome)
  STA RAND
  STX RAND+2
  LDA RAND+1
@@ -17015,49 +17160,79 @@ ENDIF
  STA RAND+1
  STX RAND+3
 
-;end
-
- AND #$0C
+ AND #$0C               ; ???
  ORA #$10
  STA COL
- LDA K3+1
- STA R
+
+ LDA K3+1               ; Set (A R) = (y_hi y_lo)
+ STA R                  ;           = y
  LDA K3
- JSR EXS1
- BNE EX11
- CPX #2*Y-1
- BCS EX11
- STX Y1
- LDA K3+3
+
+ JSR EXS1               ; Set (A X) = (A R) +/- random * cloud size
+                        ;           = y +/- random * cloud size
+
+ BNE EX11               ; If A is non-zero, the particle is off-screen as the
+                        ; coordinate is bigger than 255), so jump to EX11 to do
+                        ; the next particle
+
+ CPX #2*Y-1             ; If X > the y-coordinate of the bottom of the screen,
+ BCS EX11               ; the particle is off the bottom of the screen, so jump
+                        ; to EX11 to do the next particle
+
+                        ; Otherwise X contains a random y-coordinate within the
+                        ; cloud
+
+ STX Y1                 ; Set Y1 = our random y-coordinate within the cloud
+
+ LDA K3+3               ; Set (A R) = (x_hi x_lo)
  STA R
  LDA K3+2
- JSR EXS1
- BNE EX4
- LDA Y1
- JSR CPIX
+
+ JSR EXS1               ; Set (A X) = (A R) +/- random * cloud size
+                        ;           = x +/- random * cloud size
+
+ BNE EX4                ; If A is non-zero, the particle is off-screen as the
+                        ; coordinate is bigger than 255), so jump to EX11 to do
+                        ; the next particle
+
+                        ; Otherwise X contains a random x-coordinate within the
+                        ; cloud
+
+ LDA Y1                 ; Set A = our random y-coordinate within the cloud
+
+ JSR CPIX               ; Draw a point at screen coordinate (X, A) ???
 
 .EX4
 
- DEC CNT2
- BPL EXL4
- LDY CNT
- CPY TGT
- BCC EXL5
- PLA
- STA RAND+1
- LDA K%+6
- STA RAND+3
- RTS
+ DEC CNT2               ; Decrement the loop counter in CNT2 for the next
+                        ; particle
+
+ BPL EXL4               ; Loop back to EXL4 until we have done all the particles
+                        ; in the cloud
+
+ LDY CNT                ; Set Y to the index that points to the next vertex on
+                        ; the ship line heap
+
+ CPY TGT                ; If Y < TGT, which we set to the explosion count for
+ BCC EXL5               ; this ship (i.e. the number of vertices used as origins
+                        ; for explosion clouds), loop back to EXL5 to do a cloud
+                        ; for the next vertex
+
+ PLA                    ; Restore the current random number seed to RAND+1 that
+ STA RAND+1             ; we stored at the start of the routine
+
+ LDA K%+6               ; Store the z_lo coordinate for the planet (which will
+ STA RAND+3             ; be pretty random) in the RAND+3 seed
+
+ RTS                    ; Return from the subroutine
 
 .EX11
 
-; OPT  FNdornd2
-
- CLC
- LDA RAND
- ROL A
- TAX
- ADC RAND+2
+ CLC                    ; This contains the code from the DORND2 routine, so
+ LDA RAND               ; this section is exactly equivalent to a JSR DORND2
+ ROL A                  ; call, but is slightly faster as it's been inlined
+ TAX                    ; (so it sets A and X to random values, making sure
+ ADC RAND+2             ; the C flag doesn't affect the outcome)
  STA RAND
  STX RAND+2
  LDA RAND+1
@@ -17066,21 +17241,24 @@ ENDIF
  STA RAND+1
  STX RAND+3
 
-;end
-
- \<BS>
- JMP EX4
+ JMP EX4                ; We just skipped a particle, so jump up to EX4 to do
+                        ; the next one
 
 .EXS1
 
- STA S
-; OPT  FNdornd2
+                        ; This routine calculates the following:
+                        ;
+                        ;   (A X) = (A R) +/- random * cloud size
+                        ;
+                        ; returning with the flags set for the high byte in A
 
- CLC
- LDA RAND
- ROL A
- TAX
- ADC RAND+2
+ STA S                  ; Store A in S so we can use it later
+
+ CLC                    ; This contains the code from the DORND2 routine, so
+ LDA RAND               ; this section is exactly equivalent to a JSR DORND2
+ ROL A                  ; call, but is slightly faster as it's been inlined
+ TAX                    ; (so it sets A and X to random values, making sure
+ ADC RAND+2             ; the C flag doesn't affect the outcome)
  STA RAND
  STX RAND+2
  LDA RAND+1
@@ -17089,1083 +17267,3017 @@ ENDIF
  STA RAND+1
  STX RAND+3
 
-;end
+ ROL A                  ; Set A = A * 2
 
- ROL A
- BCS EX5
- JSR FMLTU
- ADC R
- TAX
- LDA S
+ BCS EX5                ; If bit 7 of A was set (50% chance), jump to EX5
+
+ JSR FMLTU              ; Set A = A * Q / 256
+                        ;       = random << 1 * projected cloud size / 256
+
+ ADC R                  ; Set (A X) = (S R) + A
+ TAX                    ;           = (S R) + random * projected cloud size
+                        ;
+                        ; where S contains the argument A, starting with the low
+                        ; bytes
+
+ LDA S                  ; And then the high bytes
  ADC #0
- RTS
+
+ RTS                    ; Return from the subroutine
 
 .EX5
 
- JSR FMLTU
- STA T
- LDA R
- SBC T
- TAX
- LDA S
+ JSR FMLTU              ; Set T = A * Q / 256
+ STA T                  ;       = random << 1 * projected cloud size / 256
+
+ LDA R                  ; Set (A X) = (S R) - T
+ SBC T                  ;
+ TAX                    ; where S contains the argument A, starting with the low
+                        ; bytes
+
+ LDA S                  ; And then the high bytes
  SBC #0
- RTS
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: exlook
+;       Type: Variable
+;   Category: Drawing ships
+;    Summary: An unused block of explosion data
+;
+; ******************************************************************************
 
 .exlook
 
- EQUB 0
- EQUB 2
+ EQUB 0                 ; These bytes appear to be unused, and are left over
+ EQUB 2                 ; from the Commodore 64 version of Elite
+
+; ******************************************************************************
+;
+;       Name: SOS1
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Update the missile indicators, set up the planet data block
+;
+; ------------------------------------------------------------------------------
+;
+; Update the missile indicators, and set up a data block for the planet, but
+; only setting the pitch and roll counters to 127 (no damping).
+;
+; ******************************************************************************
 
 .SOS1
 
- JSR msblob
- LDA #127
- STA INWK+29
- STA INWK+30
- LDA tek
- AND #2
- ORA #128
- JMP NWSHP
+ JSR msblob             ; Reset the dashboard's missile indicators so none of
+                        ; them are targeted
+
+ LDA #127               ; Set the pitch and roll counters to 127, so that's a
+ STA INWK+29            ; clockwise roll and a diving pitch with no damping, so
+ STA INWK+30            ; the planet's rotation doesn't slow down
+
+ LDA tek                ; Set A = 128 or 130 depending on bit 1 of the system's
+ AND #%00000010         ; tech level in tek
+ ORA #%10000000
+
+ JMP NWSHP              ; Add a new planet to our local bubble of universe,
+                        ; with the planet type defined by A (128 is a planet
+                        ; with an equator and meridian, 130 is a planet with
+                        ; a crater)
+
+; ******************************************************************************
+;
+;       Name: SOLAR
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Set up various aspects of arriving in a new system
+;
+; ------------------------------------------------------------------------------
+;
+; Halve our legal status, update the missile indicators, and set up data blocks
+; and slots for the planet and sun.
+;
+; ******************************************************************************
 
 .SOLAR
 
- LDA TRIBBLE
+ LDA TRIBBLE            ; If we have no Trumbles in the hold, skip to nobirths
  BEQ nobirths
- LDA #0
- STA QQ20
- STA QQ20+6 ;Eat food & Narc
- JSR DORND
- AND #15
- ADC TRIBBLE
- ORA #4
- ROL A
+
+                        ; If we get here then we have Trumbles in the hold, so
+                        ; this is where they breed (though we never get here in
+                        ; the Master version as the number of Trumbles is always
+                        ; zero)
+
+ LDA #0                 ; Trumbles eat food and narcotics during the hyperspace
+ STA QQ20               ; journey, so zero the amount of food and narcotics in
+ STA QQ20+6             ; the hold
+
+ JSR DORND              ; Take the number of Trumbles from TRIBBLE(1 0), add a
+ AND #15                ; random number between 4 and 15, and double the result,
+ ADC TRIBBLE            ; storing the resulting number in TRIBBLE(1 0)
+ ORA #4                 ;
+ ROL A                  ; We start with the low byte
  STA TRIBBLE
- ROL TRIBBLE+1
- BPL nobirths
- ROR TRIBBLE+1
+
+ ROL TRIBBLE+1          ; And then do the high byte
+
+ BPL P%+5               ; If bit 7 of the high byte is set, then rotate the high
+ ROR TRIBBLE+1          ; byte back to the right, so the number of Trumbles is
+                        ; always positive
 
 .nobirths
 
- LSR FIST
- JSR ZINF
- LDA QQ15+1
- AND #3
- ADC #3
+ LSR FIST               ; Halve our legal status in FIST, making us less bad,
+                        ; and moving bit 0 into the C flag (so every time we
+                        ; arrive in a new system, our legal status improves a
+                        ; bit)
+
+ JSR ZINF               ; Call ZINF to reset the INWK ship workspace, which
+                        ; doesn't affect the C flag
+
+ LDA QQ15+1             ; Fetch s0_hi
+
+ AND #%00000011         ; Extract bits 0-1 (which also help to determine the
+                        ; economy), which will be between 0 and 3
+
+ ADC #3                 ; Add 3 + C, to get a result between 3 and 7, clearing
+                        ; the C flag in the process
+
+ STA INWK+8             ; Store the result in z_sign in byte #6
+
+ ROR A                  ; Halve A, rotating in the C flag (which is clear) and
+ STA INWK+2             ; store in both x_sign and y_sign, moving the planet to
+ STA INWK+5             ; the upper right
+
+ JSR SOS1               ; Call SOS1 to set up the planet's data block and add it
+                        ; to FRIN, where it will get put in the first slot as
+                        ; it's the first one to be added to our local bubble of
+                        ; this new system's universe
+
+ LDA QQ15+3             ; Fetch s1_hi, extract bits 0-2, set bits 0 and 7 and
+ AND #%00000111         ; store in z_sign, so the sun is behind us at a distance
+ ORA #%10000001         ; of 1 to 7
  STA INWK+8
- ROR A
- STA INWK+2
- STA INWK+5
- JSR SOS1
- LDA QQ15+3
- AND #7
- ORA #129
- STA INWK+8
- LDA QQ15+5
- AND #3
- STA INWK+2
- STA INWK+1
- LDA #0
+
+ LDA QQ15+5             ; Fetch s2_hi, extract bits 0-1 and store in x_sign and
+ AND #%00000011         ; y_sign, so the sun is either dead centre in our rear
+ STA INWK+2             ; laser crosshairs, or off to the top left by a distance
+ STA INWK+1             ; of 1 or 2 when we look out the back
+
+ LDA #0                 ; Set the pitch and roll counters to 0 (no rotation)
  STA INWK+29
  STA INWK+30
- LDA #$81
- JSR NWSHP
+
+ LDA #129               ; Set A = 129, the ship type for the sun
+
+ JSR NWSHP              ; Call NWSHP to set up the sun's data block and add it
+                        ; to FRIN, where it will get put in the second slot as
+                        ; it's the second one to be added to our local bubble
+                        ; of this new system's universe
+
+; ******************************************************************************
+;
+;       Name: NWSTARS
+;       Type: Subroutine
+;   Category: Stardust
+;    Summary: Initialise the stardust field
+;
+; ------------------------------------------------------------------------------
+;
+; This routine is called when the space view is initialised in routine LOOK1.
+;
+; ******************************************************************************
 
 .NWSTARS
 
- LDA QQ11
-;ORA MJ
- BNE WPSHPS
+ LDA QQ11               ; If this is not a space view, jump to WPSHPS to skip
+;ORA MJ                 ; the initialisation of the SX, SY and SZ tables. The OR
+ BNE WPSHPS             ; instruction is commented out in the original source,
+                        ; but it would have the effect of also skipping the
+                        ; initialisation if we had mis-jumped into witchspace
+
+; ******************************************************************************
+;
+;       Name: nWq
+;       Type: Subroutine
+;   Category: Stardust
+;    Summary: Create a random cloud of stardust
+;
+; ------------------------------------------------------------------------------
+;
+; Create a random cloud of stardust containing the correct number of dust
+; particles, i.e. NOSTM of them, which is 3 in witchspace and 18 (#NOST) in
+; normal space. Also clears the scanner and initialises the LSO block.
+;
+; This is called by the DEATH routine when it displays our untimely demise.
+;
+; ******************************************************************************
 
 .nWq
 
- LDY NOSTM
+ LDY NOSTM              ; Set Y to the current number of stardust particles, so
+                        ; we can use it as a counter through all the stardust
 
 .SAL4
 
- JSR DORND
- ORA #8
- STA SZ,Y
- STA ZZ
- JSR DORND
- STA SX,Y
- STA X1
- JSR DORND
- STA SY,Y
- STA Y1
- JSR PIXEL2
- DEY
- BNE SAL4
- \\JSRPBFL
+ JSR DORND              ; Set A and X to random numbers
+
+ ORA #8                 ; Set A so that it's at least 8
+
+ STA SZ,Y               ; Store A in the Y-th particle's z_hi coordinate at
+                        ; SZ+Y, so the particle appears in front of us
+
+ STA ZZ                 ; Set ZZ to the particle's z_hi coordinate
+
+ JSR DORND              ; Set A and X to random numbers
+
+ STA SX,Y               ; Store A in the Y-th particle's x_hi coordinate at
+                        ; SX+Y, so the particle appears in front of us
+
+ STA X1                 ; Set X1 to the particle's x_hi coordinate
+
+ JSR DORND              ; Set A and X to random numbers
+
+ STA SY,Y               ; Store A in the Y-th particle's y_hi coordinate at
+                        ; SY+Y, so the particle appears in front of us
+
+ STA Y1                 ; Set Y1 to the particle's y_hi coordinate
+
+ JSR PIXEL2             ; Draw a stardust particle at (X1,Y1) with distance ZZ
+
+ DEY                    ; Decrement the counter to point to the next particle of
+                        ; stardust
+
+ BNE SAL4               ; Loop back to SAL4 until we have randomised all the
+                        ; stardust particles
+
+;JSR PBFL               ; This instruction is commented out in the original
+                        ; source
+
+                        ; Fall through into WPSHPS to clear the scanner and
+                        ; reset the LSO block
+
+; ******************************************************************************
+;
+;       Name: WPSHPS
+;       Type: Subroutine
+;   Category: Dashboard
+;    Summary: Clear the scanner, reset the ball line and sun line heaps
+;
+; ------------------------------------------------------------------------------
+;
+; Remove all ships from the scanner, reset the sun line heap at LSO, and reset
+; the ball line heap at LSX2 and LSY2.
+;
+; ******************************************************************************
 
 .WPSHPS
 
- LDX #0
+ LDX #0                 ; Set up a counter in X to work our way through all the
+                        ; ship slots in FRIN
 
 .WSL1
 
- LDA FRIN,X
- BEQ WS2
- BMI WS1
- STA TYPE
- JSR GINF
- LDY #31
+ LDA FRIN,X             ; Fetch the ship type in slot X
+
+ BEQ WS2                ; If the slot contains 0 then it is empty and we have
+                        ; checked all the slots (as they are always shuffled
+                        ; down in the main loop to close up and gaps), so jump
+                        ; to WS2 as we are done
+
+ BMI WS1                ; If the slot contains a ship type with bit 7 set, then
+                        ; it contains the planet or the sun, so jump down to WS1
+                        ; to skip this slot, as the planet and sun don't appear
+                        ; on the scanner
+
+ STA TYPE               ; Store the ship type in TYPE
+
+ JSR GINF               ; Call GINF to get the address of the data block for
+                        ; ship slot X and store it in INF
+
+ LDY #31                ; We now want to copy the first 32 bytes from the ship's
+                        ; data block into INWK, so set a counter in Y
 
 .WSL2
 
- LDA (INF),Y
- STA INWK,Y
- DEY
- BPL WSL2
- STX XSAV
- JSR SCAN
- LDX XSAV
- LDY #31
- LDA (INF),Y
- AND #$A7
- STA (INF),Y
+ LDA (INF),Y            ; Copy the Y-th byte from the data block pointed to by
+ STA INWK,Y             ; INF into the Y-th byte of INWK workspace
+
+ DEY                    ; Decrement the counter to point at the next byte
+
+ BPL WSL2               ; Loop back to WSL2 until we have copied all 32 bytes
+
+ STX XSAV               ; Store the ship slot number in XSAV while we call SCAN
+
+ JSR SCAN               ; Call SCAN to plot this ship on the scanner, which will
+                        ; remove it as it's plotted with EOR logic
+
+ LDX XSAV               ; Restore the ship slot number from XSAV into X
+
+ LDY #31                ; Clear bits 3, 4 and 6 in the ship's byte #31, which
+ LDA (INF),Y            ; stops drawing the ship on-screen (bit 3), hides it
+ AND #%10100111         ; from the scanner (bit 4) and stops any lasers firing
+ STA (INF),Y            ; (bit 6)
 
 .WS1
 
- INX
- BNE WSL1
+ INX                    ; Increment X to point to the next ship slot
+
+ BNE WSL1               ; Loop back up to process the next slot (this BNE is
+                        ; effectively a JMP as X will never be zero)
 
 .WS2
 
- LDX #0
- STX LSP
- DEX
- STX LSX2
+ LDX #0                 ; Reset the ball line heap by setting the ball line heap
+ STX LSP                ; pointer to 0
+
+ DEX                    ; Set X = $FF
+
+ STX LSX2               ; Set LSX2 = LSY2 = $FF to clear the ball line heap
  STX LSY2
+
+                        ; Fall through into FLFLLS to reset the LSO block
+
+; ******************************************************************************
+;
+;       Name: FLFLLS
+;       Type: Subroutine
+;   Category: Drawing suns
+;    Summary: Reset the sun line heap
+;
+; ------------------------------------------------------------------------------
+;
+; Reset the sun line heap at LSO by zero-filling it and setting the first byte
+; to $FF.
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   A                   A is set to 0
+;
+; ******************************************************************************
 
 .FLFLLS
 
- LDY #199
- LDA #0
+ LDY #199               ; ???
+
+ LDA #0                 ; Set A to 0 so we can zero-fill the LSO block
 
 .SAL6
 
- STA LSO,Y
- DEY
- BNE SAL6
- DEY
- STY LSX
- RTS
+ STA LSO,Y              ; Set the Y-th byte of the LSO block to 0
+
+ DEY                    ; Decrement the counter
+
+ BNE SAL6               ; Loop back until we have filled all the way to LSO+1
+
+ DEY                    ; Decrement Y to value of $FF (as we exit the above loop
+                        ; with Y = 0)
+
+ STY LSX                ; Set the first byte of the LSO block, which has its own
+                        ; label LSX, to $FF, to indicate that the sun line heap
+                        ; is empty
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: DET1
+;       Type: Subroutine
+;   Category: Drawing the screen
+;    Summary: Show or hide the dashboard (for when we die)
+;
+; ------------------------------------------------------------------------------
+;
+; This subroutine does nothing in the Commodore 64 and Apple II versions of
+; Elite, as the dashboard is not hidden when we die.
+;
+; ******************************************************************************
 
 .DET1
 
- RTS ;X is input-undraw dials
- DEX
- RTS
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: SHD
+;       Type: Subroutine
+;   Category: Flight
+;    Summary: Charge a shield and drain some energy from the energy banks
+;
+; ------------------------------------------------------------------------------
+;
+; Charge up a shield, and if it needs charging, drain some energy from the
+; energy banks.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   X                   The value of the shield to recharge
+;
+; ******************************************************************************
+
+ DEX                    ; Increment the shield value so that it doesn't go past
+                        ; a maximum of 255
+
+ RTS                    ; Return from the subroutine
 
 .SHD
 
- INX
- BEQ SHD-2
+ INX                    ; Increment the shield value
+
+ BEQ SHD-2              ; If the shield value is 0 then this means it was 255
+                        ; before, which is the maximum value, so jump to SHD-2
+                        ; to bring it back down to 258 and return
+
+                        ; Otherwise fall through into DENGY to drain our energy
+                        ; to pay for all this shield charging
+
+; ******************************************************************************
+;
+;       Name: DENGY
+;       Type: Subroutine
+;   Category: Flight
+;    Summary: Drain some energy from the energy banks
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   Z flag              Set if we have no energy left, clear otherwise
+;
+; ******************************************************************************
 
 .DENGY
 
- DEC ENERGY
- PHP
- BNE paen2
- INC ENERGY
+ DEC ENERGY             ; Decrement the energy banks in ENERGY
+
+ PHP                    ; Save the flags on the stack
+
+ BNE paen2              ; If the energy levels are not yet zero, skip the
+                        ; following instruction
+
+ INC ENERGY             ; The minimum allowed energy level is 1, and we just
+                        ; reached 0, so increment ENERGY back to 1
 
 .paen2
 
- PLP
- RTS
+ PLP                    ; Restore the flags from the stack, so we return with
+                        ; the Z flag from the DEC instruction above
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: COMPAS
+;       Type: Subroutine
+;   Category: Dashboard
+;    Summary: Update the compass
+;
+; ******************************************************************************
 
 .COMPAS
 
- JSR DOT
- LDA SSPR
- BNE SP1
- JSR SPS1
- JMP SP2
+ JSR DOT                ; Call DOT to redraw (i.e. remove) the current compass
+                        ; dot
+
+ LDA SSPR               ; If we are inside the space station safe zone, jump to
+ BNE SP1                ; SP1 to draw the space station on the compass
+
+ JSR SPS1               ; Otherwise we need to draw the planet on the compass,
+                        ; so first call SPS1 to calculate the vector to the
+                        ; planet and store it in XX15
+
+ JMP SP2                ; Jump to SP2 to draw XX15 on the compass, returning
+                        ; from the subroutine using a tail call
+
+; ******************************************************************************
+;
+;       Name: SPS2
+;       Type: Subroutine
+;   Category: Maths (Arithmetic)
+;    Summary: Calculate (Y X) = A / 10
+;
+; ------------------------------------------------------------------------------
+;
+; Calculate the following, where A is a sign-magnitude 8-bit integer and the
+; result is a signed 16-bit integer:
+;
+;   (Y X) = A / 10
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              The C flag is cleared
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   COR1                Contains an RTS
+;
+; ******************************************************************************
 
 .SPS2
 
- ASL A
- TAX
- LDA #0
- ROR A
- TAY
- LDA #20 ;14
+ ASL A                  ; Set X = |A| * 2, and set the C flag to the sign bit of
+ TAX                    ; A
+
+ LDA #0                 ; Set Y to have the sign bit from A in bit 7, with the
+ ROR A                  ; rest of its bits zeroed, so Y now contains the sign of
+ TAY                    ; the original argument
+
+ LDA #20                ; Set Q = 20
  STA Q
- TXA
- JSR DVID4
- LDX P
- TYA
- BMI LL163
- LDY #0
- RTS
+
+ TXA                    ; Copy X into A, so A now contains the argument A * 2
+
+ JSR DVID4              ; Calculate the following:
+                        ;
+                        ;   P = A / Q
+                        ;     = |argument A| * 2 / 20
+                        ;     = |argument A| / 10
+
+ LDX P                  ; Set X to the result
+
+ TYA                    ; If the sign of the original argument A is negative,
+ BMI LL163              ; jump to LL163 to flip the sign of the result
+
+ LDY #0                 ; Set the high byte of the result to 0, as the result is
+                        ; positive
+
+ RTS                    ; Return from the subroutine
 
 .LL163
 
- LDY #$FF
- TXA
- EOR #$FF
+ LDY #$FF               ; The result is negative, so set the high byte to $FF
+
+ TXA                    ; Flip the low byte and add 1 to get the negated low
+ EOR #$FF               ; byte, using two's complement
  TAX
  INX
 
 .COR1
 
- RTS
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: SPS4
+;       Type: Subroutine
+;   Category: Maths (Geometry)
+;    Summary: Calculate the vector to the space station
+;
+; ------------------------------------------------------------------------------
+;
+; Calculate the vector between our ship and the space station and store it in
+; XX15.
+;
+; ******************************************************************************
 
 .SPS4
 
- LDX #8
+ LDX #8                 ; First we need to copy the space station's coordinates
+                        ; into K3, so set a counter to copy the first 9 bytes
+                        ; (the 3-byte x, y and z coordinates) from the station's
+                        ; data block at K% + NI% into K3
 
 .SPL1
 
- LDA K%+NI%,X
- STA K3,X
- DEX
- BPL SPL1
- JMP TAS2
+ LDA K%+NI%,X           ; Copy the X-th byte from the station's data block at
+ STA K3,X               ; K% + NI% to the X-th byte of K3
+
+ DEX                    ; Decrement the loop counter
+
+ BPL SPL1               ; Loop back to SPL1 until we have copied all 9 bytes
+
+ JMP TAS2               ; Call TAS2 to build XX15 from K3, returning from the
+                        ; subroutine using a tail call
+
+; ******************************************************************************
+;
+;       Name: SP1
+;       Type: Subroutine
+;   Category: Dashboard
+;    Summary: Draw the space station on the compass
+;
+; ******************************************************************************
 
 .SP1
 
- JSR SPS4
+ JSR SPS4               ; Call SPS4 to calculate the vector to the space station
+                        ; and store it in XX15
+
+                        ; Fall through into SP2 to draw XX15 on the compass
+
+; ******************************************************************************
+;
+;       Name: SP2
+;       Type: Subroutine
+;   Category: Dashboard
+;    Summary: Draw a dot on the compass, given the planet/station vector
+;
+; ------------------------------------------------------------------------------
+;
+; Draw a dot on the compass to represent the planet or station, whose normalised
+; vector is in XX15.
+;
+;   XX15 to XX15+2      The normalised vector to the planet or space station,
+;                       stored as x in XX15, y in XX15+1 and z in XX15+2
+;
+; ******************************************************************************
 
 .SP2
 
- LDA XX15
- JSR SPS2
- TXA
- ADC #195 ; X-1
- STA COMX
- LDA XX15+1
- JSR SPS2
- STX T
- LDA #148 ;156
- SBC T
- STA COMY
- LDA #$60
- LDX XX15+2
- BPL P%+3
- LSR A
- STA COMC
+ LDA XX15               ; Set A to the x-coordinate of the planet or station to
+                        ; show on the compass, which will be in the range -96 to
+                        ; +96 as the vector has been normalised
+
+ JSR SPS2               ; Set (Y X) = A / 10, so X will be from -9 to +9, which
+                        ; is the x-offset from the centre of the compass of the
+                        ; dot we want to draw. Returns with the C flag clear
+
+ TXA                    ; Set COMX = 195 + X, as 186 is the pixel x-coordinate
+ ADC #195               ; of the leftmost dot possible on the compass, and X can
+ STA COMX               ; be -9, which would be 195 - 9 = 186. This also means
+                        ; that the highest value for COMX is 195 + 9 = 204,
+                        ; which is the pixel x-coordinate of the rightmost dot
+                        ; in the compass... but the compass dot is actually two
+                        ; pixels wide, so the compass dot can overlap the right
+                        ; edge of the compass, but not the left edge
+
+ LDA XX15+1             ; Set A to the y-coordinate of the planet or station to
+                        ; show on the compass, which will be in the range -96 to
+                        ; +96 as the vector has been normalised
+
+ JSR SPS2               ; Set (Y X) = A / 10, so X will be from -9 to +9, which
+                        ; is the x-offset from the centre of the compass of the
+                        ; dot we want to draw. Returns with the C flag clear
+
+ STX T                  ; Set COMY = 148 - X, as 147 is the pixel y-coordinate
+ LDA #148               ; of the centre of the compass, the C flag is clear,
+ SBC T                  ; and the y-axis needs to be flipped around (because
+ STA COMY               ; when the planet or station is above us, and the
+                        ; vector is therefore positive, we want to show the dot
+                        ; higher up on the compass, which has a smaller pixel
+                        ; y-coordinate). So this calculation does this:
+                        ;
+                        ;   COMY = 148 - X - (1 - 0) = 147 - X
+
+ LDA #$60               ; Set A to yellow, the colour for when the planet or
+                        ; station in the compass is in front of us ???
+
+ LDX XX15+2             ; If the z-coordinate of the XX15 vector is positive,
+ BPL P%+3               ; skip the following instruction
+
+ LSR A                  ; The z-coordinate of XX15 is negative, so the planet or
+                        ; station is behind us and the compass dot should be in
+                        ; green, so set A accordingly ???
+
+ STA COMC               ; Store the compass colour in COMC
+
+                        ; Fall through into DOT to draw the dot on the compass
+
+; ******************************************************************************
+;
+;       Name: DOT
+;       Type: Subroutine
+;   Category: Dashboard
+;    Summary: Draw a dash on the compass
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   COMX                The screen pixel x-coordinate of the dash
+;
+;   COMY                The screen pixel y-coordinate of the dash
+;
+;   COMC                The colour and thickness of the dash: ???
+;
+;                         * $F0 = a double-height dash in yellow/white, for when
+;                           the object in the compass is in front of us
+;
+;                         * $FF = a single-height dash in green/cyan, for when
+;                           the object in the compass is behind us
+;
+; ******************************************************************************
 
 .DOT
 
- LDA COMC
+ LDA COMC               ; ???
  BEQ COR1
  STA ZZ
- LDA COMY
- LDX COMX
- JMP PIXEL
- \....
+
+ LDA COMY               ; Set A = COMY, the y-coordinate of the dash
+
+ LDX COMX               ; Set X = COMX, the x-coordinate of the dash
+
+ JMP PIXEL              ; ???
+
+; ******************************************************************************
+;
+;       Name: OOPS
+;       Type: Subroutine
+;   Category: Flight
+;    Summary: Take some damage
+;
+; ------------------------------------------------------------------------------
+;
+; We just took some damage, so reduce the shields if we have any, or reduce the
+; energy levels and potentially take some damage to the cargo if we don't.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   A                   The amount of damage to take
+;
+;   INF                 The address of the ship block for the ship that attacked
+;                       us, or the ship that we just ran into
+;
+; ******************************************************************************
 
 .OOPS
 
- STA T
- LDX #0
- LDY #8
+ STA T                  ; Store the amount of damage in T
+
+ LDX #0                 ; Fetch byte #8 (z_sign) for the ship attacking us, and
+ LDY #8                 ; set X = 0
  LDA (INF),Y
- BMI OO1
- LDA FSH
- SBC T
- BCC OO2
- STA FSH
- RTS
+
+ BMI OO1                ; If A is negative, then we got hit in the rear, so jump
+                        ; to OO1 to process damage to the aft shield
+
+ LDA FSH                ; Otherwise the forward shield was damaged, so fetch the
+ SBC T                  ; shield strength from FSH and subtract the damage in T
+
+ BCC OO2                ; If the C flag is clear then this amount of damage was
+                        ; too much for the shields, so jump to OO2 to set the
+                        ; shield level to 0 and start taking damage directly
+                        ; from the energy banks
+
+ STA FSH                ; Store the new value of the forward shield in FSH
+
+ RTS                    ; Return from the subroutine
 
 .OO2
 
- LDX #0
+ LDX #0                 ; Set the forward shield to 0
  STX FSH
- BCC OO3
+
+ BCC OO3                ; Jump to OO3 to start taking damage directly from the
+                        ; energy banks (this BCC is effectively a JMP as the C
+                        ; flag is clear, as we jumped to OO2 with a BCC)
 
 .OO1
 
- LDA ASH
- SBC T
- BCC OO5
- STA ASH
- RTS
+ LDA ASH                ; The aft shield was damaged, so fetch the shield
+ SBC T                  ; strength from ASH and subtract the damage in T
+
+ BCC OO5                ; If the C flag is clear then this amount of damage was
+                        ; too much for the shields, so jump to OO5 to set the
+                        ; shield level to 0 and start taking damage directly
+                        ; from the energy banks
+
+ STA ASH                ; Store the new value of the aft shield in ASH
+
+ RTS                    ; Return from the subroutine
 
 .OO5
 
- LDX #0
+ LDX #0                 ; Set the forward shield to 0
  STX ASH
 
 .OO3
 
- ADC ENERGY
- STA ENERGY
- BEQ P%+4
- BCS P%+5
- JMP DEATH
- JSR EXNO3
- JMP OUCH
+ ADC ENERGY             ; A is negative and contains the amount by which the
+ STA ENERGY             ; damage overwhelmed the shields, so this drains the
+                        ; energy banks by that amount (and because the energy
+                        ; banks are shown over four indicators rather than one,
+                        ; but with the same value range of 0-255, energy will
+                        ; appear to drain away four times faster than the
+                        ; shields did)
+
+ BEQ P%+4               ; If we have just run out of energy, skip the next
+                        ; instruction to jump straight to our death
+
+ BCS P%+5               ; If the C flag is set, then subtracting the damage from
+                        ; the energy banks didn't underflow, so we had enough
+                        ; energy to survive, and we can skip the next
+                        ; instruction to make a sound and take some damage
+
+ JMP DEATH              ; Otherwise our energy levels are either 0 or negative,
+                        ; and in either case that means we jump to our DEATH,
+                        ; returning from the subroutine using a tail call
+
+ JSR EXNO3              ; We didn't die, so call EXNO3 to make the sound of a
+                        ; collision
+
+ JMP OUCH               ; And jump to OUCH to take damage and return from the
+                        ; subroutine using a tail call
+
+; ******************************************************************************
+;
+;       Name: SPS3
+;       Type: Subroutine
+;   Category: Maths (Geometry)
+;    Summary: Copy a space coordinate from the K% block into K3
+;
+; ------------------------------------------------------------------------------
+;
+; Copy one of the planet's coordinates into the corresponding location in the
+; temporary variable K3. The high byte and absolute value of the sign byte are
+; copied into the first two K3 bytes, and the sign of the sign byte is copied
+; into the highest K3 byte.
+;
+; The comments below are written for copying the planet's x-coordinate into
+; K3(2 1 0).
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   X                   Determines which coordinate to copy, and to where:
+;
+;                         * X = 0 copies (x_sign, x_hi) into K3(2 1 0)
+;
+;                         * X = 3 copies (y_sign, y_hi) into K3(5 4 3)
+;
+;                         * X = 6 copies (z_sign, z_hi) into K3(8 7 6)
+;
+; ******************************************************************************
 
 .SPS3
 
- LDA K%+1,X
+ LDA K%+1,X             ; Copy x_hi into K3+X
  STA K3,X
- LDA K%+2,X
+
+ LDA K%+2,X             ; Set A = Y = x_sign
  TAY
- AND #127
+
+ AND #%01111111         ; Set K3+1 = |x_sign|
  STA K3+1,X
- TYA
- AND #128
+
+ TYA                    ; Set K3+2 = the sign of x_sign
+ AND #%10000000
  STA K3+2,X
- RTS
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: NWSPS
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Add a new space station to our local bubble of universe
+;
+; ******************************************************************************
 
 .NWSPS
 
- JSR SPBLB
- LDX #$81
- STX INWK+32
- LDX #0
+ JSR SPBLB              ; Light up the space station bulb on the dashboard
+
+ LDX #%10000001         ; Set the AI flag in byte #32 to %10000001 (hostile,
+ STX INWK+32            ; no AI, has an E.C.M.)
+
+ LDX #0                 ; Set pitch counter to 0 (no pitch, roll only)
  STX INWK+30
- STX NEWB
-;STX INWK+31
- STX FRIN+1
- DEX
- STX INWK+29
- LDX #10
+
+ STX NEWB               ; Set NEWB to %00000000, though this gets overridden by
+                        ; the default flags from E% in NWSHP below
+
+;STX INWK+31            ; This instruction is commented out in the original
+                        ; source. It would set the exploding state and missile
+                        ; count to 0
+
+ STX FRIN+1             ; Set the second slot in the FRIN table to 0, so when we
+                        ; fall through into NWSHP below, the new station that
+                        ; gets created will go into slot FRIN+1, as this will be
+                        ; the first empty slot that the routine finds
+
+ DEX                    ; Set the roll counter to 255 (maximum anti-clockwise
+ STX INWK+29            ; roll with no damping)
+
+ LDX #10                ; Call NwS1 to flip the sign of nosev_x_hi (byte #10)
  JSR NwS1
- JSR NwS1
- JSR NwS1
- LDA spasto
- STA XX21+2*SST-2
- LDA spasto+1
- STA XX21+2*SST-1
- LDA tek
- CMP #10
- BCC notadodo
- LDA XX21+2*DOD-2
- STA XX21+2*SST-2
- LDA XX21+2*DOD-1
- STA XX21+2*SST-1
+
+ JSR NwS1               ; And again to flip the sign of nosev_y_hi (byte #12)
+
+ JSR NwS1               ; And again to flip the sign of nosev_z_hi (byte #14)
+
+ LDA spasto             ; Copy the address of the Coriolis space station's ship
+ STA XX21+2*SST-2       ; blueprint from spasto to the #SST entry in the
+ LDA spasto+1           ; blueprint lookup table at XX21, so when we spawn a
+ STA XX21+2*SST-1       ; ship of type #SST, it will be a Coriolis station
+
+ LDA tek                ; If the system's tech level in tek is less than 10,
+ CMP #10                ; jump to notadodo, so tech levels 0 to 9 have Coriolis
+ BCC notadodo           ; stations, while 10 and above will have Dodo stations
+
+ LDA XX21+2*DOD-2       ; Copy the address of the Dodo space station's ship
+ STA XX21+2*SST-2       ; blueprint from spasto to the #SST entry in the
+ LDA XX21+2*DOD-1       ; blueprint lookup table at XX21, so when we spawn a
+ STA XX21+2*SST-1       ; ship of type #SST, it will be a Dodo station
 
 .notadodo
 
- LDA #(LSO MOD 256)
- STA INWK+33
- LDA #(LSO DIV 256)
+ LDA #LO(LSO)           ; Set bytes #33 and #34 to point to LSO for the ship
+ STA INWK+33            ; line heap for the space station
+ LDA #HI(LSO)
  STA INWK+34
- LDA #SST
+
+ LDA #SST               ; Set A to the space station type, and fall through
+                        ; into NWSHP to finish adding the space station to the
+                        ; universe
+
+; ******************************************************************************
+;
+;       Name: NWSHP
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Add a new ship to our local bubble of universe
+;
+; ------------------------------------------------------------------------------
+;
+; This creates a new block of ship data in the K% workspace, allocates a new
+; block in the ship line heap at WP, adds the new ship's type into the first
+; empty slot in FRIN, and adds a pointer to the ship data into UNIV. If there
+; isn't enough free memory for the new ship, it isn't added.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   A                   The type of the ship to add (see variable XX21 for a
+;                       list of ship types)
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              Set if the ship was successfully added, clear if it
+;                       wasn't (as there wasn't enough free memory)
+;
+;   INF                 Points to the new ship's data block in K%
+;
+; ******************************************************************************
 
 .NWSHP
 
- STA T
- LDX #0
+ STA T                  ; Store the ship type in location T
+
+ LDX #0                 ; Before we can add a new ship, we need to check
+                        ; whether we have an empty slot we can put it in. To do
+                        ; this, we need to loop through all the slots to look
+                        ; for an empty one, so set a counter in X that starts
+                        ; from the first slot at 0. When ships are killed, then
+                        ; the slots are shuffled down by the KILLSHP routine, so
+                        ; the first empty slot will always come after the last
+                        ; filled slot. This allows us to tack the new ship's
+                        ; data block and ship line heap onto the end of the
+                        ; existing ship data and heap, as shown in the memory
+                        ; map below
 
 .NWL1
 
- LDA FRIN,X
- BEQ NW1
- INX
- CPX #NOSH
- BCC NWL1
+ LDA FRIN,X             ; Load the ship type for the X-th slot
+
+ BEQ NW1                ; If it is zero, then this slot is empty and we can use
+                        ; it for our new ship, so jump down to NW1
+
+ INX                    ; Otherwise increment X to point to the next slot
+
+ CPX #NOSH              ; If we haven't reached the last slot yet, loop back up
+ BCC NWL1               ; to NWL1 to check the next slot (note that this means
+                        ; only slots from 0 to #NOSH - 1 are populated by this
+                        ; routine, but there is one more slot reserved in FRIN,
+                        ; which is used to identify the end of the slot list
+                        ; when shuffling the slots down in the KILLSHP routine)
 
 .NW3
 
- CLC
- RTS
+ CLC                    ; Otherwise we don't have an empty slot, so we can't
+ RTS                    ; add a new ship, so clear the C flag to indicate that
+                        ; we have not managed to create the new ship, and return
+                        ; from the subroutine
 
 .NW1
 
- JSR GINF
- LDA T
- BMI NW2
- ASL A
+                        ; If we get here, then we have found an empty slot at
+                        ; index X, so we can go ahead and create our new ship.
+                        ; We do that by creating a ship data block at INWK and,
+                        ; when we are done, copying the block from INWK into
+                        ; the K% workspace (specifically, to INF)
+
+ JSR GINF               ; Get the address of the data block for ship slot X
+                        ; (which is in workspace K%) and store it in INF
+
+ LDA T                  ; If the type of ship that we want to create is
+ BMI NW2                ; negative, then this indicates a planet or sun, so
+                        ; jump down to NW2, as the next section sets up a ship
+                        ; data block, which doesn't apply to planets and suns,
+                        ; as they don't have things like shields, missiles,
+                        ; vertices and edges
+
+                        ; This is a ship, so first we need to set up various
+                        ; pointers to the ship blueprint we will need. The
+                        ; blueprints for each ship type in Elite are stored
+                        ; in a table at location XX21, so refer to the comments
+                        ; on that variable for more details on the data we're
+                        ; about to access
+
+ ASL A                  ; Set Y = ship type * 2
  TAY
- LDA XX21-1,Y
- BEQ NW3
- STA XX0+1
- LDA XX21-2,Y
- STA XX0
- CPY #2*SST
- BEQ NW6
- LDY #5
- LDA (XX0),Y
- STA T1
- LDA SLSP
- SEC
- SBC T1
+
+ LDA XX21-1,Y           ; The ship blueprints at XX21 start with a lookup
+                        ; table that points to the individual ship blueprints,
+                        ; so this fetches the high byte of this particular ship
+                        ; type's blueprint
+
+ BEQ NW3                ; If the high byte is 0 then this is not a valid ship
+                        ; type, so jump to NW3 to clear the C flag and return
+                        ; from the subroutine
+
+ STA XX0+1              ; This is a valid ship type, so store the high byte in
+                        ; XX0+1
+
+ LDA XX21-2,Y           ; Fetch the low byte of this particular ship type's
+ STA XX0                ; blueprint and store it in XX0, so XX0(1 0) now
+                        ; contains the address of this ship's blueprint
+
+ CPY #2*SST             ; If the ship type is a space station (SST), then jump
+ BEQ NW6                ; to NW6, skipping the heap space steps below, as the
+                        ; space station has its own line heap at LSO (which it
+                        ; shares with the sun)
+
+                        ; We now want to allocate space for a heap that we can
+                        ; use to store the lines we draw for our new ship (so it
+                        ; can easily be erased from the screen again). SLSP
+                        ; points to the start of the current heap space, and we
+                        ; can extend it downwards with the heap for our new ship
+                        ; (as the heap space always ends just before the WP
+                        ; workspace)
+
+ LDY #5                 ; Fetch ship blueprint byte #5, which contains the
+ LDA (XX0),Y            ; maximum heap size required for plotting the new ship,
+ STA T1                 ; and store it in T1
+
+ LDA SLSP               ; Take the 16-bit address in SLSP and subtract T1,
+ SEC                    ; storing the 16-bit result in INWK(34 33), so this now
+ SBC T1                 ; points to the start of the line heap for our new ship
  STA INWK+33
  LDA SLSP+1
  SBC #0
  STA INWK+34
- LDA INWK+33
-;SEC 
- SBC INF
- TAY
- LDA INWK+34
- SBC INF+1
- BCC NW3+1
- BNE NW4
- CPY #NI%
- BCC NW3+1
+
+                        ; We now need to check that there is enough free space
+                        ; for both this new line heap and the new data block
+                        ; for our ship. In memory, this is the layout of the
+                        ; ship data blocks and ship line heaps:
+                        ;
+                        ;   +-----------------------------------+   $1034
+                        ;   |                                   |
+                        ;   | WP workspace                      |
+                        ;   |                                   |
+                        ;   +-----------------------------------+   $0800 = WP
+                        ;   |                                   |
+                        ;   | Current ship line heap            |
+                        ;   |                                   |
+                        ;   +-----------------------------------+   SLSP
+                        ;   |                                   |
+                        ;   | Proposed heap for new ship        |
+                        ;   |                                   |
+                        ;   +-----------------------------------+   INWK(34 33)
+                        ;   |                                   |
+                        ;   .                                   .
+                        ;   .                                   .
+                        ;   .                                   .
+                        ;   .                                   .
+                        ;   .                                   .
+                        ;   |                                   |
+                        ;   +-----------------------------------+   INF + NI%
+                        ;   |                                   |
+                        ;   | Proposed data block for new ship  |
+                        ;   |                                   |
+                        ;   +-----------------------------------+   INF
+                        ;   |                                   |
+                        ;   | Existing ship data blocks         |
+                        ;   |                                   |
+                        ;   +-----------------------------------+   $0400 = K%
+                        ;
+                        ; So, to work out if we have enough space, we have to
+                        ; make sure there is room between the end of our new
+                        ; ship data block at INF + NI%, and the start of the
+                        ; proposed heap for our new ship at the address we
+                        ; stored in INWK(34 33). Or, to put it another way, we
+                        ; and to make sure that:
+                        ;
+                        ;   INWK(34 33) > INF + NI%
+                        ;
+                        ; which is the same as saying:
+                        ;
+                        ;   INWK+33 - INF > NI%
+                        ;
+                        ; because INWK is in zero page, so INWK+34 = 0
+
+ LDA INWK+33            ; Calculate INWK+33 - INF, again using 16-bit
+;SEC                    ; arithmetic, and put the result in (A Y), so the high
+ SBC INF                ; byte is in A and the low byte in Y. The SEC
+ TAY                    ; instruction is commented out in the original source;
+ LDA INWK+34            ; as the previous subtraction will never underflow, it
+ SBC INF+1              ; is superfluous
+
+ BCC NW3+1              ; If we have an underflow from the subtraction, then
+                        ; INF > INWK+33 and we definitely don't have enough
+                        ; room for this ship, so jump to NW3+1, which returns
+                        ; from the subroutine (with the C flag already cleared)
+
+ BNE NW4                ; If the subtraction of the high bytes in A is not
+                        ; zero, and we don't have underflow, then we definitely
+                        ; have enough space, so jump to NW4 to continue setting
+                        ; up the new ship
+
+ CPY #NI%               ; Otherwise the high bytes are the same in our
+ BCC NW3+1              ; subtraction, so now we compare the low byte of the
+                        ; result (which is in Y) with NI%. This is the same as
+                        ; doing INWK+33 - INF > NI% (see above). If this isn't
+                        ; true, the C flag will be clear and we don't have
+                        ; enough space, so we jump to NW3+1, which returns
+                        ; from the subroutine (with the C flag already cleared)
 
 .NW4
 
- LDA INWK+33
- STA SLSP
- LDA INWK+34
- STA SLSP+1
+ LDA INWK+33            ; If we get here then we do have enough space for our
+ STA SLSP               ; new ship, so store the new bottom of the ship line
+ LDA INWK+34            ; heap (i.e. INWK+33) in SLSP, doing both the high and
+ STA SLSP+1             ; low bytes
 
 .NW6
 
- LDY #14
- LDA (XX0),Y
+ LDY #14                ; Fetch ship blueprint byte #14, which contains the
+ LDA (XX0),Y            ; ship's energy, and store it in byte #35
  STA INWK+35
- LDY #19
- LDA (XX0),Y
- AND #7
- STA INWK+31
- LDA T
+
+ LDY #19                ; Fetch ship blueprint byte #19, which contains the
+ LDA (XX0),Y            ; number of missiles and laser power, and AND with %111
+ AND #%00000111         ; to extract the number of missiles before storing in
+ STA INWK+31            ; byte #31
+
+ LDA T                  ; Restore the ship type we stored above
 
 .NW2
 
- STA FRIN,X
- TAX
- BMI NW8
- CPX #HER
- BEQ gangbang
- CPX #JL
- BCC NW7
- CPX #JH
- BCS NW7
+ STA FRIN,X             ; Store the ship type in the X-th byte of FRIN, so the
+                        ; this slot is now shown as occupied in the index table
+
+ TAX                    ; Copy the ship type into X
+
+ BMI NW8                ; If the ship type is negative (planet or sun), then
+                        ; jump to NW8 to skip the following instructions
+
+ CPX #HER               ; If the ship type is a rock hermit, jump to gangbang
+ BEQ gangbang           ; to increase the junk count
+
+ CPX #JL                ; If JL <= X < JH, i.e. the type of ship we killed in X
+ BCC NW7                ; is junk (escape pod, alloy plate, cargo canister,
+ CPX #JH                ; asteroid, splinter, Shuttle or Transporter), then keep
+ BCS NW7                ; going, otherwise jump to NW7
 
 .gangbang
 
- INC JUNK
+ INC JUNK               ; We're adding junk, so increase the junk counter
 
 .NW7
 
- INC MANY,X
+ INC MANY,X             ; Increment the total number of ships of type X
 
 .NW8
 
- LDY T
- LDA E%-1,Y
- AND #$6F
- ORA NEWB
- STA NEWB
- LDY #NI%-1
+ LDY T                  ; Restore the ship type we stored above
+
+ LDA E%-1,Y             ; Fetch the E% byte for this ship to get the default
+                        ; settings for the ship's NEWB flags
+
+ AND #%01101111         ; Zero bits 4 and 7 (so the new ship is not docking, has
+                        ; not been scooped, and has not just docked)
+
+ ORA NEWB               ; Apply the result to the ship's NEWB flags, which sets
+ STA NEWB               ; bits 0-3 and 5-6 in NEWB if they are set in the E%
+                        ; byte
+
+ LDY #NI%-1             ; The final step is to copy the new ship's data block
+                        ; from INWK to INF, so set up a counter for NI% bytes
+                        ; in Y
 
 .NWL3
 
- LDA INWK,Y
- STA (INF),Y
- DEY
- BPL NWL3
- SEC
- RTS
+ LDA INWK,Y             ; Load the Y-th byte of INWK and store in the Y-th byte
+ STA (INF),Y            ; of the workspace pointed to by INF
+
+ DEY                    ; Decrement the loop counter
+
+ BPL NWL3               ; Loop back for the next byte until we have copied them
+                        ; all over
+
+ SEC                    ; We have successfully created our new ship, so set the
+                        ; C flag to indicate success
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: NwS1
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Flip the sign and double an INWK byte
+;
+; ------------------------------------------------------------------------------
+;
+; Flip the sign of the INWK byte at offset X, and increment X by 2. This is
+; used by the space station creation routine at NWSPS.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   X                   The offset of the INWK byte to be flipped
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   X                   X is incremented by 2
+;
+; ******************************************************************************
 
 .NwS1
 
- LDA INWK,X
- EOR #128
+ LDA INWK,X             ; Load the X-th byte of INWK into A and flip bit 7,
+ EOR #%10000000         ; storing the result back in the X-th byte of INWK
  STA INWK,X
+
+ INX                    ; Add 2 to X
  INX
- INX
- RTS
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: ABORT
+;       Type: Subroutine
+;   Category: Dashboard
+;    Summary: Disarm missiles and update the dashboard indicators
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   Y                   The new status of the leftmost missile indicator
+;
+; ******************************************************************************
 
 .ABORT
 
- LDX #$FF
+ LDX #$FF               ; Set X to $FF, which is the value of MSTG when we have
+                        ; no target lock for our missile
+
+                        ; Fall through into ABORT2 to set the missile lock to
+                        ; the value in X, which effectively disarms the missile
+
+; ******************************************************************************
+;
+;       Name: ABORT2
+;       Type: Subroutine
+;   Category: Dashboard
+;    Summary: Set/unset the lock target for a missile and update the dashboard
+;
+; ------------------------------------------------------------------------------
+;
+; Set the lock target for the leftmost missile and update the dashboard.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   X                   The slot number of the ship to lock our missile onto, or
+;                       $FF to remove missile lock
+;
+;   Y                   The new colour of the missile indicator: ???
+;
+;                         * $00 = black (no missile)
+;
+;                         * #RED = red (armed and locked)
+;
+;                         * #YELLOW = yellow/white (armed)
+;
+;                         * #GREEN = green (disarmed)
+;
+; ******************************************************************************
 
 .ABORT2
 
- STX MSTG
- LDX NOMSL
- JSR MSBAR
- STY MSAR
- RTS
+ STX MSTG               ; Store the target of our missile lock in MSTG
+
+ LDX NOMSL              ; Call MSBAR to update the leftmost indicator in the
+ JSR MSBAR              ; dashboard's missile bar, which returns with Y = 0
+
+ STY MSAR               ; Set MSAR = 0 to indicate that the leftmost missile
+                        ; is no longer seeking a target lock
+
+ RTS                    ; Return from the subroutine
 
 .msbpars
 
- EQUB 4
- EQUD 0
+ EQUB 4, 0, 0, 0, 0     ; These bytes appear to be unused (they are left over
+                        ; from the 6502 Second Processor version of Elite)
+
+; ******************************************************************************
+;
+;       Name: PROJ
+;       Type: Subroutine
+;   Category: Maths (Geometry)
+;    Summary: Project the current ship or planet onto the screen
+;  Deep dive: Extended screen coordinates
+;
+; ------------------------------------------------------------------------------
+;
+; Project the current ship's location or the planet onto the screen, either
+; returning the screen coordinates of the projection (if it's on-screen), or
+; returning an error via the C flag.
+;
+; In this context, "on-screen" means that the point is projected into the
+; following range:
+;
+;   centre of screen - 1024 < x < centre of screen + 1024
+;   centre of screen - 1024 < y < centre of screen + 1024
+;
+; This is to cater for ships (and, more likely, planets and suns) whose centres
+; are off-screen but whose edges may still be visible.
+;
+; The projection calculation is:
+;
+;   K3(1 0) = #X + x / z
+;   K4(1 0) = #Y + y / z
+;
+; where #X and #Y are the pixel x-coordinate and y-coordinate of the centre of
+; the screen.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   INWK                The ship data block for the ship to project on-screen
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   K3(1 0)             The x-coordinate of the ship's projection on-screen
+;
+;   K4(1 0)             The y-coordinate of the ship's projection on-screen
+;
+;   C flag              Set if the ship's projection doesn't fit on the screen,
+;                       clear if it does project onto the screen
+;
+;   A                   Contains K4+1, the high byte of the y-coordinate
+;
+; ******************************************************************************
 
 .PROJ
 
- LDA INWK
- STA P
+ LDA INWK               ; Set P(1 0) = (x_hi x_lo)
+ STA P                  ;            = x
  LDA INWK+1
  STA P+1
- LDA INWK+2
- JSR PLS6
- BCS PL2-1
- LDA K
- ADC #X
- STA K3
- TXA
- ADC #0
- STA K3+1
- LDA INWK+3
+
+ LDA INWK+2             ; Set A = x_sign
+
+ JSR PLS6               ; Call PLS6 to calculate:
+                        ;
+                        ;   (X K) = (A P+1 P) / (z_sign z_hi z_lo)
+                        ;         = (x_sign x_hi x_lo) / (z_sign z_hi z_lo)
+                        ;         = x / z
+
+ BCS PL2-1              ; If the C flag is set then the result overflowed and
+                        ; the coordinate doesn't fit on the screen, so return
+                        ; from the subroutine with the C flag set (as PL2-1
+                        ; contains an RTS)
+
+ LDA K                  ; Set K3(1 0) = (X K) + #X
+ ADC #X                 ;             = #X + x / z
+ STA K3                 ;
+                        ; first doing the low bytes
+
+ TXA                    ; And then the high bytes. #X is the x-coordinate of
+ ADC #0                 ; the centre of the space view, so this converts the
+ STA K3+1               ; space x-coordinate into a screen x-coordinate
+
+ LDA INWK+3             ; Set P(1 0) = (y_hi y_lo)
  STA P
  LDA INWK+4
  STA P+1
- LDA INWK+5
- EOR #128
- JSR PLS6
- BCS PL2-1
- LDA K
- ADC #Y
- STA K4
- TXA
- ADC #0
- STA K4+1
- CLC
- RTS
+
+ LDA INWK+5             ; Set A = -y_sign
+ EOR #%10000000
+
+ JSR PLS6               ; Call PLS6 to calculate:
+                        ;
+                        ;   (X K) = (A P+1 P) / (z_sign z_hi z_lo)
+                        ;         = -(y_sign y_hi y_lo) / (z_sign z_hi z_lo)
+                        ;         = -y / z
+
+ BCS PL2-1              ; If the C flag is set then the result overflowed and
+                        ; the coordinate doesn't fit on the screen, so return
+                        ; from the subroutine with the C flag set (as PL2-1
+                        ; contains an RTS)
+
+ LDA K                  ; Set K4(1 0) = (X K) + #Y
+ ADC #Y                 ;             = #Y - y / z
+ STA K4                 ;
+                        ; first doing the low bytes
+
+ TXA                    ; And then the high bytes. #Y is the y-coordinate of
+ ADC #0                 ; the centre of the space view, so this converts the
+ STA K4+1               ; space x-coordinate into a screen y-coordinate
+
+ CLC                    ; Clear the C flag to indicate success
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: PL2
+;       Type: Subroutine
+;   Category: Drawing planets
+;    Summary: Remove the planet or sun from the screen
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   PL2-1               Contains an RTS
+;
+; ******************************************************************************
 
 .PL2
 
- LDA TYPE
+ LDA TYPE               ; Shift bit 0 of the planet/sun's type into the C flag
  LSR A
- BCS P%+5
- JMP WPLS2
- JMP WPLS
+
+ BCS P%+5               ; If the planet/sun's type has bit 0 clear, then it's
+                        ; either 128 or 130, which is a planet; meanwhile, the
+                        ; sun has type 129, which has bit 0 set. So if this is
+                        ; the sun, skip the following instruction
+
+ JMP WPLS2              ; This is the planet, so jump to WPLS2 to remove it from
+                        ; screen, returning from the subroutine using a tail
+                        ; call
+
+ JMP WPLS               ; This is the sun, so jump to WPLS to remove it from
+                        ; screen, returning from the subroutine using a tail
+                        ; call
+
+; ******************************************************************************
+;
+;       Name: PLANET
+;       Type: Subroutine
+;   Category: Drawing planets
+;    Summary: Draw the planet or sun
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   INWK                The planet or sun's ship data block
+;
+; ******************************************************************************
 
 .PLANET
 
- LDA INWK+8
-;BMI PL2
- CMP #48
- BCS PL2
- ORA INWK+7
- BEQ PL2
- JSR PROJ
- BCS PL2
- LDA #96
- STA P+1
- LDA #0
- STA P
- JSR DVID3B2
- LDA K+1
- BEQ PL82
- LDA #$F8
- STA K
+ LDA INWK+8             ; Set A = z_sign (the highest byte in the planet/sun's
+                        ; coordinates)
+
+;BMI PL2                ; This instruction is commented out in the original
+                        ; source. It would remove the planet from the screen
+                        ; when it's behind us
+
+ CMP #48                ; If A >= 48 then the planet/sun is too far away to be
+ BCS PL2                ; seen, so jump to PL2 to remove it from the screen,
+                        ; returning from the subroutine using a tail call
+
+ ORA INWK+7             ; Set A to 0 if both z_sign and z_hi are 0
+
+ BEQ PL2                ; If both z_sign and z_hi are 0, then the planet/sun is
+                        ; too close to be shown, so jump to PL2 to remove it
+                        ; from the screen, returning from the subroutine using a
+                        ; tail call
+
+ JSR PROJ               ; Project the planet/sun onto the screen, returning the
+                        ; centre's coordinates in K3(1 0) and K4(1 0)
+
+ BCS PL2                ; If the C flag is set by PROJ then the planet/sun is
+                        ; not visible on-screen, so jump to PL2 to remove it
+                        ; from the screen, returning from the subroutine using
+                        ; a tail call
+
+ LDA #96                ; Set (A P+1 P) = (0 96 0) = 24576
+ STA P+1                ;
+ LDA #0                 ; This represents the planet/sun's radius at a distance
+ STA P                  ; of z = 1
+
+ JSR DVID3B2            ; Call DVID3B2 to calculate:
+                        ;
+                        ;   K(3 2 1 0) = (A P+1 P) / (z_sign z_hi z_lo)
+                        ;              = (0 96 0) / z
+                        ;              = 24576 / z
+                        ;
+                        ; so K now contains the planet/sun's radius, reduced by
+                        ; the actual distance to the planet/sun. We know that
+                        ; K+3 and K+2 will be 0, as the number we are dividing,
+                        ; (0 96 0), fits into the two bottom bytes, so the
+                        ; result is actually in K(1 0)
+
+ LDA K+1                ; If the high byte of the reduced radius is zero, jump
+ BEQ PL82               ; to PL82, as K contains the radius on its own
+
+ LDA #248               ; Otherwise set K = 248, to round up the radius in
+ STA K                  ; K(1 0) to the nearest integer (if we consider the low
+                        ; byte to be the fractional part)
 
 .PL82
 
- LDA TYPE
- LSR A
- BCC PL9
- JMP SUN
+ LDA TYPE               ; If the planet/sun's type has bit 0 clear, then it's
+ LSR A                  ; either 128 or 130, which is a planet (the sun has type
+ BCC PL9                ; 129, which has bit 0 set). So jump to PL9 to draw the
+                        ; planet with radius K, returning from the subroutine
+                        ; using a tail call
+
+ JMP SUN                ; Otherwise jump to SUN to draw the sun with radius K,
+                        ; returning from the subroutine using a tail call
+
+; ******************************************************************************
+;
+;       Name: PL9
+;       Type: Subroutine
+;   Category: Drawing planets
+;    Summary: Draw the planet as a plain circle
+;
+; ------------------------------------------------------------------------------
+;
+; Draw the planet with radius K at pixel coordinate (K3, K4).
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   K(1 0)              The planet's radius
+;
+;   K3(1 0)             Pixel x-coordinate of the centre of the planet
+;
+;   K4(1 0)             Pixel y-coordinate of the centre of the planet
+;
+;   INWK                The planet's ship data block
+;
+; ******************************************************************************
 
 .PL9
 
- JSR WPLS2
- JMP CIRCLE
-;BCS PL20
-;LDA K+1
-;BEQ PL25
- \.PL20 RTS
- \.........
+ JSR WPLS2              ; Call WPLS2 to remove the planet from the screen
+
+ JMP CIRCLE             ; Call CIRCLE to draw the planet's new circle, returning
+                        ; from the subroutine using a tail call
+
+;BCS PL20               ; These instructions are commented out in the original
+;LDA K+1                ; source, as the Apple version only has circles for
+;BEQ PL25               ; planets, with no meridians or craters
+;.PL20
+;RTS
+
+; ******************************************************************************
+;
+;       Name: SUN (Part 1 of 4)
+;       Type: Subroutine
+;   Category: Drawing suns
+;    Summary: Draw the sun: Set up all the variables needed to draw the sun
+;  Deep dive: Drawing the sun
+;
+; ------------------------------------------------------------------------------
+;
+; Draw a new sun with radius K at pixel coordinate (K3, K4), removing the old
+; sun if there is one. This routine is used to draw the sun, as well as the
+; star systems on the Short-range Chart.
+;
+; The first part sets up all the variables needed to draw the new sun.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   K                   The new sun's radius
+;
+;   K3(1 0)             Pixel x-coordinate of the centre of the new sun
+;
+;   K4(1 0)             Pixel y-coordinate of the centre of the new sun
+;
+;   SUNX(1 0)           The x-coordinate of the vertical centre axis of the old
+;                       sun (the one currently on-screen)
+;
+; ******************************************************************************
 
 .PLF3M3
 
- JMP WPLS
+ JMP WPLS               ; Jump to WPLS to remove the old sun from the screen. We
+                        ; only get here via the BCS just after the SUN entry
+                        ; point below, when there is no new sun to draw
 
 .PLF3
 
- TXA
- EOR #$FF
+                        ; This is called from below to negate X and set A to
+                        ; $FF, for when the new sun's centre is off the bottom
+                        ; of the screen (so we don't need to draw its bottom
+                        ; half)
+                        ;
+                        ; This happens when the y-coordinate of the centre of
+                        ; the sun is bigger than the y-coordinate of the bottom
+                        ; of the space view
+
+ TXA                    ; Negate X using two's complement, so X = ~X + 1
+ EOR #%11111111
  CLC
  ADC #1
  TAX
 
 .PLF17
 
- LDA #$FF
- JMP PLF5
+                        ; This is called from below to set A to $FF, for when
+                        ; the new sun's centre is right on the bottom of the
+                        ; screen (so we don't need to draw its bottom half)
+
+ LDA #$FF               ; Set A = $FF
+
+ JMP PLF5               ; Jump to PLF5
 
 .SUN
 
- LDA #RED
+ LDA #RED               ; Switch to colour 2, which is red in the space view
  STA COL
- LDA #1
- STA LSX
- JSR CHKON
- BCS PLF3M3
- LDA #0
- LDX K
- CPX #$60
- ROL A
- CPX #$28
- ROL A
- CPX #$10
- ROL A
+
+ LDA #1                 ; Set LSX = 1 to indicate the sun line heap is about to
+ STA LSX                ; be filled up
+
+ JSR CHKON              ; Call CHKON to check whether any part of the new sun's
+                        ; circle appears on-screen, and if it does, set P(2 1)
+                        ; to the maximum y-coordinate of the new sun on-screen
+
+ BCS PLF3M3             ; If CHKON set the C flag then the new sun's circle does
+                        ; not appear on-screen, so jump to WPLS (via the JMP at
+                        ; the top of this routine) to remove the sun from the
+                        ; screen, returning from the subroutine using a tail
+                        ; call
+
+ LDA #0                 ; Set A = 0
+
+ LDX K                  ; Set X = K = radius of the new sun
+
+ CPX #96                ; If X >= 96, set the C flag and rotate it into bit 0
+ ROL A                  ; of A, otherwise rotate a 0 into bit 0
+
+ CPX #40                ; If X >= 40, set the C flag and rotate it into bit 0
+ ROL A                  ; of A, otherwise rotate a 0 into bit 0
+
+ CPX #16                ; If X >= 16, set the C flag and rotate it into bit 0
+ ROL A                  ; of A, otherwise rotate a 0 into bit 0
+
+                        ; By now, A contains the following:
+                        ;
+                        ;   * If radius is 96-255 then A = %111 = 7
+                        ;
+                        ;   * If radius is 40-95  then A = %11  = 3
+                        ;
+                        ;   * If radius is 16-39  then A = %1   = 1
+                        ;
+                        ;   * If radius is 0-15   then A = %0   = 0
+                        ;
+                        ; The value of A determines the size of the new sun's
+                        ; ragged fringes - the bigger the sun, the bigger the
+                        ; fringes
 
 .PLF18
 
- STA CNT
- LDA Yx2M1
- LDX P+2
- BNE PLF2
- CMP P+1
- BCC PLF2
- LDA P+1
- BNE PLF2
- LDA #1
+ STA CNT                ; Store the fringe size in CNT
+
+                        ; We now calculate the highest pixel y-coordinate of the
+                        ; new sun, given that P(2 1) contains the 16-bit maximum
+                        ; y-coordinate of the new sun on-screen
+
+ LDA Yx2M1              ; Set Y to the y-coordinate of the bottom of the space
+                        ; view
+
+ LDX P+2                ; If P+2 is non-zero, the maximum y-coordinate is off
+ BNE PLF2               ; the bottom of the screen, so skip to PLF2 with A set
+                        ; to the y-coordinate of the bottom of the space view
+
+ CMP P+1                ; If A < P+1, the maximum y-coordinate is underneath the
+ BCC PLF2               ; dashboard, so skip to PLF2 with A set to the
+                        ; y-coordinate of the bottom of the space view
+
+ LDA P+1                ; Set A = P+1, the low byte of the maximum y-coordinate
+                        ; of the sun on-screen
+
+ BNE PLF2               ; If A is non-zero, skip to PLF2 as it contains the
+                        ; value we are after
+
+ LDA #1                 ; Otherwise set A = 1, the top line of the screen
 
 .PLF2
 
- STA TGT
- LDA Yx2M1
- SEC
- SBC K4
+ STA TGT                ; Set TGT to A, the maximum y-coordinate of the sun on
+                        ; screen
+
+                        ; We now calculate the number of lines we need to draw
+                        ; and the direction in which we need to draw them, both
+                        ; from the centre of the new sun
+
+ LDA Yx2M1              ; Set (A X) = y-coordinate of bottom of screen - K4(1 0)
+ SEC                    ;
+ SBC K4                 ; Starting with the low bytes
  TAX
- LDA #0
- SBC K4+1
- BMI PLF3
- BNE PLF4
- INX
+
+ LDA #0                 ; And then doing the high bytes, so (A X) now contains
+ SBC K4+1               ; the number of lines between the centre of the sun and
+                        ; the bottom of the screen. If it is positive then the
+                        ; centre of the sun is above the bottom of the screen,
+                        ; if it is negative then the centre of the sun is below
+                        ; the bottom of the screen
+
+ BMI PLF3               ; If A < 0, then this means the new sun's centre is off
+                        ; the bottom of the screen, so jump up to PLF3 to negate
+                        ; the height in X (so it becomes positive), set A to $FF
+                        ; and jump down to PLF5
+
+ BNE PLF4               ; If A > 0, then the new sun's centre is at least a full
+                        ; screen above the bottom of the space view, so jump
+                        ; down to PLF4 to set X = radius and A = 0
+
+ INX                    ; Set the flags depending on the value of X
  DEX
- BEQ PLF17
- CPX K
- BCC PLF5
+
+ BEQ PLF17              ; If X = 0 (we already know A = 0 by this point) then
+                        ; jump up to PLF17 to set A to $FF before jumping down
+                        ; to PLF5
+
+ CPX K                  ; If X < the radius in K, jump down to PLF5, so if
+ BCC PLF5               ; X >= the radius in K, we set X = radius and A = 0
 
 .PLF4
 
- LDX K
- LDA #0
+ LDX K                  ; Set X to the radius
+
+ LDA #0                 ; Set A = 0
 
 .PLF5
 
- STX V
- STA V+1
- LDA K
+ STX V                  ; Store the height in V
+
+ STA V+1                ; Store the direction in V+1
+
+ LDA K                  ; Set (A P) = K * K
  JSR SQUA2
- STA K2+1
+
+ STA K2+1               ; Set K2(1 0) = (A P) = K * K
  LDA P
  STA K2
- LDY Yx2M1
- LDA SUNX
- STA YY
- LDA SUNX+1
+
+                        ; By the time we get here, the variables should be set
+                        ; up as shown in the header for part 3 below
+
+; ******************************************************************************
+;
+;       Name: SUN (Part 2 of 4)
+;       Type: Subroutine
+;   Category: Drawing suns
+;    Summary: Draw the sun: Start from the bottom of the screen and erase the
+;             old sun line by line
+;  Deep dive: Drawing the sun
+;
+; ------------------------------------------------------------------------------
+;
+; This part erases the old sun, starting at the bottom of the screen and working
+; upwards until we reach the bottom of the new sun.
+;
+; ******************************************************************************
+
+ LDY Yx2M1              ; Set Y = y-coordinate of the bottom of the screen,
+                        ; which we use as a counter in the following routine to
+                        ; redraw the old sun
+
+ LDA SUNX               ; Set YY(1 0) = SUNX(1 0), the x-coordinate of the
+ STA YY                 ; vertical centre axis of the old sun that's currently
+ LDA SUNX+1             ; on-screen
  STA YY+1
 
 .PLFL2
 
- CPY TGT
- BEQ PLFL
- LDA LSO,Y
- BEQ PLF13
- JSR HLOIN2
+ CPY TGT                ; If Y = TGT, we have reached the line where we will
+ BEQ PLFL               ; start drawing the new sun, so there is no need to
+                        ; keep erasing the old one, so jump down to PLFL
+
+ LDA LSO,Y              ; Fetch the Y-th point from the sun line heap, which
+                        ; gives us the half-width of the old sun's line on this
+                        ; line of the screen
+
+ BEQ PLF13              ; If A = 0, skip the following call to HLOIN2 as there
+                        ; is no sun line on this line of the screen
+
+ JSR HLOIN2             ; Call HLOIN2 to draw a horizontal line on pixel line Y,
+                        ; with centre point YY(1 0) and half-width A, and remove
+                        ; the line from the sun line heap once done
 
 .PLF13
 
- DEY
- BNE PLFL2
+ DEY                    ; Decrement the loop counter
+
+ BNE PLFL2              ; Loop back for the next line in the line heap until
+                        ; we have either gone through the entire heap, or
+                        ; reached the bottom row of the new sun
+
+; ******************************************************************************
+;
+;       Name: SUN (Part 3 of 4)
+;       Type: Subroutine
+;   Category: Drawing suns
+;    Summary: Draw the sun: Continue to move up the screen, drawing the new sun
+;             line by line
+;  Deep dive: Drawing the sun
+;
+; ------------------------------------------------------------------------------
+;
+; This part draws the new sun. By the time we get to this point, the following
+; variables should have been set up by parts 1 and 2:
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   V                   As we draw lines for the new sun, V contains the
+;                       vertical distance between the line we're drawing and the
+;                       centre of the new sun. As we draw lines and move up the
+;                       screen, we either decrement (bottom half) or increment
+;                       (top half) this value. See the deep dive on "Drawing the
+;                       sun" to see a diagram that shows V in action
+;
+;   V+1                 This determines which half of the new sun we are drawing
+;                       as we work our way up the screen, line by line:
+;
+;                         * 0 means we are drawing the bottom half, so the lines
+;                           get wider as we work our way up towards the centre,
+;                           at which point we will move into the top half, and
+;                           V+1 will switch to $FF
+;
+;                         * $FF means we are drawing the top half, so the lines
+;                           get smaller as we work our way up, away from the
+;                           centre
+;
+;   TGT                 The maximum y-coordinate of the new sun on-screen (i.e.
+;                       the screen y-coordinate of the bottom row of the new
+;                       sun)
+;
+;   CNT                 The fringe size of the new sun
+;
+;   K2(1 0)             The new sun's radius squared, i.e. K^2
+;
+;   Y                   The y-coordinate of the bottom row of the new sun
+;
+; ******************************************************************************
 
 .PLFL
 
- LDA V
- JSR SQUA2
+ LDA V                  ; Set (T P) = V * V
+ JSR SQUA2              ;           = V^2
  STA T
- LDA K2
- SEC
- SBC P
+
+ LDA K2                 ; Set (R Q) = K^2 - V^2
+ SEC                    ;
+ SBC P                  ; First calculating the low bytes
  STA Q
- LDA K2+1
+
+ LDA K2+1               ; And then doing the high bytes
  SBC T
  STA R
- STY Y1
- JSR LL5
- LDY Y1
- JSR DORND
- AND CNT
- CLC
- ADC Q
- BCC PLF44
- LDA #$FF
+
+ STY Y1                 ; Store Y in Y1, so we can restore it after the call to
+                        ; LL5
+
+ JSR LL5                ; Set Q = SQRT(R Q)
+                        ;       = SQRT(K^2 - V^2)
+                        ;
+                        ; So Q contains the half-width of the new sun's line at
+                        ; height V from the sun's centre - in other words, it
+                        ; contains the half-width of the sun's line on the
+                        ; current pixel row Y
+
+ LDY Y1                 ; Restore Y from Y1
+
+ JSR DORND              ; Set A and X to random numbers
+
+ AND CNT                ; Reduce A to a random number in the range 0 to CNT,
+                        ; where CNT is the fringe size of the new sun
+
+ CLC                    ; Set A = A + Q
+ ADC Q                  ;
+                        ; So A now contains the half-width of the sun on row
+                        ; V, plus a random variation based on the fringe size
+
+ BCC PLF44              ; If the above addition did not overflow, skip the
+                        ; following instruction
+
+ LDA #255               ; The above overflowed, so set the value of A to 255
+
+                        ; So A contains the half-width of the new sun on pixel
+                        ; line Y, changed by a random amount within the size of
+                        ; the sun's fringe
 
 .PLF44
 
- LDX LSO,Y
- STA LSO,Y
- BEQ PLF11
- LDA SUNX
- STA YY
- LDA SUNX+1
+ LDX LSO,Y              ; Set X to the line heap value for the old sun's line
+                        ; at row Y
+
+ STA LSO,Y              ; Store the half-width of the new row Y line in the line
+                        ; heap
+
+ BEQ PLF11              ; If X = 0 then there was no sun line on pixel row Y, so
+                        ; jump to PLF11
+
+ LDA SUNX               ; Set YY(1 0) = SUNX(1 0), the x-coordinate of the
+ STA YY                 ; vertical centre axis of the old sun that's currently
+ LDA SUNX+1             ; on-screen
  STA YY+1
- TXA
- JSR EDGES
- LDA X1
- STA XX
+
+ TXA                    ; Transfer the line heap value for the old sun's line
+                        ; from X into A
+
+ JSR EDGES              ; Call EDGES to calculate X1 and X2 for the horizontal
+                        ; line centred on YY(1 0) and with half-width A, i.e.
+                        ; the line for the old sun
+
+ LDA X1                 ; Store X1 and X2, the ends of the line for the old sun,
+ STA XX                 ; in XX and XX+1
  LDA X2
  STA XX+1
- LDA K3
- STA YY
+
+ LDA K3                 ; Set YY(1 0) = K3(1 0), the x-coordinate of the centre
+ STA YY                 ; of the new sun
  LDA K3+1
  STA YY+1
- LDA LSO,Y
- JSR EDGES
- BCS PLF23
- LDA X2
+
+ LDA LSO,Y              ; Fetch the half-width of the new row Y line from the
+                        ; line heap (which we stored above)
+
+ JSR EDGES              ; Call EDGES to calculate X1 and X2 for the horizontal
+                        ; line centred on YY(1 0) and with half-width A, i.e.
+                        ; the line for the new sun
+
+ BCS PLF23              ; If the C flag is set, the new line doesn't fit on the
+                        ; screen, so jump to PLF23 to just draw the old line
+                        ; without drawing the new one
+
+                        ; At this point the old line is from XX to XX+1 and the
+                        ; new line is from X1 to X2, and both fit on-screen. We
+                        ; now want to remove the old line and draw the new one.
+                        ; We could do this by simply drawing the old one then
+                        ; drawing the new one, but instead Elite does this by
+                        ; drawing first from X1 to XX and then from X2 to XX+1,
+                        ; which you can see in action by looking at all the
+                        ; permutations below of the four points on the line and
+                        ; imagining what happens if you draw from X1 to XX and
+                        ; X2 to XX+1 using EOR logic. The six possible
+                        ; permutations are as follows, along with the result of
+                        ; drawing X1 to XX and then X2 to XX+1:
+                        ;
+                        ;   X1    X2    XX____XX+1      ->      +__+  +  +
+                        ;
+                        ;   X1    XX____X2____XX+1      ->      +__+__+  +
+                        ;
+                        ;   X1    XX____XX+1  X2        ->      +__+__+__+
+                        ;
+                        ;   XX____X1____XX+1  X2        ->      +  +__+__+
+                        ;
+                        ;   XX____XX+1  X1    X2        ->      +  +  +__+
+                        ;
+                        ;   XX____X1____X2____XX+1      ->      +  +__+  +
+                        ;
+                        ; They all end up with a line between X1 and X2, which
+                        ; is what we want. There's probably a mathematical proof
+                        ; of why this works somewhere, but the above is probably
+                        ; easier to follow.
+                        ;
+                        ; We can draw from X1 to XX and X2 to XX+1 by swapping
+                        ; XX and X2 and drawing from X1 to X2, and then drawing
+                        ; from XX to XX+1, so let's do this now
+
+ LDA X2                 ; Swap XX and X2
  LDX XX
  STX X2
  STA XX
- JSR HLOIN
+
+ JSR HLOIN              ; Draw a horizontal line from (X1, Y1) to (X2, Y1)
 
 .PLF23
 
- LDA XX
+                        ; If we jump here from the BCS above when there is no
+                        ; new line this will just draw the old line
+
+ LDA XX                 ; Set X1 = XX
  STA X1
- LDA XX+1
+
+ LDA XX+1               ; Set X2 = XX+1
  STA X2
 
 .PLF16
 
- JSR HLOIN
+ JSR HLOIN              ; Draw a horizontal line from (X1, Y1) to (X2, Y1)
 
 .PLF6
 
- DEY
- BEQ PLF8
- LDA V+1
- BNE PLF10
- DEC V
- BNE PLFL
- DEC V+1
+ DEY                    ; Decrement the line number in Y to move to the line
+                        ; above
+
+ BEQ PLF8               ; If we have reached the top of the screen, jump to PLF8
+                        ; as we are done drawing (the top line of the screen is
+                        ; the border, so we don't draw there)
+
+ LDA V+1                ; If V+1 is non-zero then we are doing the top half of
+ BNE PLF10              ; the new sun, so jump down to PLF10 to increment V and
+                        ; decrease the width of the line we draw
+
+ DEC V                  ; Decrement V, the height of the sun that we use to work
+                        ; out the width, so this makes the line get wider, as we
+                        ; move up towards the sun's centre
+
+ BNE PLFL               ; If V is non-zero, jump back up to PLFL to do the next
+                        ; screen line up
+
+ DEC V+1                ; Otherwise V is 0 and we have reached the centre of the
+                        ; sun, so decrement V+1 to -1 so we start incrementing V
+                        ; each time, thus doing the top half of the new sun
 
 .PLFLS
 
- JMP PLFL
+ JMP PLFL               ; Jump back up to PLFL to do the next screen line up
 
 .PLF11
 
- LDX K3
- STX YY
+                        ; If we get here then there is no old sun line on this
+                        ; line, so we can just draw the new sun's line
+
+ LDX K3                 ; Set YY(1 0) = K3(1 0), the x-coordinate of the centre
+ STX YY                 ; of the new sun's line
  LDX K3+1
  STX YY+1
- JSR EDGES
- BCC PLF16
- LDA #0
- STA LSO,Y
- BEQ PLF6
+
+ JSR EDGES              ; Call EDGES to calculate X1 and X2 for the horizontal
+                        ; line centred on YY(1 0) and with half-width A, i.e.
+                        ; the line for the new sun
+
+ BCC PLF16              ; If the line is on-screen, jump up to PLF16 to draw the
+                        ; line and loop round for the next line up
+
+ LDA #0                 ; The line is not on-screen, so set the line heap for
+ STA LSO,Y              ; line Y to 0, which means there is no sun line here
+
+ BEQ PLF6               ; Jump up to PLF6 to loop round for the next line up
+                        ; (this BEQ is effectively a JMP as A is always zero)
 
 .PLF10
 
- LDX V
- INX
- STX V
- CPX K
- BCC PLFLS
- BEQ PLFLS
- LDA SUNX
- STA YY
- LDA SUNX+1
+ LDX V                  ; Increment V, the height of the sun that we use to work
+ INX                    ; out the width, so this makes the line get narrower, as
+ STX V                  ; we move up and away from the sun's centre
+
+ CPX K                  ; If V <= the radius of the sun, we still have lines to
+ BCC PLFLS              ; draw, so jump up to PLFL (via PLFLS) to do the next
+ BEQ PLFLS              ; screen line up
+
+; ******************************************************************************
+;
+;       Name: SUN (Part 4 of 4)
+;       Type: Subroutine
+;   Category: Drawing suns
+;    Summary: Draw the sun: Continue to the top of the screen, erasing the old
+;             sun line by line
+;  Deep dive: Drawing the sun
+;
+; ------------------------------------------------------------------------------
+;
+; This part erases any remaining traces of the old sun, now that we have drawn
+; all the way to the top of the new sun.
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   RTS2                Contains an RTS
+;
+; ******************************************************************************
+
+ LDA SUNX               ; Set YY(1 0) = SUNX(1 0), the x-coordinate of the
+ STA YY                 ; vertical centre axis of the old sun that's currently
+ LDA SUNX+1             ; on-screen
  STA YY+1
 
 .PLFL3
 
- LDA LSO,Y
- BEQ PLF9
- JSR HLOIN2
+ LDA LSO,Y              ; Fetch the Y-th point from the sun line heap, which
+                        ; gives us the half-width of the old sun's line on this
+                        ; line of the screen
+
+ BEQ PLF9               ; If A = 0, skip the following call to HLOIN2 as there
+                        ; is no sun line on this line of the screen
+
+ JSR HLOIN2             ; Call HLOIN2 to draw a horizontal line on pixel line Y,
+                        ; with centre point YY(1 0) and half-width A, and remove
+                        ; the line from the sun line heap once done
 
 .PLF9
 
- DEY
- BNE PLFL3
+ DEY                    ; Decrement the line number in Y to move to the line
+                        ; above
+
+ BNE PLFL3              ; Jump up to PLFL3 to redraw the next line up, until we
+                        ; have reached the top of the screen
 
 .PLF8
 
- CLC
- LDA K3
+                        ; If we get here, we have successfully made it from the
+                        ; bottom line of the screen to the top, and the old sun
+                        ; has been replaced by the new one
+
+ CLC                    ; Clear the C flag to indicate success in drawing the
+                        ; sun
+
+ LDA K3                 ; Set SUNX(1 0) = K3(1 0)
  STA SUNX
  LDA K3+1
  STA SUNX+1
 
 .RTS2
 
- RTS
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: CIRCLE
+;       Type: Subroutine
+;   Category: Drawing circles
+;    Summary: Draw a circle for the planet
+;  Deep dive: Drawing circles
+;
+; ------------------------------------------------------------------------------
+;
+; Draw a circle with the centre at (K3, K4) and radius K. Used to draw the
+; planet's main outline.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   K                   The planet's radius
+;
+;   K3(1 0)             Pixel x-coordinate of the centre of the planet
+;
+;   K4(1 0)             Pixel y-coordinate of the centre of the planet
+;
+; ******************************************************************************
 
 .CIRCLE
 
- JSR CHKON
- BCS RTS2
- LDA #0
- STA LSX2
- LDX K
- LDA #8
- CPX #8
+ JSR CHKON              ; Call CHKON to check whether the circle fits on-screen
+
+ BCS RTS2               ; If CHKON set the C flag then the circle does not fit
+                        ; on-screen, so return from the subroutine (as RTS2
+                        ; contains an RTS)
+
+ LDA #0                 ; Set LSX2 = 0 to indicate that the ball line heap is
+ STA LSX2               ; not empty, as we are about to fill it
+
+ LDX K                  ; Set X = K = radius
+
+ LDA #8                 ; Set A = 8
+
+ CPX #8                 ; If the radius < 8, skip to PL89
  BCC PL89
- LSR A
- CPX #60
+
+ LSR A                  ; Halve A so A = 4
+
+ CPX #60                ; If the radius < 60, skip to PL89
  BCC PL89
- LSR A
+
+ LSR A                  ; Halve A so A = 2
 
 .PL89
 
- STA STP
+ STA STP                ; Set STP = A. STP is the step size for the circle, so
+                        ; the above sets a smaller step size for bigger circles
+
+; ******************************************************************************
+;
+;       Name: CIRCLE2
+;       Type: Subroutine
+;   Category: Drawing circles
+;    Summary: Draw a circle (for the planet or chart)
+;  Deep dive: Drawing circles
+;
+; ------------------------------------------------------------------------------
+;
+; Draw a circle with the centre at (K3, K4) and radius K. Used to draw the
+; planet and the chart circles.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   STP                 The step size for the circle
+;
+;   K                   The circle's radius
+;
+;   K3(1 0)             Pixel x-coordinate of the centre of the circle
+;
+;   K4(1 0)             Pixel y-coordinate of the centre of the circle
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              The C flag is cleared
+;
+; ******************************************************************************
 
 .CIRCLE2
 
- LDX #$FF
- STX FLAG
- INX
- STX CNT
+ LDX #$FF               ; Set FLAG = $FF to reset the ball line heap in the call
+ STX FLAG               ; to the BLINE routine below
+
+ INX                    ; Set CNT = 0, our counter that goes up to 64, counting
+ STX CNT                ; segments in our circle
 
 .PLL3
 
- LDA CNT
- JSR FMLTU2
- LDX #0
- STX T
- LDX CNT
- CPX #33
- BCC PL37
- EOR #$FF
- ADC #0
- TAX
- LDA #$FF
+ LDA CNT                ; Set A = CNT
+
+ JSR FMLTU2             ; Call FMLTU2 to calculate:
+                        ;
+                        ;   A = K * sin(A)
+                        ;     = K * sin(CNT)
+
+ LDX #0                 ; Set T = 0, so we have the following:
+ STX T                  ;
+                        ;   (T A) = K * sin(CNT)
+                        ;
+                        ; which is the x-coordinate of the circle for this count
+
+ LDX CNT                ; If CNT < 33 then jump to PL37, as this is the right
+ CPX #33                ; half of the circle and the sign of the x-coordinate is
+ BCC PL37               ; correct
+
+ EOR #%11111111         ; This is the left half of the circle, so we want to
+ ADC #0                 ; flip the sign of the x-coordinate in (T A) using two's
+ TAX                    ; complement, so we start with the low byte and store it
+                        ; in X (the ADC adds 1 as we know the C flag is set)
+
+ LDA #$FF               ; And then we flip the high byte in T
  ADC #0
  STA T
- TXA
- CLC
+
+ TXA                    ; Finally, we restore the low byte from X, so we have
+                        ; now negated the x-coordinate in (T A)
+
+ CLC                    ; Clear the C flag so we can do some more addition below
 
 .PL37
 
- ADC K3
- STA K6
- LDA K3+1
- ADC T
- STA K6+1
- LDA CNT
+ ADC K3                 ; We now calculate the following:
+ STA K6                 ;
+                        ;   K6(1 0) = (T A) + K3(1 0)
+                        ;
+                        ; to add the coordinates of the centre to our circle
+                        ; point, starting with the low bytes
+
+ LDA K3+1               ; And then doing the high bytes, so we now have:
+ ADC T                  ;
+ STA K6+1               ;   K6(1 0) = K * sin(CNT) + K3(1 0)
+                        ;
+                        ; which is the result we want for the x-coordinate
+
+ LDA CNT                ; Set A = CNT + 16
  CLC
  ADC #16
- JSR FMLTU2
- TAX
- LDA #0
- STA T
- LDA CNT
+
+ JSR FMLTU2             ; Call FMLTU2 to calculate:
+                        ;
+                        ;   A = K * sin(A)
+                        ;     = K * sin(CNT + 16)
+                        ;     = K * cos(CNT)
+
+ TAX                    ; Set X = A
+                        ;       = K * cos(CNT)
+
+ LDA #0                 ; Set T = 0, so we have the following:
+ STA T                  ;
+                        ;   (T X) = K * cos(CNT)
+                        ;
+                        ; which is the y-coordinate of the circle for this count
+
+ LDA CNT                ; Set A = (CNT + 15) mod 64
  ADC #15
  AND #63
- CMP #33
- BCC PL38
- TXA
- EOR #$FF
- ADC #0
- TAX
- LDA #$FF
- ADC #0
+
+ CMP #33                ; If A < 33 (i.e. CNT is 0-16 or 48-64) then jump to
+ BCC PL38               ; PL38, as this is the bottom half of the circle and the
+                        ; sign of the y-coordinate is correct
+
+ TXA                    ; This is the top half of the circle, so we want to
+ EOR #%11111111         ; flip the sign of the y-coordinate in (T X) using two's
+ ADC #0                 ; complement, so we start with the low byte in X (the
+ TAX                    ; ADC adds 1 as we know the C flag is set)
+
+ LDA #$FF               ; And then we flip the high byte in T, so we have
+ ADC #0                 ; now negated the y-coordinate in (T X)
  STA T
- CLC
+
+ CLC                    ; Clear the C flag so the addition at the start of BLINE
+                        ; will work
 
 .PL38
 
- JSR BLINE
- CMP #65
+ JSR BLINE              ; Call BLINE to draw this segment, which also increases
+                        ; CNT by STP, the step size
+
+ CMP #65                ; If CNT >= 65 then skip the next instruction
  BCS P%+5
- JMP PLL3
- CLC
- RTS
+
+ JMP PLL3               ; Jump back for the next segment
+
+ CLC                    ; Clear the C flag to indicate success
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: WPLS2
+;       Type: Subroutine
+;   Category: Drawing planets
+;    Summary: Remove the planet from the screen
+;  Deep dive: The ball line heap
+;
+; ------------------------------------------------------------------------------
+;
+; We do this by redrawing it using the lines stored in the ball line heap when
+; the planet was originally drawn by the BLINE routine.
+;
+; ******************************************************************************
 
 .WPLS2
 
- LDY LSX2
- BNE WP1
+ LDY LSX2               ; If LSX2 is non-zero (which indicates the ball line
+ BNE WP1                ; heap is empty), jump to WP1 to reset the line heap
+                        ; without redrawing the planet
+
+                        ; Otherwise Y is now 0, so we can use it as a counter to
+                        ; loop through the lines in the line heap, redrawing
+                        ; each one to remove the planet from the screen, before
+                        ; resetting the line heap once we are done
 
 .WPL1
 
- CPY LSP
- BCS WP1
- LDA LSY2,Y
- CMP #$FF
- BEQ WP2
- STA Y2
- LDA LSX2,Y
+ CPY LSP                ; If Y >= LSP then we have reached the end of the line
+ BCS WP1                ; heap and have finished redrawing the planet (as LSP
+                        ; points to the end of the heap), so jump to WP1 to
+                        ; reset the line heap, returning from the subroutine
+                        ; using a tail call
+
+ LDA LSY2,Y             ; Set A to the y-coordinate of the current heap entry
+
+ CMP #$FF               ; If the y-coordinate is $FF, this indicates that the
+ BEQ WP2                ; next point in the heap denotes the start of a line
+                        ; segment, so jump to WP2 to put it into (X1, Y1)
+
+ STA Y2                 ; Set (X2, Y2) to the x- and y-coordinates from the
+ LDA LSX2,Y             ; heap
  STA X2
- JSR LOIN
- INY
- LDA SWAP
- BNE WPL1
- LDA X2
- STA X1
- LDA Y2
+
+ JSR LOIN               ; Draw a line from (X1, Y1) to (X2, Y2)
+
+ INY                    ; Increment the loop counter to point to the next point
+
+ LDA SWAP               ; If SWAP is non-zero then we swapped the coordinates
+ BNE WPL1               ; when filling the heap in BLINE, so loop back WPL1
+                        ; for the next point in the heap
+
+ LDA X2                 ; Swap (X1, Y1) and (X2, Y2), so the next segment will
+ STA X1                 ; be drawn from the current (X2, Y2) to the next point
+ LDA Y2                 ; in the heap
  STA Y1
- JMP WPL1
+
+ JMP WPL1               ; Loop back to WPL1 for the next point in the heap
 
 .WP2
 
- INY
- LDA LSX2,Y
- STA X1
+ INY                    ; Increment the loop counter to point to the next point
+
+ LDA LSX2,Y             ; Set (X1, Y1) to the x- and y-coordinates from the
+ STA X1                 ; heap
  LDA LSY2,Y
  STA Y1
- INY
- JMP WPL1
+
+ INY                    ; Increment the loop counter to point to the next point
+
+ JMP WPL1               ; Loop back to WPL1 for the next point in the heap
+
+; ******************************************************************************
+;
+;       Name: WP1
+;       Type: Subroutine
+;   Category: Drawing planets
+;    Summary: Reset the ball line heap
+;
+; ******************************************************************************
 
 .WP1
 
- LDA #1
+ LDA #1                 ; Set LSP = 1 to reset the ball line heap pointer
  STA LSP
- LDA #$FF
+
+ LDA #$FF               ; Set LSX2 = $FF to indicate the ball line heap is empty
  STA LSX2
- RTS
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: WPLS
+;       Type: Subroutine
+;   Category: Drawing suns
+;    Summary: Remove the sun from the screen
+;  Deep dive: Drawing the sun
+;
+; ------------------------------------------------------------------------------
+;
+; We do this by redrawing it using the lines stored in the sun line heap when
+; the sun was originally drawn by the SUN routine.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   SUNX(1 0)           The x-coordinate of the vertical centre axis of the sun
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   WPLS-1              Contains an RTS
+;
+; ******************************************************************************
 
 .WPLS
 
- LDA LSX
- BMI WPLS-1
- LDA SUNX
- STA YY
- LDA SUNX+1
+ LDA LSX                ; If LSX < 0, the sun line heap is empty, so return from
+ BMI WPLS-1             ; the subroutine (as WPLS-1 contains an RTS)
+
+ LDA SUNX               ; Set YY(1 0) = SUNX(1 0), the x-coordinate of the
+ STA YY                 ; vertical centre axis of the sun that's currently on
+ LDA SUNX+1             ; screen
  STA YY+1
- LDY #2*Y-1
+
+ LDY #2*Y-1             ; #Y is the y-coordinate of the centre of the space
+                        ; view, so this sets Y as a counter for the number of
+                        ; lines in the space view (i.e. 191), which is also the
+                        ; number of lines in the LSO block
 
 .WPL2
 
- LDA LSO,Y
- BEQ P%+5
- JSR HLOIN2
- DEY
- BNE WPL2
- DEY
- STY LSX
- RTS
+ LDA LSO,Y              ; Fetch the Y-th point from the sun line heap, which
+                        ; gives us the half-width of the sun's line on this line
+                        ; of the screen
+
+ BEQ P%+5               ; If A = 0, skip the following call to HLOIN2 as there
+                        ; is no sun line on this line of the screen
+
+ JSR HLOIN2             ; Call HLOIN2 to draw a horizontal line on pixel line Y,
+                        ; with centre point YY(1 0) and half-width A, and remove
+                        ; the line from the sun line heap once done
+
+ DEY                    ; Decrement the loop counter
+
+ BNE WPL2               ; Loop back for the next line in the line heap until
+                        ; we have gone through the entire heap
+
+ DEY                    ; This sets Y to $FF, as we end the loop with Y = 0
+
+ STY LSX                ; Set LSX to $FF to indicate the sun line heap is empty
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: EDGES
+;       Type: Subroutine
+;   Category: Drawing lines
+;    Summary: Draw a horizontal line given a centre and a half-width
+;
+; ------------------------------------------------------------------------------
+;
+; Set X1 and X2 to the x-coordinates of the ends of the horizontal line with
+; centre x-coordinate YY(1 0), and length A in either direction from the centre
+; (so a total line length of 2 * A). In other words, this line:
+;
+;   X1             YY(1 0)             X2
+;   +-----------------+-----------------+
+;         <- A ->           <- A ->
+;
+; The resulting line gets clipped to the edges of the screen, if needed. If the
+; calculation doesn't overflow, we return with the C flag clear, otherwise the C
+; flag gets set to indicate failure and the Y-th LSO entry gets set to 0.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   A                   The half-length of the line
+;
+;   YY(1 0)             The centre x-coordinate
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              Clear if the line fits on-screen, set if it doesn't
+;
+;   X1, X2              The x-coordinates of the clipped line
+;
+;   LSO+Y               If the line doesn't fit, LSO+Y is set to 0
+;
+;   Y                   Y is preserved
+;
+; ******************************************************************************
 
 .EDGES
 
- STA T
- CLC
- ADC YY
- STA X2
- LDA YY+1
+ STA T                  ; Set T to the line's half-length in argument A
+
+ CLC                    ; We now calculate:
+ ADC YY                 ;
+ STA X2                 ;  (A X2) = YY(1 0) + A
+                        ;
+                        ; to set X2 to the x-coordinate of the right end of the
+                        ; line, starting with the low bytes
+
+ LDA YY+1               ; And then adding the high bytes
  ADC #0
- BMI ED1
- BEQ P%+6
- LDA #$FF
- STA X2
- LDA YY
- SEC
- SBC T
- STA X1
- LDA YY+1
+
+ BMI ED1                ; If the addition is negative then the calculation has
+                        ; overflowed, so jump to ED1 to return a failure
+
+ BEQ P%+6               ; If the high byte A from the result is 0, skip the
+                        ; next two instructions, as the result already fits on
+                        ; the screen
+
+ LDA #255               ; The high byte is positive and non-zero, so we went
+ STA X2                 ; past the right edge of the screen, so clip X2 to the
+                        ; x-coordinate of the right edge of the screen
+
+ LDA YY                 ; We now calculate:
+ SEC                    ;
+ SBC T                  ;   (A X1) = YY(1 0) - argument A
+ STA X1                 ;
+                        ; to set X1 to the x-coordinate of the left end of the
+                        ; line, starting with the low bytes
+
+ LDA YY+1               ; And then subtracting the high bytes
  SBC #0
- BNE ED3
- CLC
- RTS
+
+ BNE ED3                ; If the high byte subtraction is non-zero, then skip
+                        ; to ED3
+
+ CLC                    ; Otherwise the high byte of the subtraction was zero,
+                        ; so the line fits on-screen and we clear the C flag to
+                        ; indicate success
+
+ RTS                    ; Return from the subroutine
 
 .ED3
 
- BPL ED1
- LDA #0
- STA X1
- CLC
- RTS
+ BPL ED1                ; If the addition is positive then the calculation has
+                        ; underflowed, so jump to ED1 to return a failure
+
+ LDA #0                 ; The high byte is negative and non-zero, so we went
+ STA X1                 ; past the left edge of the screen, so clip X1 to the
+                        ; x-coordinate of the left edge of the screen
+
+ CLC                    ; The line does fit on-screen, so clear the C flag to
+                        ; indicate success
+
+ RTS                    ; Return from the subroutine
 
 .ED1
 
- LDA #0
+ LDA #0                 ; Set the Y-th byte of the LSO block to 0
  STA LSO,Y
- SEC
- RTS
+
+ SEC                    ; The line does not fit on the screen, so set the C flag
+                        ; to indicate this result
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: CHKON
+;       Type: Subroutine
+;   Category: Drawing circles
+;    Summary: Check whether any part of a circle appears on the extended screen
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   K                   The circle's radius
+;
+;   K3(1 0)             Pixel x-coordinate of the centre of the circle
+;
+;   K4(1 0)             Pixel y-coordinate of the centre of the circle
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              Clear if any part of the circle appears on-screen, set
+;                       if none of the circle appears on-screen
+;
+;   (A X)               Minimum y-coordinate of the circle on-screen (i.e. the
+;                       y-coordinate of the top edge of the circle)
+;
+;   P(2 1)              Maximum y-coordinate of the circle on-screen (i.e. the
+;                       y-coordinate of the bottom edge of the circle)
+;
+; ******************************************************************************
 
 .CHKON
 
- LDA K3
+ LDA K3                 ; Set A = K3 + K
  CLC
  ADC K
- LDA K3+1
- ADC #0
- BMI PL21
- LDA K3
+
+ LDA K3+1               ; Set A = K3+1 + 0 + any carry from above, so this
+ ADC #0                 ; effectively sets A to the high byte of K3(1 0) + K:
+                        ;
+                        ;   (A ?) = K3(1 0) + K
+                        ;
+                        ; so A is the high byte of the x-coordinate of the right
+                        ; edge of the circle
+
+ BMI PL21               ; If A is negative then the right edge of the circle is
+                        ; to the left of the screen, so jump to PL21 to set the
+                        ; C flag and return from the subroutine, as the whole
+                        ; circle is off-screen to the left
+
+ LDA K3                 ; Set A = K3 - K
  SEC
  SBC K
- LDA K3+1
- SBC #0
- BMI PL31
- BNE PL21
+
+ LDA K3+1               ; Set A = K3+1 - 0 - any carry from above, so this
+ SBC #0                 ; effectively sets A to the high byte of K3(1 0) - K:
+                        ;
+                        ;   (A ?) = K3(1 0) - K
+                        ;
+                        ; so A is the high byte of the x-coordinate of the left
+                        ; edge of the circle
+
+ BMI PL31               ; If A is negative then the left edge of the circle is
+                        ; to the left of the screen, and we already know the
+                        ; right edge is either on-screen or off-screen to the
+                        ; right, so skip to PL31 to move on to the y-coordinate
+                        ; checks, as at least part of the circle is on-screen in
+                        ; terms of the x-axis
+
+ BNE PL21               ; If A is non-zero, then the left edge of the circle is
+                        ; to the right of the screen, so jump to PL21 to set the
+                        ; C flag and return from the subroutine, as the whole
+                        ; circle is off-screen to the right
 
 .PL31
 
- LDA K4
+ LDA K4                 ; Set P+1 = K4 + K
  CLC
  ADC K
  STA P+1
- LDA K4+1
- ADC #0
- BMI PL21
- STA P+2
- LDA K4
+
+ LDA K4+1               ; Set A = K4+1 + 0 + any carry from above, so this
+ ADC #0                 ; does the following:
+                        ;
+                        ;   (A P+1) = K4(1 0) + K
+                        ;
+                        ; so A is the high byte of the y-coordinate of the
+                        ; bottom edge of the circle
+
+ BMI PL21               ; If A is negative then the bottom edge of the circle is
+                        ; above the top of the screen, so jump to PL21 to set
+                        ; the C flag and return from the subroutine, as the
+                        ; whole circle is off-screen to the top
+
+ STA P+2                ; Store the high byte in P+2, so now we have:
+                        ;
+                        ;   P(2 1) = K4(1 0) + K
+                        ;
+                        ; i.e. the maximum y-coordinate of the circle on-screen
+                        ; (which we return)
+
+ LDA K4                 ; Set X = K4 - K
  SEC
  SBC K
  TAX
- LDA K4+1
- SBC #0
- BMI PL44
- BNE PL21
- CPX Yx2M1
- RTS
+
+ LDA K4+1               ; Set A = K4+1 - 0 - any carry from above, so this
+ SBC #0                 ; does the following:
+                        ;
+                        ;   (A X) = K4(1 0) - K
+                        ;
+                        ; so A is the high byte of the y-coordinate of the top
+                        ; edge of the circle
+
+ BMI PL44               ; If A is negative then the top edge of the circle is
+                        ; above the top of the screen, and we already know the
+                        ; bottom edge is either on-screen or below the bottom
+                        ; of the screen, so skip to PL44 to clear the C flag and
+                        ; return from the subroutine using a tail call, as part
+                        ; of the circle definitely appears on-screen
+
+ BNE PL21               ; If A is non-zero, then the top edge of the circle is
+                        ; below the bottom of the screen, so jump to PL21 to set
+                        ; the C flag and return from the subroutine, as the
+                        ; whole circle is off-screen to the bottom
+
+ CPX Yx2M1              ; If we get here then A is zero, which means the top
+                        ; edge of the circle is within the screen boundary, so
+                        ; now we need to check whether it is in the space view
+                        ; (in which case it is on-screen) or the dashboard (in
+                        ; which case the top of the circle is hidden by the
+                        ; dashboard, so the circle isn't on-screen). We do this
+                        ; by checking the low byte of the result in X against
+                        ; Yx2M1, and returning the C flag from this comparison.
+                        ; The value in Yx2M1 is the y-coordinate of the bottom
+                        ; pixel row of the space view, so this does the
+                        ; following:
+                        ;
+                        ;   * The C flag is set if coordinate (A X) is below the
+                        ;     bottom row of the space view, i.e. the top edge of
+                        ;     the circle is hidden by the dashboard
+                        ;
+                        ;   * The C flag is clear if coordinate (A X) is above
+                        ;     the bottom row of the space view, i.e. the top
+                        ;     edge of the circle is on-screen
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: PL21
+;       Type: Subroutine
+;   Category: Drawing planets
+;    Summary: Return from a planet/sun-drawing routine with a failure flag
+;
+; ------------------------------------------------------------------------------
+;
+; Set the C flag and return from the subroutine. This is used to return from a
+; planet- or sun-drawing routine with the C flag indicating an overflow in the
+; calculation.
+;
+; ******************************************************************************
 
 .PL21
 
- SEC
- RTS
+ SEC                    ; Set the C flag to indicate an overflow
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: PLS6
+;       Type: Subroutine
+;   Category: Drawing planets
+;    Summary: Calculate (X K) = (A P+1 P) / (z_sign z_hi z_lo)
+;
+; ------------------------------------------------------------------------------
+;
+; Calculate the following:
+;
+;   (X K) = (A P+1 P) / (z_sign z_hi z_lo)
+;
+; returning an overflow in the C flag if the result is >= 1024.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   INWK                The planet or sun's ship data block
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              Set if the result >= 1024, clear otherwise
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   PL44                Clear the C flag and return from the subroutine
+;
+;   PL6                 Contains an RTS
+;
+; ******************************************************************************
 
 .PLS6
 
- JSR DVID3B2
- LDA K+3
- AND #127
+ JSR DVID3B2            ; Call DVID3B2 to calculate:
+                        ;
+                        ;   K(3 2 1 0) = (A P+1 P) / (z_sign z_hi z_lo)
+
+ LDA K+3                ; Set A = |K+3| OR K+2
+ AND #%01111111
  ORA K+2
- BNE PL21
- LDX K+1
- CPX #4
- BCS PL6
- LDA K+3
-;CLC 
- BPL PL6
- LDA K
- EOR #$FF
- ADC #1
- STA K
- TXA
- EOR #$FF
- ADC #0
+
+ BNE PL21               ; If A is non-zero then the two high bytes of K(3 2 1 0)
+                        ; are non-zero, so jump to PL21 to set the C flag and
+                        ; return from the subroutine
+
+                        ; We can now just consider K(1 0), as we know the top
+                        ; two bytes of K(3 2 1 0) are both 0
+
+ LDX K+1                ; Set X = K+1, so now (X K) contains the result in
+                        ; K(1 0), which is the format we want to return the
+                        ; result in
+
+ CPX #4                 ; If the high byte of K(1 0) >= 4 then the result is
+ BCS PL6                ; >= 1024, so return from the subroutine with the C flag
+                        ; set to indicate an overflow (as PL6 contains an RTS)
+
+ LDA K+3                ; Fetch the sign of the result from K+3 (which we know
+                        ; has zeroes in bits 0-6, so this just fetches the sign)
+
+;CLC                    ; This instruction is commented out in the original
+                        ; source. It would have no effect as we know the C flag
+                        ; is already clear, as we skipped past the BCS above
+
+ BPL PL6                ; If the sign bit is clear and the result is positive,
+                        ; then the result is already correct, so return from
+                        ; the subroutine with the C flag clear to indicate
+                        ; success (as PL6 contains an RTS)
+
+ LDA K                  ; Otherwise we need to negate the result, which we do
+ EOR #%11111111         ; using two's complement, starting with the low byte:
+ ADC #1                 ;
+ STA K                  ;   K = ~K + 1
+
+ TXA                    ; And then the high byte:
+ EOR #%11111111         ;
+ ADC #0                 ;   X = ~X
  TAX
 
 .PL44
 
- CLC
+ CLC                    ; Clear the C flag to indicate success
 
 .PL6
 
- RTS
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: YESNO
+;       Type: Subroutine
+;   Category: Keyboard
+;    Summary: Wait until either "Y" or "N" is pressed
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              Set if "Y" was pressed, clear if "N" was pressed
+;
+; ******************************************************************************
 
 .YESNO
 
- JSR t
- CMP #'Y'
- BEQ PL6
- CMP #'N'
- BNE YESNO
- CLC
- RTS
+ JSR t                  ; Scan the keyboard until a key is pressed, returning
+                        ; the ASCII code in A and X
+
+ CMP #'Y'               ; If "Y" was pressed, return from the subroutine with
+ BEQ PL6                ; the C flag set (as the CMP sets the C flag, and PL6
+                        ; contains an RTS)
+
+ CMP #'N'               ; If "N" was not pressed, loop back to keep scanning
+ BNE YESNO              ; for key presses
+
+ CLC                    ; Clear the C flag
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: TT17
+;       Type: Subroutine
+;   Category: Keyboard
+;    Summary: Scan the keyboard for cursor key or joystick movement
+;
+; ------------------------------------------------------------------------------
+;
+; Scan the keyboard and joystick for cursor key or stick movement, and return
+; the result as deltas (changes) in x- and y-coordinates as follows:
+;
+;   * For joystick, X and Y are integers between -2 and +2 depending on how far
+;     the stick has moved
+;
+;   * For keyboard, X and Y are integers between -1 and +1 depending on which
+;     keys are pressed
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   A                   The key pressed, if the arrow keys were used
+;
+;   X                   Change in the x-coordinate according to the cursor keys
+;                       being pressed or joystick movement, as an integer (see
+;                       above)
+;
+;   Y                   Change in the y-coordinate according to the cursor keys
+;                       being pressed or joystick movement, as an integer (see
+;                       above)
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   TJ1                 Check for cursor key presses and return the combined
+;                       deltas for the digital joystick and cursor keys (Master
+;                       Compact only)
+;
+; ******************************************************************************
 
 .TT17
 
- LDA QQ11
- BNE TT17afterall
- JSR DOKEY
- TXA
- RTS
+ LDA QQ11               ; If this not the space view, skip the following three
+ BNE TT17afterall       ; instructions to move onto the SHIFT key logic
+
+ JSR DOKEY              ; This is the space view, so scan the keyboard for
+                        ; flight controls and pause keys, (or the equivalent on
+                        ; joystick) and update the key logger, setting KL to the
+                        ; key pressed
+
+ TXA                    ; Transfer the value of the key pressed from X to A
+
+ RTS                    ; Return from the subroutine
 
 .TT17afterall
 
- JSR DOKEY
- LDA JSTK
- BEQ TJ1
- LDA JSTY
- JSR TJS1
- TAY
- LDA JSTX
- EOR #$FF
- JSR TJS1
- TAX
+ JSR DOKEY              ; Scan the keyboard for flight controls and pause keys,
+                        ; (or the equivalent on joystick) and update the key
+                        ; logger, setting KL to the key pressed
+
+ LDA JSTK               ; If the joystick is not configured, jump down to TJ1,
+ BEQ TJ1                ; otherwise we move the cursor with the joystick
+
+ LDA JSTY               ; Fetch the joystick pitch, ranging from 1 to 255 with
+                        ; 128 as the centre point
+
+ JSR TJS1               ; Call TJS1 just below to set A to a value between -4
+                        ; and +4 depending on the joystick pitch value (moving
+                        ; the stick up and down)
+
+ TAY                    ; Copy the result into Y
+
+ LDA JSTX               ; Fetch the joystick roll, ranging from 1 to 255 with
+                        ; 128 as the centre point
+
+ EOR #$FF               ; Flip the sign so A = -JSTX, because the joystick roll
+                        ; works in the opposite way to moving a cursor on-screen
+                        ; in terms of left and right
+
+ JSR TJS1               ; Call TJS1 just below to set A to a value between -4
+                        ; and +4 depending on the joystick roll value (moving
+                        ; the stick sideways)
+
+ TAX                    ; Copy A to X, so X contains the joystick roll value
 
 IF _SOURCE_DISK_CODE_FILES
 
- LDA $80
+ LDA $80                ; ???
  RTS
  LDA $85
  BIT $86
@@ -18206,10 +20318,12 @@ IF _IB_DISK
 
 ENDIF
 
- LDA thiskey
- LDX #0
- LDY #0
- CMP #8
+ LDA thiskey            ; Set A to the value of thiskey (the key pressed)
+
+ LDX #0                 ; Set the initial values for the results, X = Y = 0,
+ LDY #0                 ; which we now increase or decrease appropriately
+
+ CMP #8                 ; ???
 
 IF _IB_DISK
 
@@ -18257,14 +20371,33 @@ ENDIF
 
 .TJS1
 
+                        ; This routine calculates the following:
+                        ;
+                        ;   A = round(A / 16) - 4
+                        ;
+                        ; This set A to a value between -4 and +4, given an
+                        ; initial value ranging from 1 to 255 with 128 as
+                        ; the centre point
+
+ LSR A                  ; Set A = A / 16
+ LSR A                  ;
+ LSR A                  ; and C contains the last bit to be shifted out
  LSR A
  LSR A
- LSR A
- LSR A
- LSR A
- ADC #0
- SBC #3
- RTS
+
+ ADC #0                 ; If that last bit was a 1, this increments A, so
+                        ; this effectively implements a rounding function,
+                        ; where 0.5 and above get rounded up
+
+ SBC #3                 ; The addition will not overflow, so the C flag is
+                        ; clear at this point, so this performs:
+                        ;
+                        ;   A = A - 3 - (1 - C)
+                        ;     = A - 3 - (1 - 0)
+                        ;     = A - 3 - 1
+                        ;     = A - 4
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;

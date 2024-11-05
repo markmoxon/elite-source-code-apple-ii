@@ -21121,7 +21121,10 @@ Saving file '3-assembled-output/ELTD.bin'
      75F3   60         RTS
 .msbpars
      75F4   04
-     75F5   00 00 00 00
+     75F5   00
+     75F6   00
+     75F7   00
+     75F8   00
 .PROJ
      75F9   A5 0C      LDA &0C
      75FB   85 31      STA &31
