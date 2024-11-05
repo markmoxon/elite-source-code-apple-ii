@@ -208,9 +208,11 @@ ENDIF
 
 ; ******************************************
 
- ORG $0002
+ ORG $0000
 
 .ZP
+
+ SKIP 2                 ; Unused
 
 .RAND
 
@@ -16856,7 +16858,7 @@ ENDIF
 ;       Name: SWAPPZERO
 ;       Type: Subroutine
 ;   Category: Utility routines
-;    Summary: Aroutine that swaps bytes in and out of zero page
+;    Summary: A routine that swaps bytes in and out of zero page
 ;
 ; ******************************************************************************
 
@@ -16867,10 +16869,10 @@ ENDIF
 
 .SWPZL
 
- LDA 0,X                ; ???
+ LDA ZP,X               ; ???
  LDY ZPSTORE,X
  STA ZPSTORE,X
- STY 0,X
+ STY ZP,X
 
  INX                    ; Increment the loop counter
 
@@ -20427,569 +20429,1542 @@ ENDIF
 
  LOAD_F% = LOAD% + P% - CODE%
 
-;NOSPRITES
-;SET L1
+; ******************************************************************************
+;
+;       Name: KS3
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Set the SLSP ship line heap pointer after shuffling ship slots
+;
+; ------------------------------------------------------------------------------
+;
+; The final part of the KILLSHP routine, called after we have shuffled the ship
+; slots and sorted out our missiles. This simply sets SLSP to the new bottom of
+; the ship line heap.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   P(1 0)              Points to the ship line heap of the ship in the last
+;                       occupied slot (i.e. it points to the bottom of the
+;                       descending heap)
+;
+; ******************************************************************************
 
 .KS3
 
- LDA P
- STA SLSP
- LDA P+1
+ LDA P                  ; After shuffling the ship slots, P(1 0) will point to
+ STA SLSP               ; the new bottom of the ship line heap, so store this in
+ LDA P+1                ; SLSP(1 0), which stores the bottom of the heap
  STA SLSP+1
- RTS
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: KS1
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Remove the current ship from our local bubble of universe
+;
+; ------------------------------------------------------------------------------
+;
+; Part 12 of the main flight loop calls this routine to remove the ship that is
+; currently being analysed by the flight loop. Once the ship is removed, it
+; jumps back to MAL1 to rejoin the main flight loop, with X pointing to the
+; same slot that we just cleared (and which now contains the next ship in the
+; local bubble of universe).
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   XX0                 The address of the blueprint for this ship
+;
+;   INF                 The address of the data block for this ship
+;
+; ******************************************************************************
 
 .KS1
 
- LDX XSAV
- JSR KILLSHP
- LDX XSAV
- JMP MAL1
+ LDX XSAV               ; Store the current ship's slot number in XSAV
+
+ JSR KILLSHP            ; Call KILLSHP to remove the ship in slot X from our
+                        ; local bubble of universe
+
+ LDX XSAV               ; Restore the current ship's slot number from XSAV,
+                        ; which now points to the next ship in the bubble
+
+ JMP MAL1               ; Jump to MAL1 to rejoin the main flight loop at the
+                        ; start of the ship analysis loop
+
+; ******************************************************************************
+;
+;       Name: KS4
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Remove the space station and replace it with the sun
+;
+; ******************************************************************************
 
 .KS4
 
- JSR ZINF
- JSR FLFLLS
- STA FRIN+1
- STA SSPR
- JSR SPBLB
- LDA #6
+ JSR ZINF               ; Call ZINF to reset the INWK ship workspace
+
+ JSR FLFLLS             ; Reset the LSO block, returns with A = 0
+
+ STA FRIN+1             ; Set the second slot in the FRIN table to 0, which
+                        ; sets this slot to empty, so when we call NWSHP below
+                        ; the new sun that gets created will go into FRIN+1
+
+ STA SSPR               ; Set the "space station present" flag to 0, as we are
+                        ; no longer in the space station's safe zone
+
+ JSR SPBLB              ; Call SPBLB to redraw the space station bulb, which
+                        ; will erase it from the dashboard
+
+ LDA #6                 ; Set the sun's y_sign to 6
  STA INWK+5
- LDA #$81
- JMP NWSHP
+
+ LDA #129               ; Set A = 129, the ship type for the sun
+
+ JMP NWSHP              ; Call NWSHP to set up the sun's data block and add it
+                        ; to FRIN, where it will get put in the second slot as
+                        ; we just cleared out the second slot, and the first
+                        ; slot is already taken by the planet
+
+; ******************************************************************************
+;
+;       Name: KS2
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Check the local bubble for missiles with target lock
+;
+; ------------------------------------------------------------------------------
+;
+; Check the local bubble of universe to see if there are any missiles with
+; target lock in the vicinity. If there are, then check their targets; if we
+; just removed their target in the KILLSHP routine, then switch off their AI so
+; they just drift in space, otherwise update their targets to reflect the newly
+; shuffled slot numbers.
+;
+; This is called from KILLSHP once the slots have been shuffled down, following
+; the removal of a ship.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   XX4                 The slot number of the ship we removed just before
+;                       calling this routine
+;
+; ******************************************************************************
 
 .KS2
 
- LDX #$FF
+ LDX #$FF               ; We want to go through the ships in our local bubble
+                        ; and pick out all the missiles, so set X to $FF to
+                        ; use as a counter
 
 .KSL4
 
- INX
- LDA FRIN,X
- BEQ KS3
- CMP #MSL
- BNE KSL4
- TXA
- ASL A
- TAY
+ INX                    ; Increment the counter (so it starts at 0 on the first
+                        ; iteration)
+
+ LDA FRIN,X             ; If slot X is empty then we have worked our way through
+ BEQ KS3                ; all the slots, so jump to KS3 to stop looking
+
+ CMP #MSL               ; If the slot does not contain a missile, loop back to
+ BNE KSL4               ; KSL4 to check the next slot
+
+                        ; We have found a slot containing a missile, so now we
+                        ; want to check whether it has target lock
+
+ TXA                    ; Set Y = X * 2 and fetch the Y-th address from UNIV
+ ASL A                  ; and store it in SC and SC+1 - in other words, set
+ TAY                    ; SC(1 0) to point to the missile's ship data block
  LDA UNIV,Y
  STA SC
  LDA UNIV+1,Y
  STA SC+1
- LDY #32
+
+ LDY #32                ; Fetch byte #32 from the missile's ship data (AI)
  LDA (SC),Y
- BPL KSL4
- AND #$7F
- LSR A
- CMP XX4
- BCC KSL4
- BEQ KS6
- SBC #1
- ASL A
- ORA #128
- STA (SC),Y
- BNE KSL4
+
+ BPL KSL4               ; If bit 7 of byte #32 is clear, then the missile is
+                        ; dumb and has no AI, so loop back to KSL4 to move on
+                        ; to the next slot
+
+ AND #%01111111         ; Otherwise this missile has AI, so clear bit 7 and
+ LSR A                  ; shift right to set the C flag to the missile's "is
+                        ; locked" flag, and A to the target's slot number
+
+ CMP XX4                ; If this missile's target is less than XX4, then the
+ BCC KSL4               ; target's slot isn't being shuffled down, so jump to
+                        ; KSL4 to move on to the next slot
+
+ BEQ KS6                ; If this missile was locked onto the ship that we just
+                        ; removed in KILLSHP, jump to KS6 to stop the missile
+                        ; from continuing to hunt it down
+
+ SBC #1                 ; Otherwise this missile is locked and has AI enabled,
+                        ; and its target will have moved down a slot, so
+                        ; subtract 1 from the target number (we know C is set
+                        ; from the BCC above)
+
+ ASL A                  ; Shift the target number left by 1, so it's in bits
+                        ; 1-6 once again, and also set bit 0 to 1, as the C
+                        ; flag is still set, so this makes sure the missile is
+                        ; still set to being locked
+
+ ORA #%10000000         ; Set bit 7, so the missile's AI is enabled
+
+ STA (SC),Y             ; Update the missile's AI flag to the value in A
+
+ BNE KSL4               ; Loop back to KSL4 to move on to the next slot (this
+                        ; BNE is effectively a JMP as A will never be zero)
 
 .KS6
 
- LDA #0
- STA (SC),Y
- BEQ KSL4
+ LDA #0                 ; The missile's target lock just got removed, so set the
+ STA (SC),Y             ; AI flag to 0 to make it dumb and not locked
+
+ BEQ KSL4               ; Loop back to KSL4 to move on to the next slot (this
+                        ; BEQ is effectively a JMP as A is always zero)
+
+; ******************************************************************************
+;
+;       Name: KILLSHP
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Remove a ship from our local bubble of universe
+;
+; ------------------------------------------------------------------------------
+;
+; Remove the ship in slot X from our local bubble of universe. This happens
+; when we kill a ship, collide with a ship and destroy it, or when a ship moves
+; outside our local bubble.
+;
+; We also use this routine when we move out of range of the space station, in
+; which case we replace it with the sun.
+;
+; When removing a ship, this creates a gap in the ship slots at FRIN, so we
+; shuffle all the later slots down to close the gap. We also shuffle the ship
+; data blocks at K% and ship line heap at WP, to reclaim all the memory that
+; the removed ship used to occupy.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   X                   The slot number of the ship to remove
+;
+;   XX0                 The address of the blueprint for the ship to remove
+;
+;   INF                 The address of the data block for the ship to remove
+;
+; ******************************************************************************
 
 .KILLSHP
 
- STX XX4
- LDA MSTG
- CMP XX4
- BNE KS5
- LDY #GREEN
- JSR ABORT
- LDA #200
- JSR MESS
+ STX XX4                ; Store the slot number of the ship to remove in XX4
+
+ LDA MSTG               ; Check whether this slot matches the slot number in
+ CMP XX4                ; MSTG, which is the target of our missile lock
+
+ BNE KS5                ; If our missile is not locked on this ship, jump to KS5
+
+ LDY #GREEN             ; Otherwise we need to remove our missile lock, so call
+ JSR ABORT              ; ABORT to disarm the missile and update the missile
+                        ; indicators on the dashboard to green (Y = #GREEN)
+
+ LDA #200               ; Print recursive token 40 ("TARGET LOST") as an
+ JSR MESS               ; in-flight message
 
 .KS5
 
- LDY XX4
- LDX FRIN,Y
- CPX #SST
- BEQ KS4
- CPX #CON
- BNE lll
- LDA TP
- ORA #2
- STA TP
- INC TALLY+1  ; --BT
+ LDY XX4                ; Restore the slot number of the ship to remove into Y
+
+ LDX FRIN,Y             ; Fetch the contents of the slot, which contains the
+                        ; ship type
+
+ CPX #SST               ; If this is the space station, then jump to KS4 to
+ BEQ KS4                ; replace the space station with the sun
+
+ CPX #CON               ; Did we just kill the Constrictor from mission 1? If
+ BNE lll                ; not, jump to lll
+
+ LDA TP                 ; We just killed the Constrictor from mission 1, so set
+ ORA #%00000010         ; bit 1 of TP to indicate that we have successfully
+ STA TP                 ; completed mission 1
+
+ INC TALLY+1            ; Award 256 kill points for killing the Constrictor
 
 .lll
 
- CPX #HER
- BEQ blacksuspenders
- CPX #JL
- BCC KS7
- CPX #JH
- BCS KS7
+ CPX #HER               ; Did we just kill a rock hermit? If we did, jump to
+ BEQ blacksuspenders    ; blacksuspenders to decrease the junk count
+
+ CPX #JL                ; If JL <= X < JH, i.e. the type of ship we killed in X
+ BCC KS7                ; is junk (escape pod, alloy plate, cargo canister,
+ CPX #JH                ; asteroid, splinter, Shuttle or Transporter), then keep
+ BCS KS7                ; going, otherwise jump to KS7
 
 .blacksuspenders
 
- DEC JUNK
+ DEC JUNK               ; We just killed junk, so decrease the junk counter
 
 .KS7
 
- DEC MANY,X
- LDX XX4
- LDY #5
- LDA (XX0),Y
- LDY #33
- CLC
+ DEC MANY,X             ; Decrease the number of this type of ship in our little
+                        ; bubble, which is stored in MANY+X (where X is the ship
+                        ; type)
+
+ LDX XX4                ; Restore the slot number of the ship to remove into X
+
+                        ; We now want to remove this ship and reclaim all the
+                        ; memory that it uses. Removing the ship will leave a
+                        ; gap in three places, which we need to close up:
+                        ;
+                        ;   * The ship slots in FRIN
+                        ;
+                        ;   * The ship data blocks in K%
+                        ;
+                        ;   * The descending ship line heap at WP down
+                        ;
+                        ; The rest of this routine closes up these gaps by
+                        ; looping through all the occupied ship slots after the
+                        ; slot we are removing, one by one, and shuffling each
+                        ; ship's slot, data block and line heap down to close
+                        ; up the gaps left by the removed ship. As part of this,
+                        ; we have to make sure we update any address pointers
+                        ; so they point to the newly shuffled data blocks and
+                        ; line heaps
+                        ;
+                        ; In the following, when shuffling a ship's data down
+                        ; into the preceding empty slot, we call the ship that
+                        ; we are shuffling down the "source", and we call the
+                        ; empty slot we are shuffling it into the "destination"
+                        ;
+                        ; Before we start looping through the ships we need to
+                        ; shuffle down, we need to set up some variables to
+                        ; point to the source and destination line heaps
+
+ LDY #5                 ; Fetch byte #5 of the removed ship's blueprint into A,
+ LDA (XX0),Y            ; which gives the ship's maximum heap size for the ship
+                        ; we are removing (i.e. the size of the gap in the heap
+                        ; created by the ship removal)
+
+                        ; INF currently contains the ship data for the ship we
+                        ; are removing, and INF(34 33) contains the address of
+                        ; the bottom of the ship's heap, so we can calculate
+                        ; the address of the top of the heap by adding the heap
+                        ; size to this address
+
+ LDY #33                ; First we add A and the address in INF+33, to get the
+ CLC                    ; low byte of the top of the heap, which we store in P
  ADC (INF),Y
  STA P
- INY
- LDA (INF),Y
- ADC #0
- STA P+1
+
+ INY                    ; And next we add A and the address in INF+34, with any
+ LDA (INF),Y            ; carry from the previous addition, to get the high byte
+ ADC #0                 ; of the top of the heap, which we store in P+1, so
+ STA P+1                ; P(1 0) points to the top of this ship's heap
+
+                        ; Now, we're ready to start looping through the ships
+                        ; we want to move, moving the slots, data blocks and
+                        ; line heap from the source to the destination. In the
+                        ; following, we set up SC to point to the source data,
+                        ; and INF (which currently points to the removed ship's
+                        ; data that we can now overwrite) points to the
+                        ; destination
+                        ;
+                        ; So P(1 0) now points to the top of the line heap for
+                        ; the destination
 
 .KSL1
 
- INX
- LDA FRIN,X
- STA FRIN-1,X
- BNE P%+5
- JMP KS2
- ASL A
- TAY
- LDA XX21-2,Y
- STA SC
+ INX                    ; On entry, X points to the empty slot we want to
+                        ; shuffle the next ship into (the destination), so
+                        ; this increment points X to the next slot - i.e. the
+                        ; source slot we want to shuffle down
+
+ LDA FRIN,X             ; Copy the contents of the source slot into the
+ STA FRIN-1,X           ; destination slot
+
+ BNE P%+5               ; If the slot we just shuffled down is not empty, then
+                        ; skip the following instruction
+
+ JMP KS2                ; The source slot is empty and we are done shuffling,
+                        ; so jump to KS2 to move on to processing missiles
+
+ ASL A                  ; Otherwise we have a source ship to shuffle down into
+ TAY                    ; the destination, so set Y = A * 2 so it can act as an
+                        ; index into the two-byte ship blueprint lookup table
+                        ; at XX21 for the source ship
+
+ LDA XX21-2,Y           ; Set SC(0 1) to point to the blueprint data for the
+ STA SC                 ; source ship
  LDA XX21-1,Y
  STA SC+1
- LDY #5
- LDA (SC),Y
+
+ LDY #5                 ; Fetch blueprint byte #5 for the source ship, which
+ LDA (SC),Y             ; gives us its maximum heap size, and store it in T
  STA T
- LDA P
+
+                        ; We now subtract T from P(1 0), so P(1 0) will point to
+                        ; the bottom of the line heap for the destination
+                        ; (which we will use later when closing up the gap in
+                        ; the heap space)
+
+ LDA P                  ; First, we subtract the low bytes
  SEC
  SBC T
  STA P
- LDA P+1
- SBC #0
- STA P+1
- TXA
- ASL A
- TAY
- LDA UNIV,Y
- STA SC
+
+ LDA P+1                ; And then we do the high bytes, for which we subtract
+ SBC #0                 ; 0 to include any carry, so this is effectively doing
+ STA P+1                ; P(1 0) = P(1 0) - (0 T)
+
+                        ; Next, we want to set SC(1 0) to point to the source
+                        ; ship's data block
+
+ TXA                    ; Set Y = X * 2 so it can act as an index into the
+ ASL A                  ; two-byte lookup table at UNIV, which contains the
+ TAY                    ; addresses of the ship data blocks. In this case we are
+                        ; multiplying X by 2, and X contains the source ship's
+                        ; slot number so Y is now an index for the source ship's
+                        ; entry in UNIV
+
+ LDA UNIV,Y             ; Set SC(1 0) to the address of the data block for the
+ STA SC                 ; source ship
  LDA UNIV+1,Y
  STA SC+1
- LDY #36
- LDA (SC),Y
- STA (INF),Y
- DEY
- LDA (SC),Y
- STA (INF),Y
- DEY
- LDA (SC),Y
- STA K+1
- LDA P+1
- STA (INF),Y
- DEY
- LDA (SC),Y
- STA K
- LDA P
- STA (INF),Y
- DEY
 
-.KSL2 
+                        ; We have now set up our variables as follows:
+                        ;
+                        ;   SC(1 0) points to the source's ship data block
+                        ;
+                        ;   INF(1 0) points to the destination's ship data block
+                        ;
+                        ;   P(1 0) points to the destination's line heap
+                        ;
+                        ; so let's start copying data from the source to the
+                        ; destination
 
- LDA (SC),Y
- STA (INF),Y
- DEY
- BPL KSL2
- LDA SC
- STA INF
- LDA SC+1
+ LDY #36                ; We are going to be using Y as a counter for the 37
+                        ; bytes of ship data we want to copy from the source
+                        ; to the destination, so we set it to 36 to start things
+                        ; off, and will decrement Y for each byte we copy
+
+ LDA (SC),Y             ; Fetch byte #36 of the source's ship data block at SC,
+ STA (INF),Y            ; and store it in byte #36 of the destination's block
+ DEY                    ; at INF, so that's the ship's NEWB flags copied from
+                        ; the source to the destination. One down, quite a few
+                        ; to go...
+
+ LDA (SC),Y             ; Fetch byte #35 of the source's ship data block at SC,
+ STA (INF),Y            ; and store it in byte #35 of the destination's block
+                        ; at INF, so that's the ship's energy copied from the
+                        ; source to the destination
+
+ DEY                    ; Fetch byte #34 of the source ship, which is the
+ LDA (SC),Y             ; high byte of the source ship's line heap, and store
+ STA K+1                ; in K+1
+
+ LDA P+1                ; Set the low byte of the destination's heap pointer
+ STA (INF),Y            ; to P+1
+
+ DEY                    ; Fetch byte #33 of the source ship, which is the
+ LDA (SC),Y             ; low byte of the source ship's heap, and store in K
+ STA K                  ; so now we have the following:
+                        ;
+                        ;   K(1 0) points to the source's line heap
+
+ LDA P                  ; Set the low byte of the destination's heap pointer
+ STA (INF),Y            ; to P, so now the destination's heap pointer is to
+                        ; P(1 0), so that's the heap pointer in bytes #33 and
+                        ; #34 done
+
+ DEY                    ; Luckily, we can just copy the rest of the source's
+                        ; ship data block into the destination, as there are no
+                        ; more address pointers, so first we decrement our
+                        ; counter in Y to point to the next byte (the AI flag)
+                        ; in byte #32) and then start looping
+
+.KSL2
+
+ LDA (SC),Y             ; Copy the Y-th byte of the source to the Y-th byte of
+ STA (INF),Y            ; the destination
+
+ DEY                    ; Decrement the counter
+
+ BPL KSL2               ; Loop back to KSL2 to copy the next byte until we have
+                        ; copied the whole block
+
+                        ; We have now shuffled the ship's slot and the ship's
+                        ; data block, so we only have the heap data itself to do
+
+ LDA SC                 ; First, we copy SC into INF, so when we loop round
+ STA INF                ; again, INF will correctly point to the destination for
+ LDA SC+1               ; the next iteration
  STA INF+1
- LDY T
 
+ LDY T                  ; Now we want to move the contents of the heap, as all
+                        ; we did above was to update the pointers, so first
+                        ; we set a counter in Y that is initially set to T
+                        ; (which we set above to the maximum heap size for the
+                        ; source ship)
+                        ;
+                        ; As a reminder, we have already set the following:
+                        ;
+                        ;   K(1 0) points to the source's line heap
+                        ;
+                        ;   P(1 0) points to the destination's line heap
+                        ;
+                        ; so we can move the heap data by simply copying the
+                        ; correct number of bytes from K(1 0) to P(1 0)
 .KSL3
 
- DEY
- LDA (K),Y
- STA (P),Y
- TYA
- BNE KSL3
- BEQ KSL1
+ DEY                    ; Decrement the counter
+
+ LDA (K),Y              ; Copy the Y-th byte of the source heap at K(1 0) to
+ STA (P),Y              ; the destination heap at P(1 0)
+
+ TYA                    ; Loop back to KSL3 to copy the next byte, until we
+ BNE KSL3               ; have done them all
+
+ BEQ KSL1               ; We have now shuffled everything down one slot, so
+                        ; jump back up to KSL1 to see if there is another slot
+                        ; that needs shuffling down (this BEQ is effectively a
+                        ; JMP as A will always be zero)
+
+; ******************************************************************************
+;
+;       Name: THERE
+;       Type: Subroutine
+;   Category: Missions
+;    Summary: Check whether we are in the Constrictor's system in mission 1
+;
+; ------------------------------------------------------------------------------
+;
+; The stolen Constrictor is the target of mission 1. We finally track it down to
+; the Orarra system in the second galaxy, which is at galactic coordinates
+; (144, 33). This routine checks whether we are in this system and sets the C
+; flag accordingly.
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              Set if we are in the Constrictor system, otherwise clear
+;
+; ******************************************************************************
 
 .THERE
 
- LDX GCNT
+ LDX GCNT               ; Set X = GCNT - 1
  DEX
+
+ BNE THEX               ; If X is non-zero (i.e. GCNT is not 1, so we are not in
+                        ; the second galaxy), then jump to THEX
+
+ LDA QQ0                ; Set A = the current system's galactic x-coordinate
+
+ CMP #144               ; If A <> 144 then jump to THEX
  BNE THEX
- LDA QQ0
- CMP #144
- BNE THEX
- LDA QQ1
- CMP #33
- BEQ THEX+1
+
+ LDA QQ1                ; Set A = the current system's galactic y-coordinate
+
+ CMP #33                ; If A = 33 then set the C flag
+
+ BEQ THEX+1             ; If A = 33 then jump to THEX+1, so we return from the
+                        ; subroutine with the C flag set (otherwise we clear the
+                        ; C flag with the next instruction)
 
 .THEX
 
- CLC
- RTS
- \......
+ CLC                    ; Clear the C flag
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: RESET
+;       Type: Subroutine
+;   Category: Start and end
+;    Summary: Reset most variables
+;
+; ------------------------------------------------------------------------------
+;
+; Reset our ship and various controls, recharge shields and energy, and then
+; fall through into RES2 to reset the stardust and the ship workspace at INWK.
+;
+; In this subroutine, this means zero-filling the following locations:
+;
+;   * Pages $9, $A, $B, $C and $D
+;
+;   * BETA to BETA+6, which covers the following:
+;
+;     * BETA, BET1 - Set pitch to 0
+;
+;     * XC, YC - Set text cursor to (0, 0)
+;
+;     * QQ22 - Set hyperspace counters to 0
+;
+;     * ECMA - Turn E.C.M. off
+;
+; It also sets QQ12 to $FF, to indicate we are docked, recharges the shields and
+; energy banks, and then falls through into RES2.
+;
+; ******************************************************************************
 
 .RESET
 
- JSR ZERO
- LDX #6
+ JSR ZERO               ; Reset the ship slots for the local bubble of universe,
+                        ; and various flight and ship status variables
+
+ LDX #6                 ; Set up a counter for zeroing BETA through BETA+6
 
 .SAL3
 
- STA BETA,X
- DEX
- BPL SAL3
- STX JSTGY
- TXA
- STA QQ12
- LDX #2
+ STA BETA,X             ; Zero the X-th byte after BETA
+
+ DEX                    ; Decrement the loop counter
+
+ BPL SAL3               ; Loop back for the next byte to zero
+
+ STX JSTGY              ; X is now negative - i.e. $FF - so this sets JSTGY to
+                        ; $FF to set the joystick Y-channel to the default
+                        ; direction
+
+ TXA                    ; X is now negative - i.e. $FF - so this sets A and QQ12
+ STA QQ12               ; to $FF to indicate we are docked
+
+ LDX #2                 ; We're now going to recharge both shields and the
+                        ; energy bank, which live in the three bytes at FSH,
+                        ; ASH (FSH+1) and ENERGY (FSH+2), so set a loop counter
+                        ; in X for 3 bytes
 
 .REL5
 
- STA FSH,X
- DEX
- BPL REL5
+ STA FSH,X              ; Set the X-th byte of FSH to $FF to charge up that
+                        ; shield/bank
+
+ DEX                    ; Decrement the loop counter
+
+ BPL REL5               ; Loop back to REL5 until we have recharged both shields
+                        ; and the energy bank
+
+                        ; Fall through into RES2 to reset the stardust and ship
+                        ; workspace at INWK
+
+; ******************************************************************************
+;
+;       Name: RES2
+;       Type: Subroutine
+;   Category: Start and end
+;    Summary: Reset a number of flight variables and workspaces
+;
+; ------------------------------------------------------------------------------
+;
+; This is called after we launch from a space station, arrive in a new system
+; after hyperspace, launch an escape pod, or die a cold, lonely death in the
+; depths of space.
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   Y                   Y is set to $FF
+;
+; ******************************************************************************
 
 .RES2
 
-;JSR stopbd
- LDA #NOST
- STA NOSTM
- LDX #$FF
- STX LSX2
- STX LSY2
- STX MSTG
- LDA #128
+;JSR stopbd             ; This instruction is commented out in the original
+                        ; source
+
+ LDA #NOST              ; Reset NOSTM, the number of stardust particles, to the
+ STA NOSTM              ; maximum allowed (20)
+
+ LDX #$FF               ; Reset LSX2 and LSY2, the ball line heaps used by the
+ STX LSX2               ; BLINE routine for drawing circles, to $FF, to set the
+ STX LSY2               ; heap to empty
+
+ STX MSTG               ; Reset MSTG, the missile target, to $FF (no target)
+
+ LDA #128               ; Set the current pitch rate to the mid-point, 128
  STA JSTY
- STA ALP2
- STA BET2
- ASL A
- STA BETA
- STA BET1
- STA ALP2+1
- STA BET2+1
- STA MCNT
-;STA TRIBCT
- LDA #3
+
+ STA ALP2               ; Reset ALP2 (roll sign) and BET2 (pitch sign)
+ STA BET2               ; to negative, i.e. pitch and roll negative
+
+ ASL A                  ; This sets A to 0
+
+ STA BETA               ; Reset BETA (pitch angle alpha) to 0
+
+ STA BET1               ; Reset BET1 (magnitude of the pitch angle) to 0
+
+ STA ALP2+1             ; Reset ALP2+1 (flipped roll sign) and BET2+1 (flipped
+ STA BET2+1             ; pitch sign) to positive, i.e. pitch and roll negative
+
+ STA MCNT               ; Reset MCNT (the main loop counter) to 0
+
+;STA TRIBCT             ; This instruction is commented out in the original
+                        ; source; it is left over from the Commodore 64 version
+                        ; of Elite and would reset the number of Trumbles
+
+ LDA #3                 ; Reset DELTA (speed) to 3
  STA DELTA
- STA ALPHA
- STA ALP1
-;LDA #$10
-;STA COL2 ; <<
- LDA #0
- STA dontclip
- LDA #2*Y-1
- STA Yx2M1
- LDA SSPR
- BEQ P%+5
- JSR SPBLB
- LDA ECMA
- BEQ yu
- JSR ECMOF
+
+ STA ALPHA              ; Reset ALPHA (roll angle alpha) to 3
+
+ STA ALP1               ; Reset ALP1 (magnitude of roll angle alpha) to 3
+
+;LDA #$10               ; These instructions are commented out in the original
+;STA COL2               ; source
+
+ LDA #0                 ; Set dontclip to 0 (though this variable is never used,
+ STA dontclip           ; so this has no effect)
+
+ LDA #2*Y-1             ; Set Yx2M1 to the number of pixel lines in the space
+ STA Yx2M1              ; view
+
+ LDA SSPR               ; Fetch the "space station present" flag, and if we are
+ BEQ P%+5               ; not inside the safe zone, skip the next instruction
+
+ JSR SPBLB              ; Light up the space station bulb on the dashboard
+
+ LDA ECMA               ; Fetch the E.C.M. status flag, and if E.C.M. is off,
+ BEQ yu                 ; skip the next instruction
+
+ JSR ECMOF              ; Turn off the E.C.M. sound
 
 .yu
 
- JSR WPSHPS
- JSR ZERO
- LDA #(LS%MOD 256)
- STA SLSP
- LDA #(LS%DIV 256)
+ JSR WPSHPS             ; Wipe all ships from the scanner
+
+ JSR ZERO               ; Reset the ship slots for the local bubble of universe,
+                        ; and various flight and ship status variables
+
+ LDA #LO(LS%)           ; We have reset the ship line heap, so we now point
+ STA SLSP               ; SLSP to LS% (the byte below the ship blueprints at D%)
+ LDA #HI(LS%)           ; to indicate that the heap is empty
  STA SLSP+1
+
+                        ; Finally, fall through into ZINF to reset the INWK
+                        ; ship workspace
+
+; ******************************************************************************
+;
+;       Name: ZINF
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Reset the INWK workspace and orientation vectors
+;  Deep dive: Orientation vectors
+;
+; ------------------------------------------------------------------------------
+;
+; Zero-fill the INWK ship workspace and reset the orientation vectors, with
+; nosev pointing out of the screen, towards us.
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   Y                   Y is set to $FF
+;
+; ******************************************************************************
 
 .ZINF
 
- LDY #NI%-1
- LDA #0
+ LDY #NI%-1             ; There are NI% bytes in the INWK workspace, so set a
+                        ; counter in Y so we can loop through them
+
+ LDA #0                 ; Set A to 0 so we can zero-fill the workspace
 
 .ZI1
 
- STA INWK,Y
- DEY
- BPL ZI1
- LDA #96
- STA INWK+18
- STA INWK+22
- ORA #128
- STA INWK+14
- RTS
+ STA INWK,Y             ; Zero the Y-th byte of the INWK workspace
+
+ DEY                    ; Decrement the loop counter
+
+ BPL ZI1                ; Loop back for the next byte, ending when we have
+                        ; zero-filled the last byte at INWK, which leaves Y
+                        ; with a value of $FF
+
+                        ; Finally, we reset the orientation vectors as follows:
+                        ;
+                        ;   sidev = (1,  0,  0)
+                        ;   roofv = (0,  1,  0)
+                        ;   nosev = (0,  0, -1)
+                        ;
+                        ; 96 * 256 ($6000) represents 1 in the orientation
+                        ; vectors, while -96 * 256 ($E000) represents -1. We
+                        ; already set the vectors to zero above, so we just
+                        ; need to set up the high bytes of the diagonal values
+                        ; and we're done. The negative nosev makes the ship
+                        ; point towards us, as the z-axis points into the screen
+
+ LDA #96                ; Set A to represent a 1 (in vector terms)
+
+ STA INWK+18            ; Set byte #18 = roofv_y_hi = 96 = 1
+
+ STA INWK+22            ; Set byte #22 = sidev_x_hi = 96 = 1
+
+ ORA #%10000000         ; Flip the sign of A to represent a -1
+
+ STA INWK+14            ; Set byte #14 = nosev_z_hi = -96 = -1
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: msblob
+;       Type: Subroutine
+;   Category: Dashboard
+;    Summary: Display the dashboard's missile indicators in green
+;
+; ------------------------------------------------------------------------------
+;
+; Display the dashboard's missile indicators, with all the missiles reset to
+; green (i.e. not armed or locked).
+;
+; ******************************************************************************
 
 .msblob
 
- LDX #4
+ LDX #4                 ; Set up a loop counter in X to count through all four
+                        ; missile indicators
 
 .ss
 
- CPX NOMSL
- BEQ SAL8
- LDY #BLACK
+ CPX NOMSL              ; If the counter is equal to the number of missiles,
+ BEQ SAL8               ; jump down to SAL8 to draw the remaining missiles, as
+                        ; the rest of them are present and should be drawn in
+                        ; green
+
+ LDY #BLACK             ; Draw the missile indicator at position X in black
  JSR MSBAR
- DEX
- BNE ss
- RTS
+
+ DEX                    ; Decrement the counter to point to the next missile
+
+ BNE ss                 ; Loop back to ss if we still have missiles to draw
+
+ RTS                    ; Return from the subroutine
 
 .SAL8
 
- LDY #GREEN
+ LDY #GREEN             ; Draw the missile indicator at position X in green
  JSR MSBAR
- DEX
- BNE SAL8
- RTS
+
+ DEX                    ; Decrement the counter to point to the next missile
+
+ BNE SAL8               ; Loop back to SAL8 if we still have missiles to draw
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: me2
+;       Type: Subroutine
+;   Category: Flight
+;    Summary: Remove an in-flight message from the space view
+;
+; ******************************************************************************
 
 .me2
 
- LDA QQ11
- BNE clynsneed
- LDA MCH
- JSR MESS
- LDA #0
- STA DLY
- JMP me3
+ LDA QQ11               ; If this is not the space view, jump down to clynsneed
+ BNE clynsneed          ; to skip displaying the in-flight message
+
+ LDA MCH                ; Fetch the token number of the current message into A
+
+ JSR MESS               ; Call MESS to print the token, which will remove it
+                        ; from the screen as printing uses EOR logic
+
+ LDA #0                 ; Set the delay in DLY to 0, so any new in-flight
+ STA DLY                ; messages will be shown instantly
+
+ JMP me3                ; Jump back into the main spawning loop at me3
 
 .clynsneed
 
- JSR CLYNS
- JMP me3
+ JSR CLYNS              ; Clear the bottom three text rows of the upper screen,
+                        ; and move the text cursor to column 1 on row 21, i.e.
+                        ; the start of the top row of the three bottom rows
+
+ JMP me3                ; Jump back into the main spawning loop at me3
+
+; ******************************************************************************
+;
+;       Name: Ze
+;       Type: Subroutine
+;   Category: Universe
+;    Summary: Initialise the INWK workspace to a hostile ship
+;  Deep dive: Fixing ship positions
+;
+; ------------------------------------------------------------------------------
+;
+; Specifically, this routine does the following:
+;
+;   * Reset the INWK ship workspace
+;
+;   * Set the ship to a fair distance away in all axes, in front of us but
+;     randomly up or down, left or right
+;
+;   * Give the ship a 4% chance of having E.C.M.
+;
+;   * Set the ship to hostile, with AI enabled
+;
+; This routine also sets A, X, T1 and the C flag to random values.
+;
+; Note that because this routine uses the value of X returned by DORND, and X
+; contains the value of A returned by the previous call to DORND, this routine
+; does not necessarily set the new ship to a totally random location. See the
+; deep dive on "Fixing ship positions" for details.
+;
+; ******************************************************************************
 
 .Ze
 
- JSR ZINF
- JSR DORND
- STA T1
- AND #128
+ JSR ZINF               ; Call ZINF to reset the INWK ship workspace
+
+ JSR DORND              ; Set A and X to random numbers
+
+ STA T1                 ; Store A in T1
+
+ AND #%10000000         ; Extract the sign of A and store in x_sign
  STA INWK+2
- TXA
- AND #128
+
+ TXA                    ; Extract the sign of X and store in y_sign
+ AND #%10000000
  STA INWK+5
- LDA #25
+
+ LDA #25                ; Set x_hi = y_hi = z_hi = 25, a fair distance away
  STA INWK+1
  STA INWK+4
  STA INWK+7
- TXA
+
+ TXA                    ; Set the C flag if X >= 245 (4% chance)
  CMP #245
- ROL A
- ORA #$C0
- STA INWK+32
+
+ ROL A                  ; Set bit 0 of A to the C flag (i.e. there's a 4%
+                        ; chance of this ship having E.C.M.)
+
+ ORA #%11000000         ; Set bits 6 and 7 of A, so the ship is hostile (bit 6
+                        ; and has AI (bit 7)
+
+ STA INWK+32            ; Store A in the AI flag of this ship
+
+                        ; Fall through into DORND2 to set A, X and the C flag
+                        ; randomly
+
+; ******************************************************************************
+;
+;       Name: DORND
+;       Type: Subroutine
+;   Category: Maths (Arithmetic)
+;    Summary: Generate random numbers
+;  Deep dive: Generating random numbers
+;             Fixing ship positions
+;
+; ------------------------------------------------------------------------------
+;
+; Set A and X to random numbers (though note that X is set to the random number
+; that was returned in A the last time DORND was called).
+;
+; The C and V flags are also set randomly.
+;
+; If we want to generate a repeatable sequence of random numbers, when
+; generating explosion clouds, for example, then we call DORND2 to ensure that
+; the value of the C flag on entry doesn't affect the outcome, as otherwise we
+; might not get the same sequence of numbers if the C flag changes.
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   DORND2              Make sure the C flag doesn't affect the outcome
+;
+; ******************************************************************************
 
 .DORND2
 
- CLC
+ CLC                    ; Clear the C flag so the value of the C flag on entry
+                        ; doesn't affect the outcome
 
 .DORND
 
- LDA RAND
- ROL A
- TAX
- ADC RAND+2
- STA RAND
- STX RAND+2
- LDA RAND+1
- TAX
- ADC RAND+3
- STA RAND+1
- STX RAND+3
- RTS
+ LDA RAND               ; Calculate the next two values f2 and f3 in the feeder
+ ROL A                  ; sequence:
+ TAX                    ;
+ ADC RAND+2             ;   * f2 = (f1 << 1) mod 256 + C flag on entry
+ STA RAND               ;   * f3 = f0 + f2 + (1 if bit 7 of f1 is set)
+ STX RAND+2             ;   * C flag is set according to the f3 calculation
+
+ LDA RAND+1             ; Calculate the next value m2 in the main sequence:
+ TAX                    ;
+ ADC RAND+3             ;   * A = m2 = m0 + m1 + C flag from feeder calculation
+ STA RAND+1             ;   * X = m1
+ STX RAND+3             ;   * C and V flags set according to the m2 calculation
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: Main game loop (Part 1 of 6)
+;       Type: Subroutine
+;   Category: Main loop
+;    Summary: Spawn a trader (a Cobra Mk III, Python, Boa or Anaconda)
+;  Deep dive: Program flow of the main game loop
+;             Ship data blocks
+;
+; ------------------------------------------------------------------------------
+;
+; This is part of the main game loop. This is where the core loop of the game
+; lives, and it's in two parts. The shorter loop (just parts 5 and 6) is
+; iterated when we are docked, while the entire loop from part 1 to 6 iterates
+; if we are in space.
+;
+; This section covers the following:
+;
+;   * Spawn a trader, i.e. a Cobra Mk III, Python, Boa or Anaconda, with a 50%
+;     chance of it having a missile, a 50% chance of it having an E.C.M., a 50%
+;     chance of it docking and being aggressive if attacked, a speed between 16
+;     and 31, and a gentle clockwise roll
+;
+; We call this from within the main loop.
+;
+; ******************************************************************************
 
 .MTT4
 
- JSR DORND
- LSR A
- STA INWK+32
- STA INWK+29
- ROL INWK+31
- AND #31
- ORA #16
+ JSR DORND              ; Set A and X to random numbers
+
+ LSR A                  ; Clear bit 7 of our random number in A and set the C
+                        ; flag to bit 0 of A, which is random
+
+ STA INWK+32            ; Store this in the ship's AI flag, so this ship does
+                        ; not have AI
+
+ STA INWK+29            ; Store A in the ship's roll counter, giving it a
+                        ; clockwise roll (as bit 7 is clear), and a 1 in 127
+                        ; chance of it having no damping
+
+ ROL INWK+31            ; Set bit 0 of the ship's missile count randomly (as the
+                        ; C flag was set), giving the ship either no missiles or
+                        ; one missile
+
+ AND #31                ; Set the ship speed to our random number, set to a
+ ORA #16                ; minimum of 16 and a maximum of 31
  STA INWK+27
- JSR DORND
- BMI nodo
- LDA INWK+32
- ORA #$C0
+
+ JSR DORND              ; Set A and X to random numbers, plus the C flag
+
+ BMI nodo               ; If A is negative (50% chance), jump to nodo to skip
+                        ; the following
+
+                        ; If we get here then we are going to spawn a ship that
+                        ; is minding its own business and trying to dock
+
+ LDA INWK+32            ; Set bits 6 and 7 of the ship's AI flag, to make it
+ ORA #%11000000         ; aggressive if attacked, and enable its AI
  STA INWK+32
- LDX #16
- STX NEWB
+
+ LDX #%00010000         ; Set bit 4 of the ship's NEWB flags, to indicate that
+ STX NEWB               ; this ship is docking
 
 .nodo
 
- AND #2
- ADC #CYL
- CMP #HER
- BEQ TT100
- JSR NWSHP ; trader
+ AND #2                 ; If we jumped here with a random value of A from the
+                        ; BMI above, then this reduces A to a random value of
+                        ; either 0 or 2; if we didn't take the BMI and made the
+                        ; ship hostile, then A will be 0
 
-.TT100 ; MLoop
+ ADC #CYL               ; Set A = A + C + #CYL
+                        ;
+                        ; where A is 0 or 2 and C is 0 or 1, so this gives us a
+                        ; ship type from the following: Cobra Mk III, Python,
+                        ; Boa or Anaconda
 
- JSR M%
- DEC DLY
- BEQ me2
- BPL me3
- INC DLY
+ CMP #HER               ; If A is now the ship type of a rock hermit, jump to
+ BEQ TT100              ; TT100 to skip the following instruction
+
+ JSR NWSHP              ; Add a new ship of type A to the local bubble and fall
+                        ; through into the main game loop again
+
+; ******************************************************************************
+;
+;       Name: Main game loop (Part 2 of 6)
+;       Type: Subroutine
+;   Category: Main loop
+;    Summary: Call the main flight loop, and potentially spawn a trader, an
+;             asteroid, or a cargo canister
+;  Deep dive: Program flow of the main game loop
+;             Ship data blocks
+;             Fixing ship positions
+;
+; ------------------------------------------------------------------------------
+;
+; This section covers the following:
+;
+;   * Call M% to do the main flight loop
+;
+;   * Potentially spawn a trader, asteroid or cargo canister
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   TT100               The entry point for the start of the main game loop,
+;                       which calls the main flight loop and the moves into the
+;                       spawning routine
+;
+;   me3                 Used by me2 to jump back into the main game loop after
+;                       printing an in-flight message
+;
+; ******************************************************************************
+
+.TT100
+
+ JSR M%                 ; Call M% to iterate through the main flight loop
+
+ DEC DLY                ; Decrement the delay counter in DLY, so any in-flight
+                        ; messages get removed once the counter reaches zero
+
+ BEQ me2                ; If DLY is now 0, jump to me2 to remove any in-flight
+                        ; message from the space view, and once done, return to
+                        ; me3 below, skipping the following two instructions
+
+ BPL me3                ; If DLY is positive, jump to me3 to skip the next
+                        ; instruction
+
+ INC DLY                ; If we get here, DLY is negative, so we have gone too
+                        ; and need to increment DLY back to 0
 
 .me3
 
- DEC MCNT
- BEQ P%+5
+ DEC MCNT               ; Decrement the main loop counter in MCNT
+
+ BEQ P%+5               ; If the counter has reached zero, which it will do
+                        ; every 256 main loops, skip the next JMP instruction
+                        ; (or to put it another way, if the counter hasn't
+                        ; reached zero, jump down to MLOOP, skipping all the
+                        ; following checks)
 
 .ytq
 
- JMP MLOOP
- LDA MJ
- BNE ytq
- JSR DORND
- CMP #35
- BCS MTT1
- LDA JUNK
- CMP #3
- BCS MTT1
- JSR ZINF
- LDA #38
+ JMP MLOOP              ; Jump down to MLOOP to do some end-of-loop tidying and
+                        ; restart the main loop
+
+                        ; We only get here once every 256 iterations of the
+                        ; main loop. If we aren't in witchspace and don't
+                        ; already have 3 or more asteroids in our local bubble,
+                        ; then this section has a 13% chance of spawning
+                        ; something benign (the other 87% of the time we jump
+                        ; down to consider spawning cops, pirates and bounty
+                        ; hunters)
+                        ;
+                        ; If we are in that 13%, then 50% of the time this will
+                        ; be a Cobra Mk III trader, and the other 50% of the
+                        ; time it will either be an asteroid (98.5% chance) or,
+                        ; very rarely, a cargo canister (1.5% chance)
+
+ LDA MJ                 ; If we are in witchspace following a mis-jump, skip the
+ BNE ytq                ; following by jumping down to MLOOP (via ytq above)
+
+ JSR DORND              ; Set A and X to random numbers
+
+ CMP #35                ; If A >= 35 (87% chance), jump down to MTT1 to skip
+ BCS MTT1               ; the spawning of an asteroid or cargo canister and
+                        ; potentially spawn something else
+
+ LDA JUNK               ; If we already have 3 or more bits of junk in the local
+ CMP #3                 ; bubble, jump down to MTT1 to skip the following and
+ BCS MTT1               ; potentially spawn something else
+
+ JSR ZINF               ; Call ZINF to reset the INWK ship workspace
+
+ LDA #38                ; Set z_hi = 38 (far away)
  STA INWK+7
- JSR DORND
- STA INWK
- STX INWK+3
- AND #128
+
+ JSR DORND              ; Set A, X and C flag to random numbers
+
+ STA INWK               ; Set x_lo = random
+
+ STX INWK+3             ; Set y_lo = random
+                        ;
+                        ; Note that because we use the value of X returned by
+                        ; DORND, and X contains the value of A returned by the
+                        ; previous call to DORND, this does not set the new ship
+                        ; to a totally random location. See the deep dive on
+                        ; "Fixing ship positions" for details
+
+ AND #%10000000         ; Set x_sign = bit 7 of x_lo
  STA INWK+2
- TXA
- AND #128
+
+ TXA                    ; Set y_sign = bit 7 of y_lo
+ AND #%10000000
  STA INWK+5
- ROL INWK+1
- ROL INWK+1
- JSR DORND
- BVS MTT4
- ORA #$6F
- STA INWK+29
- LDA SSPR
- BNE MTT1
- TXA
- BCS MTT2
- AND #31
- ORA #16
+
+ ROL INWK+1             ; Set bit 1 of x_hi to the C flag, which is random, so
+ ROL INWK+1             ; this randomly moves us off-centre by 512 (as if x_hi
+                        ; is %00000010, then (x_hi x_lo) is 512 + x_lo)
+
+ JSR DORND              ; Set A, X and V flag to random numbers
+
+ BVS MTT4               ; If V flag is set (50% chance), jump up to MTT4 to
+                        ; spawn a trader
+
+ ORA #%01101111         ; Take the random number in A and set bits 0-3 and 5-6,
+ STA INWK+29            ; so the result has a 50% chance of being positive or
+                        ; negative, and a 50% chance of bits 0-6 being 127.
+                        ; Storing this number in the roll counter therefore
+                        ; gives our new ship a fast roll speed with a 50%
+                        ; chance of having no damping, plus a 50% chance of
+                        ; rolling clockwise or anti-clockwise
+
+ LDA SSPR               ; If we are inside the space station safe zone, jump
+ BNE MTT1               ; down to MTT1 to skip the following and potentially
+                        ; spawn something else
+
+ TXA                    ; Set A to the random X we set above, which we haven't
+ BCS MTT2               ; used yet, and if the C flag is set (50% chance) jump
+                        ; down to MTT2 to skip the following
+
+ AND #31                ; Set the ship speed to our random number, set to a
+ ORA #16                ; minimum of 16 and a maximum of 31
  STA INWK+27
- BCC MTT3
+
+ BCC MTT3               ; Jump down to MTT3, skipping the following (this BCC
+                        ; is effectively a JMP as we know the C flag is clear,
+                        ; having passed through the BCS above)
 
 .MTT2
 
- ORA #127
- STA INWK+30
+ ORA #%01111111         ; Set bits 0-6 of A to 127, leaving bit 7 as random, so
+ STA INWK+30            ; storing this number in the pitch counter means we have
+                        ; full pitch with no damping, with a 50% chance of
+                        ; pitching up or down
 
 .MTT3
 
- JSR DORND
- CMP #252
- BCC thongs
- LDA #HER
- STA INWK+32
- BNE whips
+ JSR DORND              ; Set A and X to random numbers
+
+ CMP #252               ; If random A < 252 (98.8% of the time), jump to thongs
+ BCC thongs             ; to skip the following
+
+ LDA #HER               ; Set A to #HER so we spawn a rock hermit 1.2% of the
+                        ; time
+
+ STA INWK+32            ; Set byte #32 to %00001111 to give the rock hermit an
+                        ; E.C.M.
+
+ BNE whips              ; Jump to whips (this BNE is effectively a JMP as A will
+                        ; never be zero)
 
 .thongs
 
- CMP #10
- AND #1
- ADC #OIL
+ CMP #10                ; If random A >= 10 (96% of the time), set the C flag
+
+ AND #1                 ; Reduce A to a random number that's 0 or 1
+
+ ADC #OIL               ; Set A = #OIL + A + C, so there's a tiny chance of us
+                        ; spawning a cargo canister (#OIL) and an even chance of
+                        ; us spawning either a boulder (#OIL + 1) or an asteroid
+                        ; (#OIL + 2)
 
 .whips
 
- JSR NWSHP ;junk
+ JSR NWSHP              ; Add our new asteroid or canister to the universe
+
+; ******************************************************************************
+;
+;       Name: Main game loop (Part 3 of 6)
+;       Type: Subroutine
+;   Category: Main loop
+;    Summary: Potentially spawn a cop, particularly if we've been bad
+;  Deep dive: Program flow of the main game loop
+;             Ship data blocks
+;             Fixing ship positions
+;
+; ------------------------------------------------------------------------------
+;
+; This section covers the following:
+;
+;   * Potentially spawn a cop (in a Viper), very rarely if we have been good,
+;     more often if have been naughty, and very often if we have been properly
+;     bad
+;
+;   * Very rarely, consider spawning a Thargoid, or vanishingly rarely, a Cougar
+;
+; ******************************************************************************
 
 .MTT1
 
- LDA SSPR
- BEQ P%+5
+ LDA SSPR               ; If we are outside the space station's safe zone, skip
+ BEQ P%+5               ; the following instruction
 
 .MLOOPS
 
- JMP MLOOP
- JSR BAD
- ASL A
- LDX MANY+COPS
- BEQ P%+5
- ORA FIST
- STA T
- JSR Ze
- CMP #136
- BEQ fothg
- CMP T
- BCS P%+7
- LDA #COPS
- JSR NWSHP
- LDA MANY+COPS
- BNE MLOOPS
- DEC EV
- BPL MLOOPS
- INC EV
- LDA TP
- AND #$C
- CMP #8
- BNE nopl
- JSR DORND
- CMP #200
- BCC nopl
+ JMP MLOOP              ; Jump to MLOOP to skip the following
 
-.fothg 
+ JSR BAD                ; Call BAD to work out how much illegal contraband we
+                        ; are carrying in our hold (A is up to 40 for a
+                        ; standard hold crammed with contraband, up to 70 for
+                        ; an extended cargo hold full of narcotics and slaves)
+
+ ASL A                  ; Double A to a maximum of 80 or 140
+
+ LDX MANY+COPS          ; If there are no cops in the local bubble, skip the
+ BEQ P%+5               ; next instruction
+
+ ORA FIST               ; There are cops in the vicinity and we've got a hold
+                        ; full of jail time, so OR the value in A with FIST to
+                        ; get a new value that is at least as high as both
+                        ; values, to reflect the fact that they have almost
+                        ; certainly scanned our ship
+
+ STA T                  ; Store our badness level in T
+
+ JSR Ze                 ; Call Ze to initialise INWK to a potentially hostile
+                        ; ship, and set A and X to random values
+                        ;
+                        ; Note that because Ze uses the value of X returned by
+                        ; DORND, and X contains the value of A returned by the
+                        ; previous call to DORND, this does not set the new ship
+                        ; to a totally random location. See the deep dive on
+                        ; "Fixing ship positions" for details
+
+ CMP #136               ; If the random number in A = 136 (0.4% chance), jump
+ BEQ fothg              ; to fothg in part 4 to spawn either a Thargoid or, very
+                        ; rarely, a Cougar
+
+ CMP T                  ; If the random value in A >= our badness level, which
+ BCS P%+7               ; will be the case unless we have been really, really
+                        ; bad, then skip the following two instructions (so
+                        ; if we are really bad, there's a higher chance of
+                        ; spawning a cop, otherwise we got away with it, for
+                        ; now)
+
+ LDA #COPS              ; Add a new police ship to the local bubble
+ JSR NWSHP
+
+ LDA MANY+COPS          ; If we now have at least one cop in the local bubble,
+ BNE MLOOPS             ; jump down to MLOOPS to stop spawning, otherwise fall
+                        ; through into the next part to look at spawning
+                        ; something else
+
+; ******************************************************************************
+;
+;       Name: Main game loop (Part 4 of 6)
+;       Type: Subroutine
+;   Category: Main loop
+;    Summary: Potentially spawn a lone bounty hunter, a Thargoid, or up to four
+;             pirates
+;  Deep dive: Program flow of the main game loop
+;             Ship data blocks
+;             Fixing ship positions
+;             The elusive Cougar
+;
+; ------------------------------------------------------------------------------
+;
+; This section covers the following:
+;
+;   * Potentially spawn (35% chance) either a lone bounty hunter (a Cobra Mk
+;     III, Asp Mk II, Python or Fer-de-lance), a Thargoid, or a group of up to 4
+;     pirates (a mix of Sidewinders, Mambas, Kraits, Adders, Geckos, Cobras Mk I
+;     and III, and Worms)
+;
+;   * Also potentially spawn a Constrictor if this is the mission 1 endgame, or
+;     Thargoids if mission 2 is in progress
+;
+; ******************************************************************************
+
+ DEC EV                 ; Decrement EV, the extra vessels spawning delay, and if
+ BPL MLOOPS             ; it is still positive, jump to MLOOPS to stop spawning,
+                        ; so we only do the following when the EV counter runs
+                        ; down
+
+ INC EV                 ; EV is negative, so bump it up again, setting it back
+                        ; to 0
+
+ LDA TP                 ; Fetch bits 2 and 3 of TP, which contain the status of
+ AND #%00001100         ; mission 2
+
+ CMP #%00001000         ; If bit 3 is set and bit 2 is clear, keep going to
+ BNE nopl               ; spawn a Thargoid as we are transporting the plans in
+                        ; mission 2 and the Thargoids are trying to stop us,
+                        ; otherwise jump to nopl to skip spawning a Thargoid
+
+ JSR DORND              ; Set A and X to random numbers
+
+ CMP #200               ; If the random number in A < 200 (78% chance), jump to
+ BCC nopl               ; nopl to skip spawning a Thargoid
+
+.fothg
 
 .fothg2
 
- JSR GTHG
+ JSR GTHG               ; Call GTHG to spawn a Thargoid ship and a Thargon
+                        ; companion
 
 .nopl
 
- JSR DORND
- LDY gov
- BEQ LABEL_2
- CMP #90
- BCS MLOOPS
- AND #7
- CMP gov
- BCC MLOOPS
+ JSR DORND              ; Set A and X to random numbers
+
+ LDY gov                ; If the government of this system is 0 (anarchy), jump
+ BEQ LABEL_2            ; straight to LABEL_2 to start spawning pirates or a
+                        ; lone bounty hunter
+
+ CMP #90                ; If the random number in A >= 90 (65% chance), jump to
+ BCS MLOOPS             ; MLOOPS to stop spawning (so there's a 35% chance of
+                        ; spawning pirates or a lone bounty hunter)
+
+ AND #7                 ; Reduce the random number in A to the range 0-7, and
+ CMP gov                ; if A is less than government of this system, jump
+ BCC MLOOPS             ; to MLOOPS to stop spawning (so safer governments with
+                        ; larger gov numbers have a greater chance of jumping
+                        ; out, which is another way of saying that more
+                        ; dangerous systems spawn pirates and bounty hunters
+                        ; more often)
 
 .LABEL_2
 
- JSR Ze
- CMP #100
- BCS mt1
- INC EV
- AND #3
- ADC #CYL2
- TAY
- JSR THERE
- BCC NOCON
- LDA #$F9
- STA INWK+32
- LDA TP
- AND #3
- LSR A
- BCC NOCON
- ORA MANY+CON
- BEQ YESCON
+                        ; Now to spawn a lone bounty hunter, a Thargoid or a
+                        ; group of pirates
+
+ JSR Ze                 ; Call Ze to initialise INWK to a potentially hostile
+                        ; ship, and set A and X to random values
+                        ;
+                        ; Note that because Ze uses the value of X returned by
+                        ; DORND, and X contains the value of A returned by the
+                        ; previous call to DORND, this does not set the new ship
+                        ; to a totally random location. See the deep dive on
+                        ; "Fixing ship positions" for details
+
+ CMP #100               ; If the random number in A >= 100 (61% chance), jump
+ BCS mt1                ; to mt1 to spawn pirates, otherwise keep going to
+                        ; spawn a lone bounty hunter or a Thargoid
+
+ INC EV                 ; Increase the extra vessels spawning counter, to
+                        ; prevent the next attempt to spawn extra vessels
+
+ AND #3                 ; Set A = random number in the range 0-3, which we
+                        ; will now use to determine the type of ship
+
+ ADC #CYL2              ; Add A to #CYL2 (we know the C flag is clear as we
+                        ; passed through the BCS above), so A is now one of the
+                        ; lone bounty hunter ships, i.e. Cobra Mk III (pirate),
+                        ; Asp Mk II, Python (pirate) or Fer-de-lance
+                        ;
+                        ; Interestingly, this logic means that the Moray, which
+                        ; is the ship after the Fer-de-lance in the XX21 table,
+                        ; never spawns, as the above logic chooses a blueprint
+                        ; number in the range CYL2 to CYL2+3 (i.e. 24 to 27),
+                        ; and the Moray is blueprint 28
+                        ;
+                        ; No other code spawns the ship with blueprint 28, so
+                        ; this means the Moray is never seen in Elite
+                        ;
+                        ; This is presumably a bug, which could be very easily
+                        ; fixed by inserting one of the following instructions
+                        ; before the ADC #CYL2 instruction above:
+                        ;
+                        ;   * SEC would change the range to 25 to 28, which
+                        ;     would cover the Asp Mk II, Python (pirate),
+                        ;     Fer-de-lance and Moray
+                        ;
+                        ;   * LSR A would set the C flag to a random number to
+                        ;     give a range of 24 to 28, which would cover the
+                        ;     Cobra Mk III (pirate), Asp Mk II, Python (pirate),
+                        ;     Fer-de-lance and Moray
+                        ;
+                        ; It's hard to know what the authors' original intent
+                        ; was, but the second approach makes the Moray and Cobra
+                        ; Mk III the rarest choices, with the Asp Mk II, Python
+                        ; and Fer-de-Lance being more likely, and as the Moray
+                        ; is described in the literature as a rare ship, and the
+                        ; Cobra can already be spawned as part of a group of
+                        ; pirates (see mt1 below), I tend to favour the LSR A
+                        ; solution over the SEC approach
+
+ TAY                    ; Copy the new ship type to Y
+
+ JSR THERE              ; Call THERE to see if we are in the Constrictor's
+                        ; system in mission 1
+
+ BCC NOCON              ; If the C flag is clear then we are not in the
+                        ; Constrictor's system, so skip to NOCON
+
+ LDA #%11111001         ; Set the AI flag of this ship so that it has E.C.M.,
+ STA INWK+32            ; has a very high aggression level of 28 out of 31, is
+                        ; hostile, and has AI enabled - nasty stuff!
+
+ LDA TP                 ; Fetch bits 0 and 1 of TP, which contain the status of
+ AND #%00000011         ; mission 1
+
+ LSR A                  ; Shift bit 0 into the C flag
+
+ BCC NOCON              ; If bit 0 is clear, skip to NOCON as mission 1 is not
+                        ; in progress
+
+ ORA MANY+CON           ; Bit 0 of A now contains bit 1 of TP, so this will be
+                        ; set if we have already completed mission 1, so this OR
+                        ; will be non-zero if we have either completed mission
+                        ; 1, or there is already a Constrictor in our local
+                        ; bubble of universe (in which case MANY+CON will be
+                        ; non-zero)
+
+ BEQ YESCON             ; If A = 0 then mission 1 is in progress, we haven't
+                        ; completed it yet, and there is no Constrictor in the
+                        ; vicinity, so jump to YESCON to spawn the Constrictor
 
 .NOCON
 
- LDA #4
- STA NEWB
- JSR DORND
- CMP #200
- ROL A
- ORA #$C0
- STA INWK+32
- TYA
- EQUB $2C
+ LDA #%00000100         ; Set bit 2 of the NEWB flags and clear all other bits,
+ STA NEWB               ; so the ship we are about to spawn is hostile
+
+                        ; We now build the AI flag for this ship in A
+
+ JSR DORND              ; Set A and X to random numbers
+
+ CMP #200               ; First, set the C flag if X >= 200 (22% chance)
+
+ ROL A                  ; Set bit 0 of A to the C flag (i.e. there's a 22%
+                        ; chance of this ship having E.C.M.)
+
+ ORA #%11000000         ; Set bits 6 and 7 of A, so the ship is hostile (bit 6)
+                        ; and has AI (bit 7)
+
+ STA INWK+32            ; Store A in the AI flag of this ship
+
+ TYA                    ; Set A to the new ship type in Y
+
+ EQUB $2C               ; Skip the next instruction by turning it into
+                        ; $2C $A9 $1F, or BIT $1FA9, which does nothing apart
+                        ; from affect the flags
 
 .YESCON
 
- LDA #CON
+ LDA #CON               ; If we jump straight here, we are in the mission 1
+                        ; endgame and it's time to spawn the Constrictor, so
+                        ; set A to the Constrictor's type
 
 .focoug
 
- JSR NWSHP
+ JSR NWSHP              ; Spawn the new ship, whether it's a pirate, Thargoid,
+                        ; Cougar or Constrictor
 
 .mj1
 
- JMP MLOOP
- \fothg
-;LDA K+6
+ JMP MLOOP              ; Jump down to MLOOP, as we are done spawning ships
+
+;.fothg                 ; These instructions are commented out in the original
+;LDA K+6                ; source
 ;AND #$3E
 ;BNE fothg2
 ;LDA #18
@@ -21001,64 +21976,167 @@ ENDIF
 
 .mt1
 
- AND #3
- STA EV
- STA XX13
+ AND #3                 ; It's time to spawn a group of pirates, so set A to a
+                        ; random number in the range 0-3, which will be the
+                        ; loop counter for spawning pirates below (so we will
+                        ; spawn 1-4 pirates)
+
+ STA EV                 ; Delay further spawnings by this number
+
+ STA XX13               ; Store the number in XX13, the pirate counter
 
 .mt3
 
- JSR DORND
- STA T
- JSR DORND
- AND T
- AND #7
- ADC #PACK
- JSR NWSHP ;pack
- DEC XX13
- BPL mt3
+ JSR DORND              ; Set A and X to random numbers
+
+ STA T                  ; Set T to a random number
+
+ JSR DORND              ; Set A and X to random numbers
+
+ AND T                  ; Set A to the AND of two random numbers, so each bit
+                        ; has 25% chance of being set which makes the chances
+                        ; of a smaller number higher
+
+ AND #7                 ; Reduce A to a random number in the range 0-7, though
+                        ; with a bigger chance of a smaller number in this range
+
+ ADC #PACK              ; #PACK is set to #SH3, the ship type for a Sidewinder,
+                        ; so this sets our new ship type to one of the pack
+                        ; hunters, namely a Sidewinder, Mamba, Krait, Adder,
+                        ; Gecko, Cobra Mk I, Worm or Cobra Mk III (pirate)
+
+ JSR NWSHP              ; Try adding a new ship of type A to the local bubble
+
+ DEC XX13               ; Decrement the pirate counter
+
+ BPL mt3                ; If we need more pirates, loop back up to mt3,
+                        ; otherwise we are done spawning, so fall through into
+                        ; the end of the main loop at MLOOP
+
+; ******************************************************************************
+;
+;       Name: Main game loop (Part 5 of 6)
+;       Type: Subroutine
+;   Category: Main loop
+;    Summary: Cool down lasers, make calls to update the dashboard
+;  Deep dive: Program flow of the main game loop
+;             The dashboard indicators
+;
+; ------------------------------------------------------------------------------
+;
+; This is the first half of the minimal game loop, which we iterate when we are
+; docked. This section covers the following:
+;
+;   * Cool down lasers
+;
+;   * Make calls to update the dashboard
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   MLOOP               The entry point for the main game loop. This entry point
+;                       comes after the call to the main flight loop and
+;                       spawning routines, so it marks the start of the main
+;                       game loop for when we are docked (as we don't need to
+;                       call the main flight loop or spawning routines if we
+;                       aren't in space)
+;
+; ******************************************************************************
 
 .MLOOP
 
- LDX #$FF
- TXS
- LDX GNTMP
- BEQ EE20
+ LDX #$FF               ; Set the stack pointer to $01FF, which is the standard
+ TXS                    ; location for the 6502 stack, so this instruction
+                        ; effectively resets the stack
+
+ LDX GNTMP              ; If the laser temperature in GNTMP is non-zero,
+ BEQ EE20               ; decrement it (i.e. cool it down a bit)
  DEC GNTMP
 
 .EE20
 
- LDX LASCT
- BEQ NOLASCT
- DEX
- BEQ P%+3
- DEX
- STX LASCT
+ LDX LASCT              ; Set X to the value of LASCT, the laser pulse count
+
+ BEQ NOLASCT            ; If X = 0 then jump to NOLASCT to skip reducing LASCT,
+                        ; as it can't be reduced any further
+
+ DEX                    ; Decrement the value of LASCT in X
+
+ BEQ P%+3               ; If X = 0, skip the next instruction
+
+ DEX                    ; Decrement the value of LASCT in X again
+
+ STX LASCT              ; Store the decremented value of X in LASCT, so LASCT
+                        ; gets reduced by 2, but not into negative territory
 
 .NOLASCT
 
-;LDA QQ11
-;BNE P%+5
- JSR DIALS
- LDA QQ11
- BEQ plus13
+;LDA QQ11               ; These instructions are commented out in the original
+;BNE P%+5               ; source
 
- AND PATG
- LSR A
- BCS plus13
- LDY #2
- JSR DELAY
+ JSR DIALS              ; Call DIALS to update the dashboard
+
+ LDA QQ11               ; If this is a space view, jump to plus13 to skip the
+ BEQ plus13             ; following five instructions
+
+ AND PATG               ; If PATG = $FF (author names are shown on start-up)
+ LSR A                  ; and bit 0 of QQ11 is 1 (the current view is type 1),
+ BCS plus13             ; then skip the following two instructions
+
+ LDY #2                 ; Wait for 2/50 of a second (0.04 seconds), to slow the
+ JSR DELAY              ; main loop down a bit
 
 .plus13
 
- JSR TT17
+ JSR TT17               ; Scan the keyboard for the cursor keys or joystick,
+                        ; returning the cursor's delta values in X and Y and
+                        ; the key pressed in A
+
+; ******************************************************************************
+;
+;       Name: Main game loop (Part 6 of 6)
+;       Type: Subroutine
+;   Category: Main loop
+;    Summary: Process non-flight key presses (docked keys)
+;  Deep dive: Program flow of the main game loop
+;
+; ------------------------------------------------------------------------------
+;
+; This is the second half of the minimal game loop, which we iterate when we are
+; docked. This section covers the following:
+;
+;   * Process more key presses (red function keys, docked keys etc.)
+;
+; It also supports joining the main loop with a key already "pressed", so we can
+; jump into the main game loop to perform a specific action. In practice, this
+; is used when we enter the docking bay in BAY to display Status Mode (red key
+; f8), and when we finish buying or selling cargo in BAY2 to jump to the
+; Inventory (red key f9).
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   FRCE                The entry point for the main game loop if we want to
+;                       jump straight to a specific screen, by pretending to
+;                       "press" a key, in which case A contains the internal key
+;                       number of the key we want to "press"
+;
+; ******************************************************************************
 
 .FRCE
 
- JSR TT102
- LDA QQ12
- BEQ P%+5
- JMP MLOOP
- JMP TT100
+ JSR TT102              ; Call TT102 to process the key pressed in A
+
+ LDA QQ12               ; Fetch the docked flag from QQ12 into A
+
+ BEQ P%+5               ; If we are docked, loop back up to MLOOP just above
+ JMP MLOOP              ; to restart the main loop, but skipping all the flight
+                        ; and spawning code in the top part of the main loop
+
+ JMP TT100              ; Otherwise jump to TT100 to restart the main loop from
+                        ; the start
 
 .TT102
 

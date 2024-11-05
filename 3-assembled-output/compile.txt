@@ -12608,6 +12608,7 @@ P% = &2000
 S.C.DATA &B00  &2000  &B00  &B00 
 Saving file '3-assembled-output/DATA.unprot.bin'
 .ZP
+     0000
 .RAND
      0002
 .T1
@@ -27534,8 +27535,8 @@ Execute at &4000
 Reload at &9BE0 
 S.ELTK &9BE0  &A300  &4000  &9643 
 Saving file '3-assembled-output/ELTK.bin'
-&4000 41723 17773 2048  (Free: 5 )  ZP: &2 
- ZP: &2 , WP: &400 , UP: &200 
+&4000 41723 17773 2048  (Free: 5 )  ZP: &0 
+ ZP: &0 , WP: &400 , UP: &200 
 Addresses for the scramble routines in elite-checksum.py
 B% = &4000 
 G% = &45EA 
