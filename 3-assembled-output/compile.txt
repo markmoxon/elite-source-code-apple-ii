@@ -23057,9 +23057,22 @@ Saving file '3-assembled-output/ELTE.bin'
      83E2   4C 52 95   JMP &9552
 .KYTB
      83E5   60         RTS
-     83E6   2F 20 2C ...
+     83E6   2F 
+     83E7   20 
+     83E8   2C 
+     83E9   2E 
+     83EA   58 
+     83EB   53 
+     83EC   41 
+     83ED   42 
      83EE   1B
-     83EF   54 55 4D ...
+     83EF   54 
+     83F0   55 
+     83F1   4D 
+     83F2   45 
+     83F3   4A 
+     83F4   43 
+     83F5   50 
 .DKSANYKEY
      83F6   A2 00      LDX #&00
      83F8   2C 00 C0   BIT &C000
@@ -23068,6 +23081,7 @@ Saving file '3-assembled-output/ELTE.bin'
      83FE   2C 10 C0   BIT &C010
      8401   8A         TXA
      8402   60         RTS
+.DKS2
      8403   60         RTS
 .DKS3
      8404   8A         TXA
