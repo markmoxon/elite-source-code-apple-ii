@@ -154,7 +154,7 @@
  ZP2 = $72              ; ZP2(1 0) stores the end address
 
  KEY2 = $69             ; The seed for encrypting DATA from WORDS to $2000,
-                        ; which is the whole date file
+                        ; which is the whole data file
 
                         ; These three variables are calculated by S.COMLODS when
                         ; loading the binary files into memory in order to

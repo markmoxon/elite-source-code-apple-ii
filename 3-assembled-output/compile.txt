@@ -12785,6 +12785,10 @@ Saving file '3-assembled-output/DATA.unprot.bin'
      00E1
 .NOSTM
      00E2
+.XX3
+     0100
+.K%
+     0800
 .UP
      0200
 .FRIN
