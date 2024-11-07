@@ -1019,25 +1019,122 @@ ENDIF
 
  JMP S% ;@@
 
+; ******************************************************************************
+;
+;       Name: log
+;       Type: Variable
+;   Category: Maths (Arithmetic)
+;    Summary: Binary logarithm table (high byte)
+;
+; ------------------------------------------------------------------------------
+;
+; At byte n, the table contains the high byte of:
+;
+;   $2000 * log10(n) / log10(2) = 32 * 256 * log10(n) / log10(2)
+;
+; where log10 is the logarithm to base 10. The change-of-base formula says that:
+;
+;   log2(n) = log10(n) / log10(2)
+;
+; so byte n contains the high byte of:
+;
+;   32 * log2(n) * 256
+;
+; ******************************************************************************
+
 .log
 
- EQUB $08
+IF _MATCH_ORIGINAL_BINARIES
+
+ EQUB $08               ; This byte appears to be unused and just contains
+                        ; random workspace noise left over from the BBC Micro
+                        ; assembly process
 
  FOR I%, 1, 255
 
-  EQUB INT($2000 * LOG(I%) / LOG(2) + 0.5) DIV 256
+  B% = INT($2000 * LOG(I%) / LOG(2) + 0.5)
+
+  EQUB B% DIV 256
 
  NEXT
+
+ELSE
+
+ SKIP 1
+
+ FOR I%, 1, 255
+
+  B% = INT($2000 * LOG(I%) / LOG(2) + 0.5)
+
+  EQUB B% DIV 256
+
+ NEXT
+
+ENDIF
+
+; ******************************************************************************
+;
+;       Name: logL
+;       Type: Variable
+;   Category: Maths (Arithmetic)
+;    Summary: Binary logarithm table (low byte)
+;
+; ------------------------------------------------------------------------------
+;
+; Byte n contains the low byte of:
+;
+;   32 * log2(n) * 256
+;
+; ******************************************************************************
 
 .logL
 
- EQUB $03
+IF _MATCH_ORIGINAL_BINARIES
+
+ EQUB $03               ; This byte appears to be unused and just contains
+                        ; random workspace noise left over from the BBC Micro
+                        ; assembly process
 
  FOR I%, 1, 255
 
-  EQUB INT($2000 * LOG(I%) / LOG(2) + 0.5) MOD 256
+  B% = INT($2000 * LOG(I%) / LOG(2) + 0.5)
+
+  EQUB B% MOD 256
 
  NEXT
+
+ELSE
+
+ SKIP 1
+
+ FOR I%, 1, 255
+
+  B% = INT($2000 * LOG(I%) / LOG(2) + 0.5)
+
+  EQUB B% MOD 256
+
+ NEXT
+
+ENDIF
+
+; ******************************************************************************
+;
+;       Name: alogh
+;       Type: Variable
+;   Category: Maths (Arithmetic)
+;    Summary: Binary antilogarithm table
+;
+; ------------------------------------------------------------------------------
+;
+; At byte n, the table contains:
+;
+;   2^((n / 2 + 128) / 16) / 256
+;
+; which equals:
+;
+;   2^(n / 32 + 8) / 256
+;
+; ******************************************************************************
 
 .alogh
 
@@ -20307,8 +20404,9 @@ IF _SOURCE_DISK_CODE_FILES
 
 ENDIF
 
- LDA thiskey
- RTS
+ LDA thiskey            ; Fetch the key pressed from thiskey in the key logger
+
+ RTS                    ; Return from the subroutine
 
 .TJ1
 
@@ -20320,7 +20418,7 @@ IF _IB_DISK
 
 ENDIF
 
- LDA thiskey            ; Set A to the value of thiskey (the key pressed)
+ LDA thiskey            ; Fetch the key pressed from thiskey in the key logger
 
  LDX #0                 ; Set the initial values for the results, X = Y = 0,
  LDY #0                 ; which we now increase or decrease appropriately
@@ -25177,474 +25275,1241 @@ ENDIF
 
  RTS                    ; Return from the subroutine
 
+; ******************************************************************************
+;
+;       Name: U%
+;       Type: Subroutine
+;   Category: Keyboard
+;    Summary: Clear the key logger
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   A                   A is set to 0
+;
+;   Y                   Y is set to 0
+;
+; ******************************************************************************
+
 .U%
 
-;LDA #0
-;LDY #$38
- \
+;LDA #0                 ; These instructions are commented out in the original
+;LDY #$38               ; source
 
 .DKL3
 
-;STA KLO,Y
-;DEY 
+;STA KLO,Y              ; These instructions are commented out in the original
+;DEY                    ; source
 ;BNE DKL3
 ;STA KL
- RTS
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: DOKEY
+;       Type: Subroutine
+;   Category: Keyboard
+;    Summary: Scan for the seven primary flight controls and apply the docking
+;             computer manoeuvring code
+;  Deep dive: The key logger
+;             The docking computer
+;
+; ------------------------------------------------------------------------------
+;
+; Scan for the seven primary flight controls (or the equivalent on joystick),
+; pause and configuration keys, and secondary flight controls, and update the
+; key logger accordingly. Specifically, this part clears the key logger and
+; updates it for the seven primary flight controls, and updates the pitch and
+; roll rates accordingly.
+;
+; We then end up at DK4 to scan for other keys, beyond the seven primary flight
+; controls.
+;
+; ******************************************************************************
 
 .DOKEY
 
- JSR RDKEY
- LDA auto
- BEQ DK15
- \......
- JSR ZINF
- LDA #96
+ JSR RDKEY              ; Scan the keyboard for a key press and return the
+                        ; ASCII code of the key pressed in X
+
+ LDA auto               ; If auto is 0, then the docking computer is not
+ BEQ DK15               ; currently activated, so jump to DK15 to skip the
+                        ; docking computer manoeuvring code below
+
+ JSR ZINF               ; Call ZINF to reset the INWK ship workspace
+
+ LDA #96                ; Set nosev_z_hi = 96
  STA INWK+14
- ORA #128
+
+ ORA #%10000000         ; Set sidev_x_hi = -96
  STA INWK+22
- STA TYPE
- LDA DELTA
+
+ STA TYPE               ; Set the ship type to -96, so the negative value will
+                        ; let us check in the DOCKIT routine whether this is our
+                        ; ship that is activating its docking computer, rather
+                        ; than an NPC ship docking
+
+ LDA DELTA              ; Set the ship speed to DELTA (our speed)
  STA INWK+27
- JSR DOCKIT
- LDA INWK+27
- CMP #22
+
+ JSR DOCKIT             ; Call DOCKIT to calculate the docking computer's moves
+                        ; and update INWK with the results
+
+                        ; We now "press" the relevant flight keys, depending on
+                        ; the results from DOCKIT, starting with the pitch keys
+
+ LDA INWK+27            ; Fetch the updated ship speed from byte #27 into A
+
+ CMP #22                ; If A < 22, skip the next instruction
  BCC P%+4
- LDA #22
- STA DELTA
- LDA #$FF
- LDX #(KY1-KLO)
- LDY INWK+28
- BEQ DK11
- BMI P%+4
- LDX #(KY2-KLO)
- STA KLO,X
+
+ LDA #22                ; Set A = 22, so the maximum speed during docking is 22
+
+ STA DELTA              ; Update DELTA to the new value in A
+
+ LDA #$FF               ; Set A = $FF, which we can insert into the key logger
+                        ; to "fake" the docking computer working the keyboard
+
+ LDX #(KY1-KLO)         ; Set X to the offset of KY1 within the KLO table, so we
+                        ; "press" KY1 below ("?", slow down)
+
+ LDY INWK+28            ; If the updated acceleration in byte #28 is zero, skip
+ BEQ DK11               ; to DK11
+
+ BMI P%+4               ; If the updated acceleration is negative, skip the
+                        ; following instruction
+
+ LDX #(KY2-KLO)         ; Set X to the offset of KY2 within the KLO table, so we
+                        ; "press" KY2 with the next instruction (Space, speed
+                        ; up)
+
+ STA KLO,X              ; Store $FF in either KY1 or KY2 to "press" the relevant
+                        ; key, depending on whether the updated acceleration is
+                        ; negative (in which case we "press" KY1, "?", to slow
+                        ; down) or positive (in which case we "press" KY2,
+                        ; Space, to speed up)
 
 .DK11
 
- LDA #128
- LDX #(KY3-KLO)
- ASL INWK+29
- BEQ DK12
- BCC P%+4
- LDX #(KY4-KLO)
- BIT INWK+29
- BPL DK14
- LDA #64
- STA JSTX
- LDA #0
+                        ; We now "press" the relevant roll keys, depending on
+                        ; the results from DOCKIT
+
+ LDA #128               ; Set A = 128, which indicates no change in roll when
+                        ; stored in JSTX (i.e. the centre of the roll indicator)
+
+ LDX #(KY3-KLO)         ; Set X to the offset of KY3 within the KLO table, so we
+                        ; "press" KY3 below ("<", increase roll)
+
+ ASL INWK+29            ; Shift ship byte #29 left, which shifts bit 7 of the
+                        ; updated roll counter (i.e. the roll direction) into
+                        ; the C flag
+
+ BEQ DK12               ; If the remains of byte #29 is zero, then the updated
+                        ; roll counter is zero, so jump to DK12 set JSTX to 128,
+                        ; to indicate there's no change in the roll
+
+ BCC P%+4               ; If the C flag is clear, skip the following instruction
+
+ LDX #(KY4-KLO)         ; Set X to the offset of KY4 within the KLO table, so we
+                        ; "press" KY4 below (">", decrease roll)
+
+ BIT INWK+29            ; We shifted the updated roll counter to the left above,
+ BPL DK14               ; so this tests bit 6 of the original value, and if it
+                        ; is clear (i.e. the magnitude is less than 64), jump to
+                        ; DK14 to "press" the key and leave JSTX unchanged
+
+ LDA #64                ; The magnitude of the updated roll is 64 or more, so
+ STA JSTX               ; set JSTX to 64 (so the roll decreases at half the
+                        ; maximum rate)
+
+ LDA #0                 ; And set A = 0 so we do not "press" any keys (so if the
+                        ; docking computer needs to make a serious roll, it does
+                        ; so by setting JSTX directly rather than by "pressing"
+                        ; a key)
 
 .DK14
 
- STA KLO,X
- LDA JSTX
+ STA KLO,X              ; Store A in either KY3 or KY4, depending on whether
+                        ; the updated roll rate is increasing (KY3) or
+                        ; decreasing (KY4)
+
+ LDA JSTX               ; Fetch A from JSTX so the next instruction has no
+                        ; effect
 
 .DK12
 
- STA JSTX
- LDA #128
- LDX #(KY5-KLO)
- ASL INWK+30
- BEQ DK13
- BCS P%+4
- LDX #(KY6-KLO)
- STA KLO,X
- LDA JSTY
+ STA JSTX               ; Store A in JSTX to update the current roll rate
+
+                        ; We now "press" the relevant pitch keys, depending on
+                        ; the results from DOCKIT
+
+ LDA #128               ; Set A = 128, which indicates no change in pitch when
+                        ; stored in JSTX (i.e. the centre of the pitch
+                        ; indicator)
+
+ LDX #(KY5-KLO)         ; Set X to the offset of KY5 within the KLO table, so we
+                        ; "press" KY5 below ("X", decrease pitch, pulling the
+                        ; nose up)
+
+ ASL INWK+30            ; Shift ship byte #30 left, which shifts bit 7 of the
+                        ; updated pitch counter (i.e. the pitch direction) into
+                        ; the C flag
+
+ BEQ DK13               ; If the remains of byte #30 is zero, then the updated
+                        ; pitch counter is zero, so jump to DK13 set JSTY to
+                        ; 128, to indicate there's no change in the pitch
+
+ BCS P%+4               ; If the C flag is set, skip the following instruction
+
+ LDX #(KY6-KLO)         ; Set X to the offset of KY6 within the KLO table, so we
+                        ; "press" KY6 below ("S", increase pitch, so the nose
+                        ; dives)
+
+ STA KLO,X              ; Store 128 in either KY5 or KY6 to "press" the relevant
+                        ; key, depending on whether the pitch direction is
+                        ; negative (in which case we "press" KY5, "X", to
+                        ; decrease the pitch, pulling the nose up) or positive
+                        ; (in which case we "press" KY6, "S", to increase the
+                        ; pitch, pushing the nose down)
+
+ LDA JSTY               ; Fetch A from JSTY so the next instruction has no
+                        ; effect
 
 .DK13
 
- STA JSTY
- \.........
+ STA JSTY               ; Store A in JSTY to update the current pitch rate
 
 .DK15
 
- LDX JSTX
- LDA #20
- LDY KY3
- BEQ P%+5
- JSR BUMP2
- LDY KY4
- BEQ P%+5
- JSR REDU2
- STX JSTX
- LDX JSTY
- LDY KY5
- BEQ P%+5
- JSR REDU2
- LDY KY6
- BEQ P%+5
- JSR BUMP2
- STX JSTY
+ LDX JSTX               ; Set X = JSTX, the current roll rate (as shown in the
+                        ; RL indicator on the dashboard)
+
+ LDA #20                ; Set A to 20, which is the amount we want to alter the
+                        ; roll rate by if the roll keys are being pressed
+
+ LDY KY3                ; If the "<" key is not being pressed, skip the next
+ BEQ P%+5               ; instruction
+
+ JSR BUMP2              ; The "<" key is being pressed, so call the BUMP2
+                        ; routine to increase the roll rate in X by A
+
+ LDY KY4                ; If the ">" key is not being pressed, skip the next
+ BEQ P%+5               ; instruction
+
+ JSR REDU2              ; The "<" key is being pressed, so call the REDU2
+                        ; routine to decrease the roll rate in X by A, taking
+                        ; the keyboard auto re-centre setting into account
+
+ STX JSTX               ; Store the updated roll rate in JSTX
+
+ LDX JSTY               ; Set X = JSTY, the current pitch rate (as shown in the
+                        ; DC indicator on the dashboard)
+
+ LDY KY5                ; If the "X" key is not being pressed, skip the next
+ BEQ P%+5               ; instruction
+
+ JSR REDU2              ; The "X" key is being pressed, so call the REDU2
+                        ; routine to decrease the pitch rate in X by A, taking
+                        ; the keyboard auto re-centre setting into account
+
+ LDY KY6                ; If the "S" key is not being pressed, skip the next
+ BEQ P%+5               ; instruction
+
+ JSR BUMP2              ; The "S" key is being pressed, so call the BUMP2
+                        ; routine to increase the pitch rate in X by A
+
+ STX JSTY               ; Store the updated roll rate in JSTY
+
+                        ; Fall through into DK4 to scan for other keys
+
+; ******************************************************************************
+;
+;       Name: DK4
+;       Type: Subroutine
+;   Category: Keyboard
+;    Summary: Scan for pause, configuration and secondary flight keys
+;  Deep dive: The key logger
+;
+; ------------------------------------------------------------------------------
+;
+; Scan for pause and configuration keys, and if this is a space view, also scan
+; for secondary flight controls.
+;
+; Specifically:
+;
+;   * Scan for the pause button ("=") and if it's pressed, pause the game and
+;     process any configuration key presses until the game is unpaused ("-")
+;
+;   * If this is a space view, scan for secondary flight keys and update the
+;     relevant bytes in the key logger
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   FREEZE              Rejoin the pause routine after processing a screen save
+;
+; ******************************************************************************
 
 .DK4
 
- LDX thiskey
- STX KL
- CPX #'='
- \@@
- BNE DK2
+ LDX thiskey            ; Fetch the key pressed from thiskey in the key logger
+
+ STX KL                 ; Store X in KL, byte #0 of the key logger
+
+ CPX #'='               ; If "=" is not being pressed, jump to DK2 below,
+ BNE DK2                ; otherwise let's process the configuration keys
 
 .FREEZE
 
- JSR WSCAN
- JSR RDKEY
- CPX #'Q'
+                        ; COPY is being pressed, so we enter a loop that
+                        ; listens for configuration keys, and we keep looping
+                        ; until we detect a DELETE key press. This effectively
+                        ; pauses the game when COPY is pressed, and unpauses
+                        ; it when DELETE is pressed
+
+ JSR WSCAN              ; Call WSCAN to wait for the vertical sync, so the whole
+                        ; screen gets drawn
+
+ JSR RDKEY              ; Scan the keyboard for a key press and return the
+                        ; ASCII code of the key pressed in X (or 0 for no key
+                        ; press)
+
+ CPX #'Q'               ; If "Q" is not being pressed, skip to DK6
  BNE DK6
- LDX #$FF
- STX DNOIZ
- LDX #'Q'
+
+ LDX #$FF               ; "Q" is being pressed, so set DNOIZ to $FF to turn the
+ STX DNOIZ              ; sound off
+
+ LDX #'Q'               ; Set X to the ASCII for "Q" once again, so it doesn't
+                        ; get changed by the above
 
 .DK6
 
- LDY #0
+ LDY #0                 ; We now want to loop through the keys that toggle
+                        ; various settings, so set a counter in Y to work our
+                        ; way through them
 
 .DKL4
 
- JSR DKS3
- INY
- CPY #(DISK+1-DAMP)
- BNE DKL4
- CPX #'S'
+ JSR DKS3               ; Call DKS3 to scan for the key given in Y, and toggle
+                        ; the relevant setting if it is pressed
+
+ INY                    ; Increment Y to point to the next toggle key
+
+ CPY #(DISK+1-DAMP)     ; Check to see whether we have reached the last toggle
+                        ; key (as they run from DAMP to MULIE, or DAMP+1)
+
+ BNE DKL4               ; If not, loop back to check for the next toggle key
+
+ CPX #'S'               ; If "S" is not being pressed, jump to DK7
  BNE DK7
- LDA #0
- STA DNOIZ
+
+ LDA #0                 ; "S" is being pressed, so set DNOIZ to 0 to turn the
+ STA DNOIZ              ; sound on
 
 .DK7
 
- CPX #27
- BNE P%+5
- JMP DEATH2
- CPX #'-'
- \@@
- BNE FREEZE
+ CPX #$1B               ; If ESCAPE is not being pressed, skip over the next
+ BNE P%+5               ; instruction
+
+ JMP DEATH2             ; ESCAPE is being pressed, so jump to DEATH2 to end
+                        ; the game
+
+ CPX #'-'               ; If "-" is not being pressed, we are still paused,
+ BNE FREEZE             ; so loop back up to keep listening for configuration
+                        ; keys, otherwise fall through into the rest of the
+                        ; key detection code, which unpauses the game
 
 .DK2
 
- RTS
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: TT217
+;       Type: Subroutine
+;   Category: Keyboard
+;    Summary: Scan the keyboard until a key is pressed
+;
+; ------------------------------------------------------------------------------
+;
+; Scan the keyboard until a key is pressed, and return the key's ASCII code.
+; If, on entry, a key is already being held down, then wait until that key is
+; released first (so this routine detects the first key down event following
+; the subroutine call).
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   X                   The ASCII code of the key that was pressed
+;
+;   A                   Contains the same as X
+;
+;   Y                   Y is preserved
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   out                 Contains an RTS
+;
+;   t                   As TT217 but don't preserve Y, set it to YSAV instead
+;
+; ******************************************************************************
 
 .TT217
 
- STY YSAV
+ STY YSAV               ; Store Y in temporary storage, so we can restore it
+                        ; later
 
 .t
 
- LDY #2
- JSR DELAY
- JSR RDKEY
- BNE t
+ LDY #2                 ; Delay for 2 vertical syncs (2/50 = 0.04 seconds) so we
+ JSR DELAY              ; don't take up too much CPU time while looping round
+
+ JSR RDKEY              ; Scan the keyboard for a key press and return the
+                        ; ASCII code of the key pressed in X (or 0 for no key
+                        ; press)
+
+ BNE t                  ; If a key was already being held down when we entered
+                        ; this routine, keep looping back up to t, until the
+                        ; key is released
 
 .t2
 
- JSR RDKEY
- BEQ t2
- LDY YSAV
- TAX
+ JSR RDKEY              ; Any pre-existing key press is now gone, so we can
+                        ; start scanning the keyboard again, returning the
+                        ; ASCII code of the key pressed in X (or 0 for no key
+                        ; press)
+
+ BEQ t2                 ; Keep looping up to t2 until a key is pressed
+
+ LDY YSAV               ; Restore the original value of Y we stored above
+
+ TAX                    ; Copy A into X
 
 .out
 
- RTS
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: me1
+;       Type: Subroutine
+;   Category: Flight
+;    Summary: Erase an old in-flight message and display a new one
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   A                   The text token to be printed
+;
+;   X                   Must be set to 0
+;
+; ******************************************************************************
 
 .me1
 
- STX DLY
- PHA
- LDA MCH
- JSR mes9
- PLA
+ STX DLY                ; Set the message delay in DLY to 0, so any new
+                        ; in-flight messages will be shown instantly
+
+ PHA                    ; Store the new message token we want to print
+
+ LDA MCH                ; Set A to the token number of the message that is
+ JSR mes9               ; currently on-screen, and call mes9 to print it (which
+                        ; will remove it from the screen, as printing is done
+                        ; using EOR logic)
+
+ PLA                    ; Restore the new message token
+
+; ******************************************************************************
+;
+;       Name: MESS
+;       Type: Subroutine
+;   Category: Flight
+;    Summary: Display an in-flight message
+;
+; ------------------------------------------------------------------------------
+;
+; Display an in-flight message in capitals at the bottom of the space view,
+; erasing any existing in-flight message first.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   A                   The text token to be printed
+;
+; ******************************************************************************
 
 .MESS
 
- PHA
- LDA #15
- LDX QQ11
- BEQ infrontvw
- JSR CLYNS
- LDA #25
- EQUB $2C
+ PHA                    ; Store A on the stack so we can restore it after the
+                        ; following
+
+ LDA #15                ; Set A = 15 to use as the text row for the message if
+                        ; this is a space view
+
+ LDX QQ11               ; If this is the space view, skip the following
+ BEQ infrontvw          ; instruction
+
+ JSR CLYNS              ; Clear the bottom three text rows of the upper screen,
+                        ; and move the text cursor to column 1 on row 21, i.e.
+                        ; the start of the top row of the three bottom rows
+
+ LDA #25                ; Set A = 25 to use as the text row for the message if
+                        ; this is not a space view
+
+ EQUB $2C               ; Skip the next instruction by turning it into
+                        ; $2C $85 $36, or BIT $3685, which does nothing apart
+                        ; from affect the flags
 
 .infrontvw
 
- STA YC
- LDX #0
+ STA YC                ; Move the text cursor to the row specified in A
+
+ LDX #0                 ; Set QQ17 = 0 to switch to ALL CAPS
  STX QQ17
- LDA messXC
- STA XC
- PLA
- LDY #20
- CPX DLY
- BNE me1
- STY DLY
- STA MCH
- LDA #$C0
- STA DTW4
- LDA de
+
+ LDA messXC             ; Move the text cursor to column messXC, in case we
+ STA XC                 ; jump to me1 below to erase the current in-flight
+                        ; message (whose column we stored in messXC when we
+                        ; called MESS to put it there in the first place)
+
+ PLA                    ; Restore A from the stack
+
+ LDY #20                ; Set Y = 20 for setting the message delay below
+
+ CPX DLY                ; If the message delay in DLY is not zero, jump up to
+ BNE me1                ; me1 to erase the current message first (whose token
+                        ; number will be in MCH)
+
+ STY DLY                ; Set the message delay in DLY to 20
+
+ STA MCH                ; Set MCH to the token we are about to display
+
+                        ; Before we fall through into mes9 to print the token,
+                        ; we need to work out the starting column for the
+                        ; message we want to print, so it's centred on-screen,
+                        ; so the following doesn't print anything, it just uses
+                        ; the justified text mechanism to work out the number of
+                        ; characters in the message we are going to print
+
+ LDA #%11000000         ; Set the DTW4 flag to %11000000 (justify text, buffer
+ STA DTW4               ; entire token including carriage returns)
+
+ LDA de                 ; Set the C flag to bit 1 of the destruction flag in de
  LSR A
- LDA #0
- BCC P%+4
- LDA #10
- STA DTW5
- LDA MCH
- JSR TT27
- LDA #32
- SEC
- SBC DTW5
- LSR A
- STA messXC
- STA XC
- JSR MT15
- LDA MCH
+
+ LDA #0                 ; Set A = 0
+
+ BCC P%+4               ; If the destruction flag in de is not set, skip the
+                        ; following instruction
+
+ LDA #10                ; Set A = 10
+
+ STA DTW5               ; Store A in DTW5, so DTW5 (which holds the size of the
+                        ; justified text buffer at BUF) is set to 0 if the
+                        ; destruction flag is not set, or 10 if it is (10 being
+                        ; the number of characters in the " DESTROYED" token)
+
+ LDA MCH                ; Call TT27 to print the token in MCH into the buffer
+ JSR TT27               ; (this doesn't print it on-screen, it just puts it into
+                        ; the buffer and moves the DTW5 pointer along, so DTW5
+                        ; now contains the size of the message we want to print,
+                        ; including the " DESTROYED" part if that's going to be
+                        ; included)
+
+ LDA #32                ; Set A = (32 - DTW5) / 2
+ SEC                    ;
+ SBC DTW5               ; so A now contains the column number we need to print
+ LSR A                  ; our message at for it to be centred on-screen (as
+                        ; there are 32 columns)
+
+ STA messXC             ; Store A in messXC, so when we erase the message via
+                        ; the branch to me1 above, messXC will tell us where to
+                        ; print it
+
+ STA XC                 ; Move the text cursor to column messXC
+
+ JSR MT15               ; Call MT15 to switch to left-aligned text when printing
+                        ; extended tokens disabling the justify text setting we
+                        ; set above
+
+ LDA MCH                ; Set MCH to the token we are about to display
+
+                        ; Fall through into mes9 to print the token in A
+
+; ******************************************************************************
+;
+;       Name: mes9
+;       Type: Subroutine
+;   Category: Flight
+;    Summary: Print a text token, possibly followed by " DESTROYED"
+;
+; ------------------------------------------------------------------------------
+;
+; Print a text token, followed by " DESTROYED" if the destruction flag is set
+; (for when a piece of equipment is destroyed).
+;
+; ******************************************************************************
 
 .mes9
 
- JSR TT27
- LSR de
- BCC out
- LDA #253
- JMP TT27
+ JSR TT27               ; Call TT27 to print the text token in A
+
+ LSR de                 ; If bit 0 of variable de is clear, return from the
+ BCC out                ; subroutine (as out contains an RTS)
+
+ LDA #253               ; Print recursive token 93 (" DESTROYED") and return
+ JMP TT27               ; from the subroutine using a tail call
+
+; ******************************************************************************
+;
+;       Name: OUCH
+;       Type: Subroutine
+;   Category: Flight
+;    Summary: Potentially lose cargo or equipment following damage
+;
+; ------------------------------------------------------------------------------
+;
+; Our shields are dead and we are taking damage, so there is a small chance of
+; losing cargo or equipment.
+;
+; ******************************************************************************
 
 .OUCH
 
- JSR DORND
- BMI out
- CPX #22
- BCS out
- LDA QQ20,X
- BEQ out
- LDA DLY
- BNE out
- LDY #3
- STY de
- STA QQ20,X
- CPX #17
- BCS ou1
- TXA
- ADC #208
- JMP MESS ;was BNE <<----
+ JSR DORND              ; Set A and X to random numbers
+
+ BMI out                ; If A < 0 (50% chance), return from the subroutine
+                        ; (as out contains an RTS)
+
+ CPX #22                ; If X >= 22 (91% chance), return from the subroutine
+ BCS out                ; (as out contains an RTS)
+
+ LDA QQ20,X             ; If we do not have any of item QQ20+X, return from the
+ BEQ out                ; subroutine (as out contains an RTS). X is in the range
+                        ; 0-21, so this not only checks for cargo, but also for
+                        ; E.C.M., fuel scoops, energy bomb, energy unit and
+                        ; docking computer, all of which can be destroyed
+
+ LDA DLY                ; If there is already an in-flight message on-screen,
+ BNE out                ; return from the subroutine (as out contains an RTS)
+
+ LDY #3                 ; Set bit 1 of de, the equipment destruction flag, so
+ STY de                 ; that when we call MESS below, " DESTROYED" is appended
+                        ; to the in-flight message
+
+ STA QQ20,X             ; A is 0 (as we didn't branch with the BNE above), so
+                        ; this sets QQ20+X to 0, which destroys any cargo or
+                        ; equipment we have of that type
+
+ CPX #17                ; If X >= 17 then we just lost a piece of equipment, so
+ BCS ou1                ; jump to ou1 to print the relevant message
+
+ TXA                    ; Print recursive token 48 + A as an in-flight token,
+ ADC #208               ; which will be in the range 48 ("FOOD") to 64 ("ALIEN
+ JMP MESS               ; ITEMS") as the C flag is clear, so this prints the
+                        ; destroyed item's name, followed by " DESTROYED" (as we
+                        ; set bit 1 of the de flag above), and returns from the
+                        ; subroutine using a tail call
 
 .ou1
 
- BEQ ou2
- CPX #18
- BEQ ou3
- TXA
- ADC #113-20
- JMP MESS
+ BEQ ou2                ; If X = 17, jump to ou2 to print "E.C.M.SYSTEM
+                        ; DESTROYED" and return from the subroutine using a tail
+                        ; call
+
+ CPX #18                ; If X = 18, jump to ou3 to print "FUEL SCOOPS
+ BEQ ou3                ; DESTROYED" and return from the subroutine using a tail
+                        ; call
+
+ TXA                    ; Otherwise X is in the range 19 to 21 and the C flag is
+ ADC #113-20            ; set (as we got here via a BCS to ou1), so we set A as
+                        ; follows:
+                        ;
+                        ;   A = 113 - 20 + X + C
+                        ;     = 113 - 19 + X
+                        ;     = 113 to 115
+
+ JMP MESS               ; Print recursive token A ("ENERGY BOMB", "ENERGY UNIT"
+                        ; or "DOCKING COMPUTERS") as an in-flight message,
+                        ; followed by " DESTROYED", and return from the
+                        ; subroutine using a tail call
+
+; ******************************************************************************
+;
+;       Name: ou2
+;       Type: Subroutine
+;   Category: Flight
+;    Summary: Display "E.C.M.SYSTEM DESTROYED" as an in-flight message
+;
+; ******************************************************************************
 
 .ou2
 
- lda #108
- JMP MESS
+ LDA #108               ; Set A to recursive token 108 ("E.C.M.SYSTEM")
+
+ JMP MESS               ; Print recursive token A as an in-flight message,
+                        ; followed by " DESTROYED", and return from the
+                        ; subroutine using a tail call
+
+; ******************************************************************************
+;
+;       Name: ou3
+;       Type: Subroutine
+;   Category: Flight
+;    Summary: Display "FUEL SCOOPS DESTROYED" as an in-flight message
+;
+; ******************************************************************************
 
 .ou3
 
- lda #111
- JMP MESS
+ LDA #111               ; Set A to recursive token 111 ("FUEL SCOOPS")
 
-.QQ23 ; Prxs 
+ JMP MESS               ; Print recursive token A as an in-flight message,
+                        ; followed by " DESTROYED", and return from the
+                        ; subroutine using a tail call
 
- EQUD &1068213
- EQUD &30A8114
- EQUD &7028341 ;Food
- EQUD &1FE28528
- EQUD &FFB8553
- EQUD &33608C4
- EQUD &78081DEB ;slvs..
- EQUD &3380E9A
- EQUD &7280675
- EQUD &1F11014E
- EQUD &71D0D7C ;comps
- EQUD &3FDC89B0
- EQUD &03358120
- \EQUD &360A118
- EQUD &742A161
- EQUD &1F37A2AB ;platnm
- EQUD &FFAC12D
- EQUD &7C00F35 ;Gms.
+; ******************************************************************************
+;
+;       Name: ITEM
+;       Type: Macro
+;   Category: Market
+;    Summary: Macro definition for the market prices table
+;  Deep dive: Market item prices and availability
+;
+; ------------------------------------------------------------------------------
+;
+; The following macro is used to build the market prices table:
+;
+;   ITEM price, factor, units, quantity, mask
+;
+; It inserts an item into the market prices table at QQ23. See the deep dive on
+; "Market item prices and availability" for more information on how the market
+; system works.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   price               Base price
+;
+;   factor              Economic factor
+;
+;   units               Units: "t", "g" or "k"
+;
+;   quantity            Base quantity
+;
+;   mask                Fluctuations mask
+;
+; ******************************************************************************
+
+MACRO ITEM price, factor, units, quantity, mask
+
+ IF factor < 0
+  s = 1 << 7
+ ELSE
+  s = 0
+ ENDIF
+
+ IF units = 't'
+  u = 0
+ ELIF units = 'k'
+  u = 1 << 5
+ ELSE
+  u = 1 << 6
+ ENDIF
+
+ e = ABS(factor)
+
+ EQUB price
+ EQUB s + u + e
+ EQUB quantity
+ EQUB mask
+
+ENDMACRO
+
+; ******************************************************************************
+;
+;       Name: QQ23
+;       Type: Variable
+;   Category: Market
+;    Summary: Market prices table
+;
+; ------------------------------------------------------------------------------
+;
+; Each item has four bytes of data, like this:
+;
+;   Byte #0 = Base price
+;   Byte #1 = Economic factor in bits 0-4, with the sign in bit 7
+;             Unit in bits 5-6
+;   Byte #2 = Base quantity
+;   Byte #3 = Mask to control price fluctuations
+;
+; To make it easier for humans to follow, we've defined a macro called ITEM
+; that takes the following arguments and builds the four bytes for us:
+;
+;   ITEM base price, economic factor, units, base quantity, mask
+;
+; So for food, we have the following:
+;
+;   * Base price = 19
+;   * Economic factor = -2
+;   * Unit = tonnes
+;   * Base quantity = 6
+;   * Mask = %00000001
+;
+; ******************************************************************************
+
+.QQ23
+
+ ITEM 19,  -2, 't',   6, %00000001  ;  0 = Food
+ ITEM 20,  -1, 't',  10, %00000011  ;  1 = Textiles
+ ITEM 65,  -3, 't',   2, %00000111  ;  2 = Radioactives
+ ITEM 40,  -5, 't', 226, %00011111  ;  3 = Slaves
+ ITEM 83,  -5, 't', 251, %00001111  ;  4 = Liquor/Wines
+ ITEM 196,  8, 't',  54, %00000011  ;  5 = Luxuries
+ ITEM 235, 29, 't',   8, %01111000  ;  6 = Narcotics
+ ITEM 154, 14, 't',  56, %00000011  ;  7 = Computers
+ ITEM 117,  6, 't',  40, %00000111  ;  8 = Machinery
+ ITEM 78,   1, 't',  17, %00011111  ;  9 = Alloys
+ ITEM 124, 13, 't',  29, %00000111  ; 10 = Firearms
+ ITEM 176, -9, 't', 220, %00111111  ; 11 = Furs
+ ITEM 32,  -1, 't',  53, %00000011  ; 12 = Minerals
+ ITEM 97,  -1, 'k',  66, %00000111  ; 13 = Gold
+
+;EQUD &360A118          ; This data is commented out in the original source
+
+ ITEM 171, -2, 'k',  55, %00011111  ; 14 = Platinum
+ ITEM 45,  -1, 'g', 250, %00001111  ; 15 = Gem-Stones
+ ITEM 53,  15, 't', 192, %00000111  ; 16 = Alien items
+
+; ******************************************************************************
+;
+;       Name: TIDY
+;       Type: Subroutine
+;   Category: Maths (Geometry)
+;    Summary: Orthonormalise the orientation vectors for a ship
+;  Deep dive: Tidying orthonormal vectors
+;             Orientation vectors
+;
+; ------------------------------------------------------------------------------
+;
+; This routine orthonormalises the orientation vectors for a ship. This means
+; making the three orientation vectors orthogonal (perpendicular to each other),
+; and normal (so each of the vectors has length 1).
+;
+; We do this because we use the small angle approximation to rotate these
+; vectors in space. It is not completely accurate, so the three vectors tend
+; to get stretched over time, so periodically we tidy the vectors with this
+; routine to ensure they remain as orthonormal as possible.
+;
+; ******************************************************************************
 
 .TI2
 
- TYA
+                        ; Called from below with A = 0, X = 0, Y = 4 when
+                        ; nosev_x and nosev_y are small, so we assume that
+                        ; nosev_z is big
+
+ TYA                    ; A = Y = 4
  LDY #2
- JSR TIS3
- STA INWK+20 ; Uz = -(FxUx+FyUy)/Fz
- JMP TI3
+ JSR TIS3               ; Call TIS3 with X = 0, Y = 2, A = 4, to set roofv_z =
+ STA INWK+20            ; -(nosev_x * roofv_x + nosev_y * roofv_y) / nosev_z
+
+ JMP TI3                ; Jump to TI3 to keep tidying
 
 .TI1
 
- TAX
- LDA XX15+1
- AND #$60
+                        ; Called from below with A = 0, Y = 4 when nosev_x is
+                        ; small
+
+ TAX                    ; Set X = A = 0
+
+ LDA XX15+1             ; Set A = nosev_y, and if the top two magnitude bits
+ AND #%01100000         ; are both clear, jump to TI2 with A = 0, X = 0, Y = 4
  BEQ TI2
- LDA #2
- JSR TIS3
- STA INWK+18
- JMP TI3
+
+ LDA #2                 ; Otherwise nosev_y is big, so set up the index values
+                        ; to pass to TIS3
+
+ JSR TIS3               ; Call TIS3 with X = 0, Y = 4, A = 2, to set roofv_y =
+ STA INWK+18            ; -(nosev_x * roofv_x + nosev_z * roofv_z) / nosev_y
+
+ JMP TI3                ; Jump to TI3 to keep tidying
 
 .TIDY
 
- LDA INWK+10
+ LDA INWK+10            ; Set (XX15, XX15+1, XX15+2) = nosev
  STA XX15
  LDA INWK+12
  STA XX15+1
  LDA INWK+14
  STA XX15+2
- JSR NORM
- LDA XX15
+
+ JSR NORM               ; Call NORM to normalise the vector in XX15, i.e. nosev
+
+ LDA XX15               ; Set nosev = (XX15, XX15+1, XX15+2)
  STA INWK+10
  LDA XX15+1
  STA INWK+12
  LDA XX15+2
  STA INWK+14
- LDY #4
- LDA XX15
- AND #$60
+
+ LDY #4                 ; Set Y = 4
+
+ LDA XX15               ; Set A = nosev_x, and if the top two magnitude bits
+ AND #%01100000         ; are both clear, jump to TI1 with A = 0, Y = 4
  BEQ TI1
- LDX #2
- LDA #0
- JSR TIS3
- STA INWK+16
+
+ LDX #2                 ; Otherwise nosev_x is big, so set up the index values
+ LDA #0                 ; to pass to TIS3
+
+ JSR TIS3               ; Call TIS3 with X = 2, Y = 4, A = 0, to set roofv_x =
+ STA INWK+16            ; -(nosev_y * roofv_y + nosev_z * roofv_z) / nosev_x
 
 .TI3
 
- LDA INWK+16
+ LDA INWK+16            ; Set (XX15, XX15+1, XX15+2) = roofv
  STA XX15
  LDA INWK+18
  STA XX15+1
  LDA INWK+20
  STA XX15+2
- JSR NORM
- LDA XX15
+
+ JSR NORM               ; Call NORM to normalise the vector in XX15, i.e. roofv
+
+ LDA XX15               ; Set roofv = (XX15, XX15+1, XX15+2)
  STA INWK+16
  LDA XX15+1
  STA INWK+18
  LDA XX15+2
  STA INWK+20
- LDA INWK+12
+
+ LDA INWK+12            ; Set Q = nosev_y
  STA Q
- LDA INWK+20
- JSR MULT12
- LDX INWK+14
- LDA INWK+18
- JSR TIS1
- EOR #128
- STA INWK+22
- LDA INWK+16
- JSR MULT12
- LDX INWK+10
- LDA INWK+20
- JSR TIS1
- EOR #128
- STA INWK+24
- LDA INWK+18
- JSR MULT12
- LDX INWK+12
- LDA INWK+16
- JSR TIS1
- EOR #128
- STA INWK+26 ;FxU/96(LHS)
- LDA #0
- LDX #14
+
+ LDA INWK+20            ; Set A = roofv_z
+
+ JSR MULT12             ; Set (S R) = Q * A = nosev_y * roofv_z
+
+ LDX INWK+14            ; Set X = nosev_z
+
+ LDA INWK+18            ; Set A = roofv_y
+
+ JSR TIS1               ; Set (A ?) = (-X * A + (S R)) / 96
+                        ;        = (-nosev_z * roofv_y + nosev_y * roofv_z) / 96
+                        ;
+                        ; This also sets Q = nosev_z
+
+ EOR #%10000000         ; Set sidev_x = -A
+ STA INWK+22            ;        = (nosev_z * roofv_y - nosev_y * roofv_z) / 96
+
+ LDA INWK+16            ; Set A = roofv_x
+
+ JSR MULT12             ; Set (S R) = Q * A = nosev_z * roofv_x
+
+ LDX INWK+10            ; Set X = nosev_x
+
+ LDA INWK+20            ; Set A = roofv_z
+
+ JSR TIS1               ; Set (A ?) = (-X * A + (S R)) / 96
+                        ;        = (-nosev_x * roofv_z + nosev_z * roofv_x) / 96
+                        ;
+                        ; This also sets Q = nosev_x
+
+ EOR #%10000000         ; Set sidev_y = -A
+ STA INWK+24            ;        = (nosev_x * roofv_z - nosev_z * roofv_x) / 96
+
+ LDA INWK+18            ; Set A = roofv_y
+
+ JSR MULT12             ; Set (S R) = Q * A = nosev_x * roofv_y
+
+ LDX INWK+12            ; Set X = nosev_y
+
+ LDA INWK+16            ; Set A = roofv_x
+
+ JSR TIS1               ; Set (A ?) = (-X * A + (S R)) / 96
+                        ;        = (-nosev_y * roofv_x + nosev_x * roofv_y) / 96
+
+ EOR #%10000000         ; Set sidev_z = -A
+ STA INWK+26            ;        = (nosev_y * roofv_x - nosev_x * roofv_y) / 96
+
+ LDA #0                 ; Set A = 0 so we can clear the low bytes of the
+                        ; orientation vectors
+
+ LDX #14                ; We want to clear the low bytes, so start from sidev_y
+                        ; at byte #9+14 (we clear all except sidev_z_lo, though
+                        ; I suspect this is in error and that X should be 16)
 
 .TIL1
 
- STA INWK+9,X
+ STA INWK+9,X           ; Set the low byte in byte #9+X to zero
+
+ DEX                    ; Set X = X - 2 to jump down to the next low byte
  DEX
- DEX
- BPL TIL1
- RTS
+
+ BPL TIL1               ; Loop back until we have zeroed all the low bytes
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: TIS2
+;       Type: Subroutine
+;   Category: Maths (Arithmetic)
+;    Summary: Calculate A = A / Q
+;  Deep dive: Shift-and-subtract division
+;
+; ------------------------------------------------------------------------------
+;
+; Calculate the following division, where A is a sign-magnitude number and Q is
+; a positive integer:
+;
+;   A = A / Q
+;
+; The value of A is returned as a sign-magnitude number with 96 representing 1,
+; and the maximum value returned is 1 (i.e. 96). This routine is used when
+; normalising vectors, where we represent fractions using integers, so this
+; gives us an approximation to two decimal places.
+;
+; ******************************************************************************
 
 .TIS2
 
- TAY
- AND #127
- CMP Q
- BCS TI4
- LDX #254
- STX T
+ TAY                    ; Store the argument A in Y
+
+ AND #%01111111         ; Strip the sign bit from the argument, so A = |A|
+
+ CMP Q                  ; If A >= Q then jump to TI4 to return a 1 with the
+ BCS TI4                ; correct sign
+
+ LDX #%11111110         ; Set T to have bits 1-7 set, so we can rotate through 7
+ STX T                  ; loop iterations, getting a 1 each time, and then
+                        ; getting a 0 on the 8th iteration... and we can also
+                        ; use T to catch our result bits into bit 0 each time
 
 .TIL2
 
- ASL A
- CMP Q
+ ASL A                  ; Shift A to the left
+
+ CMP Q                  ; If A < Q skip the following subtraction
  BCC P%+4
- SBC Q
- ROL T
- BCS TIL2
- LDA T
+
+ SBC Q                  ; A >= Q, so set A = A - Q
+                        ;
+                        ; Going into this subtraction we know the C flag is
+                        ; set as we passed through the BCC above, and we also
+                        ; know that A >= Q, so the C flag will still be set once
+                        ; we are done
+
+ ROL T                  ; Rotate the counter in T to the left, and catch the
+                        ; result bit into bit 0 (which will be a 0 if we didn't
+                        ; do the subtraction, or 1 if we did)
+
+ BCS TIL2               ; If we still have set bits in T, loop back to TIL2 to
+                        ; do the next iteration of 7
+
+                        ; We've done the division and now have a result in the
+                        ; range 0-255 here, which we need to reduce to the range
+                        ; 0-96. We can do that by multiplying the result by 3/8,
+                        ; as 256 * 3/8 = 96
+
+ LDA T                  ; Set T = T / 4
  LSR A
  LSR A
  STA T
- LSR A
- ADC T
+
+ LSR A                  ; Set T = T / 8 + T / 4
+ ADC T                  ;       = 3T / 8
  STA T
- TYA
- AND #128
- ORA T
- RTS
+
+ TYA                    ; Fetch the sign bit of the original argument A
+ AND #%10000000
+
+ ORA T                  ; Apply the sign bit to T
+
+ RTS                    ; Return from the subroutine
 
 .TI4
 
- TYA
- AND #128
- ORA #96
- RTS
+ TYA                    ; Fetch the sign bit of the original argument A
+ AND #%10000000
+
+ ORA #96                ; Apply the sign bit to 96 (which represents 1)
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: TIS3
+;       Type: Subroutine
+;   Category: Maths (Arithmetic)
+;    Summary: Calculate -(nosev_1 * roofv_1 + nosev_2 * roofv_2) / nosev_3
+;
+; ------------------------------------------------------------------------------
+;
+; Calculate the following expression:
+;
+;   A = -(nosev_1 * roofv_1 + nosev_2 * roofv_2) / nosev_3
+;
+; where 1, 2 and 3 are x, y, or z, depending on the values of X, Y and A. This
+; routine is called with the following values:
+;
+;   X = 0, Y = 2, A = 4 ->
+;         A = -(nosev_x * roofv_x + nosev_y * roofv_y) / nosev_z
+;
+;   X = 0, Y = 4, A = 2 ->
+;         A = -(nosev_x * roofv_x + nosev_z * roofv_z) / nosev_y
+;
+;   X = 2, Y = 4, A = 0 ->
+;         A = -(nosev_y * roofv_y + nosev_z * roofv_z) / nosev_x
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   X                   Index 1 (0 = x, 2 = y, 4 = z)
+;
+;   Y                   Index 2 (0 = x, 2 = y, 4 = z)
+;
+;   A                   Index 3 (0 = x, 2 = y, 4 = z)
+;
+; ******************************************************************************
 
 .TIS3
 
- STA P+2
- LDA INWK+10,X
+ STA P+2                ; Store P+2 in A for later
+
+ LDA INWK+10,X          ; Set Q = nosev_x_hi (plus X)
  STA Q
- LDA INWK+16,X
- JSR MULT12
+
+ LDA INWK+16,X          ; Set A = roofv_x_hi (plus X)
+
+ JSR MULT12             ; Set (S R) = Q * A
+                        ;           = nosev_x_hi * roofv_x_hi
+
+ LDX INWK+10,Y          ; Set Q = nosev_x_hi (plus Y)
+ STX Q
+
+ LDA INWK+16,Y          ; Set A = roofv_x_hi (plus Y)
+
+ JSR MAD                ; Set (A X) = Q * A + (S R)
+                        ;           = (nosev_x,X * roofv_x,X) +
+                        ;             (nosev_x,Y * roofv_x,Y)
+
+ STX P                  ; Store low byte of result in P, so result is now in
+                        ; (A P)
+
+ LDY P+2                ; Set Q = roofv_x_hi (plus argument A)
  LDX INWK+10,Y
  STX Q
- LDA INWK+16,Y
- JSR MAD
- STX P
- LDY P+2
- LDX INWK+10,Y
- STX Q
- EOR #128
 
-.DVIDT ; A = AP/Q 
+ EOR #%10000000         ; Flip the sign of A
 
- STA P+1
- EOR Q
- AND #128
- STA T
- LDA #0
- LDX #16
- ASL P
+                        ; Fall through into DIVDT to do:
+                        ;
+                        ;   (P+1 A) = (A P) / Q
+                        ;
+                        ;     = -((nosev_x,X * roofv_x,X) +
+                        ;         (nosev_x,Y * roofv_x,Y))
+                        ;       / nosev_x,A
+
+; ******************************************************************************
+;
+;       Name: DVIDT
+;       Type: Subroutine
+;   Category: Maths (Arithmetic)
+;    Summary: Calculate (P+1 A) = (A P) / Q
+;
+; ------------------------------------------------------------------------------
+;
+; Calculate the following integer division between sign-magnitude numbers:
+;
+;   (P+1 A) = (A P) / Q
+;
+; This uses the same shift-and-subtract algorithm as TIS2.
+;
+; ******************************************************************************
+
+.DVIDT
+
+ STA P+1                ; Set P+1 = A, so P(1 0) = (A P)
+
+ EOR Q                  ; Set T = the sign bit of A EOR Q, so it's 1 if A and Q
+ AND #%10000000         ; have different signs, i.e. it's the sign of the result
+ STA T                  ; of A / Q
+
+ LDA #0                 ; Set A = 0 for us to build a result
+
+ LDX #16                ; Set a counter in X to count the 16 bits in P(1 0)
+
+ ASL P                  ; Shift P(1 0) left
  ROL P+1
- ASL Q
+
+ ASL Q                  ; Clear the sign bit of Q the C flag at the same time
  LSR Q
 
 .DVL2
 
- ROL A
- CMP Q
+ ROL A                  ; Shift A to the left
+
+ CMP Q                  ; If A < Q skip the following subtraction
  BCC P%+4
- SBC Q
- ROL P
- ROL P+1
- DEX
- BNE DVL2
- LDA P
- ORA T
+
+ SBC Q                  ; Set A = A - Q
+                        ;
+                        ; Going into this subtraction we know the C flag is
+                        ; set as we passed through the BCC above, and we also
+                        ; know that A >= Q, so the C flag will still be set once
+                        ; we are done
+
+ ROL P                  ; Rotate P(1 0) to the left, and catch the result bit
+ ROL P+1                ; into the C flag (which will be a 0 if we didn't
+                        ; do the subtraction, or 1 if we did)
+
+ DEX                    ; Decrement the loop counter
+
+ BNE DVL2               ; Loop back for the next bit until we have done all 16
+                        ; bits of P(1 0)
+
+ LDA P                  ; Set A = P so the low byte is in the result in A
+
+ ORA T                  ; Set A to the correct sign bit that we set in T above
 
 .itsoff
 
- RTS
- \..............
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: KTRAN
+;       Type: Variable
+;   Category: Keyboard
+;    Summary: An unused key logger buffer that's left over from the 6502 Second
+;             Procsessor version of Elite
+;
+; ******************************************************************************
 
 .buf
 
- EQUB 2
- EQUB 15
+ EQUB 2                 ; Transmit 2 bytes as part of this command
+
+ EQUB 15                ; Receive 15 bytes as part of this command
 
 .KTRAN
 
- EQUS "12345678901234567"
- \............
+ EQUS "1234567890"      ; A 17-byte buffer to hold the key logger data from the
+ EQUS "1234567"         ; KEYBOARD routine in the I/O processor (note that only
+                        ; 12 of these bytes are actually updated by the KEYBOARD
+                        ; routine)
 
 ; ******************************************************************************
 ;

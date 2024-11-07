@@ -23301,23 +23301,108 @@ Saving file '3-assembled-output/ELTE.bin'
      8596   A9 6F      LDA #&6F
      8598   4C 05 85   JMP &8505
 .QQ23
-     859B   13 82 06 01
-     859F   14 81 0A 03
-     85A3   41 83 02 07
-     85A7   28 85 E2 1F
-     85AB   53 85 FB 0F
-     85AF   C4 08 36 03
-     85B3   EB 1D 08 78
-     85B7   9A 0E 38 03
-     85BB   75 06 28 07
-     85BF   4E 01 11 1F
-     85C3   7C 0D 1D 07
-     85C7   B0 89 DC 3F
-     85CB   20 81 35 03
-     85CF   61 A1 42 07
-     85D3   AB A2 37 1F
-     85D7   2D C1 FA 0F
-     85DB   35 0F C0 07
+Macro ITEM:
+     859B   13
+     859C   82
+     859D   06
+     859E   01
+End macro ITEM
+Macro ITEM:
+     859F   14
+     85A0   81
+     85A1   0A
+     85A2   03
+End macro ITEM
+Macro ITEM:
+     85A3   41
+     85A4   83
+     85A5   02
+     85A6   07
+End macro ITEM
+Macro ITEM:
+     85A7   28
+     85A8   85
+     85A9   E2
+     85AA   1F
+End macro ITEM
+Macro ITEM:
+     85AB   53
+     85AC   85
+     85AD   FB
+     85AE   0F
+End macro ITEM
+Macro ITEM:
+     85AF   C4
+     85B0   08
+     85B1   36
+     85B2   03
+End macro ITEM
+Macro ITEM:
+     85B3   EB
+     85B4   1D
+     85B5   08
+     85B6   78
+End macro ITEM
+Macro ITEM:
+     85B7   9A
+     85B8   0E
+     85B9   38
+     85BA   03
+End macro ITEM
+Macro ITEM:
+     85BB   75
+     85BC   06
+     85BD   28
+     85BE   07
+End macro ITEM
+Macro ITEM:
+     85BF   4E
+     85C0   01
+     85C1   11
+     85C2   1F
+End macro ITEM
+Macro ITEM:
+     85C3   7C
+     85C4   0D
+     85C5   1D
+     85C6   07
+End macro ITEM
+Macro ITEM:
+     85C7   B0
+     85C8   89
+     85C9   DC
+     85CA   3F
+End macro ITEM
+Macro ITEM:
+     85CB   20
+     85CC   81
+     85CD   35
+     85CE   03
+End macro ITEM
+Macro ITEM:
+     85CF   61
+     85D0   A1
+     85D1   42
+     85D2   07
+End macro ITEM
+Macro ITEM:
+     85D3   AB
+     85D4   A2
+     85D5   37
+     85D6   1F
+End macro ITEM
+Macro ITEM:
+     85D7   2D
+     85D8   C1
+     85D9   FA
+     85DA   0F
+End macro ITEM
+Macro ITEM:
+     85DB   35
+     85DC   0F
+     85DD   C0
+     85DE   07
+End macro ITEM
 .TI2
      85DF   98         TYA
      85E0   A0 02      LDY #&02
@@ -23474,6 +23559,7 @@ Saving file '3-assembled-output/ELTE.bin'
      86F5   0F
 .KTRAN
      86F6   31 32 33 ...
+     8700   31 32 33 ...
 ELITE F
 Assembled at &7972 
 Ends at &8707 
