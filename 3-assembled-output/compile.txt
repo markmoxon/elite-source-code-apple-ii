@@ -12609,6 +12609,7 @@ S.C.DATA &B00  &2000  &B00  &B00
 Saving file '3-assembled-output/DATA.unprot.bin'
 .ZP
      0000
+     0000
 .RAND
      0002
 .T1
@@ -12621,8 +12622,16 @@ Saving file '3-assembled-output/DATA.unprot.bin'
      0009
 .SC
      000A
+.SCH
+     000B
+.XX1
+     000C
 .INWK
      000C
+.XX19
+     002D
+.NEWB
+     0030
 .P
      0031
 .XC
@@ -12633,8 +12642,12 @@ Saving file '3-assembled-output/DATA.unprot.bin'
      0036
 .QQ17
      0037
+.K3
+     0038
 .XX2
      0038
+.K4
+     0046
 .XX16
      0048
 .XX0
@@ -12663,6 +12676,23 @@ Saving file '3-assembled-output/DATA.unprot.bin'
      006C
 .XX15
      006E
+.ztemp0
+     006E
+.X1
+     006E
+.ztemp1
+     006F
+.Y1
+     006F
+.ztemp2
+     0070
+.X2
+     0070
+.ztemp3
+     0071
+.Y2
+     0071
+     0072
 .XX12
      0074
 .K
@@ -12673,12 +12703,54 @@ Saving file '3-assembled-output/DATA.unprot.bin'
      007F
 .KEYLOOK
      0080
+.KLO
+     0080
+.thiskey
+     0080
+.KL
+     0080
+.KY1
+     0081
+.KY2
+     0082
+.KY3
+     0083
+.KY4
+     0084
+.KY5
+     0085
+.KY6
+     0086
+.KY7
+     0087
+.KY12
+     0088
+.KY13
+     0089
+.KY14
+     008A
+.KY15
+     008B
+.KY16
+     008C
+.KY17
+     008D
+.KY18
+     008E
+.KY19
+     008F
+.KY20
+     0090
 .LSP
      0091
 .QQ15
      0092
+.K5
+     0098
 .XX18
      0098
+.K6
+     009C
 .QQ19
      00A1
 .BET2
@@ -12784,7 +12856,7 @@ Saving file '3-assembled-output/DATA.unprot.bin'
 .QQ10
      00E1
 .NOSTM
-     00E2
+Zero page variables from &0  to &E2 
 .XX3
      0100
 .K%

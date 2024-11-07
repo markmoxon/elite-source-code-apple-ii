@@ -330,422 +330,926 @@ IF (buffer AND $FF) OR (buffr2 AND $FF)
  ERROR "STOP: buffer/buffr2 not on page boundary"
 ENDIF
 
-; ******************************************
+; ******************************************************************************
+;
+;       Name: ZP
+;       Type: Workspace
+;   Category: Workspaces
+;    Summary: Lots of important variables are stored in the zero page workspace
+;             as it is quicker and more space-efficient to access memory here
+;
+; ******************************************************************************
 
  ORG $0000
 
 .ZP
 
- SKIP 2                 ; Unused
+ SKIP 0                 ; The start of the zero page workspace
+
+ SKIP 2                 ; These bytes appear to be unused
 
 .RAND
 
- SKIP 4
+ SKIP 4                 ; Four 8-bit seeds for the random number generation
+                        ; system implemented in the DORND routine
 
 .T1
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used in a number of places
 
 .T2
 
- SKIP 1
+ SKIP 1                 ; This byte appears to be unused
 
 .T3
 
- SKIP 1
+ SKIP 1                 ; This byte appears to be unused
 
 .T4
 
- SKIP 1
+ SKIP 1                 ; This byte appears to be unused
 
 .SC
 
- SKIP 2
+ SKIP 1                 ; Screen address (low byte)
+                        ;
+                        ; Elite draws on-screen by poking bytes directly into
+                        ; screen memory, and SC(1 0) is typically set to the
+                        ; address of the character block containing the pixel
 
- SCH = SC+1
+.SCH
+
+ SKIP 1                 ; Screen address (high byte)
+
+.XX1
+
+ SKIP 0                 ; This is an alias for INWK that is used in the main
+                        ; ship-drawing routine at LL9
 
 .INWK
 
- SKIP NI%
+ SKIP 33                ; The zero-page internal workspace for the current ship
+                        ; data block
+                        ;
+                        ; As operations on zero page locations are faster and
+                        ; have smaller opcodes than operations on the rest of
+                        ; the addressable memory, Elite tends to store oft-used
+                        ; data here. A lot of the routines in Elite need to
+                        ; access and manipulate ship data, so to make this an
+                        ; efficient exercise, the ship data is first copied from
+                        ; the ship data blocks at K% into INWK (or, when new
+                        ; ships are spawned, from the blueprints at XX21). See
+                        ; the deep dive on "Ship data blocks" for details of
+                        ; what each of the bytes in the INWK data block
+                        ; represents
 
- NEWB = INWK+36
- XX19 = INWK+33
- XX1 = INWK
+.XX19
+
+ SKIP NI% - 34          ; XX19(1 0) shares its location with INWK(34 33), which
+                        ; contains the address of the ship line heap
+
+.NEWB
+
+ SKIP 1                 ; The ship's "new byte flags" (or NEWB flags)
+                        ;
+                        ; Contains details about the ship's type and associated
+                        ; behaviour, such as whether they are a trader, a bounty
+                        ; hunter, a pirate, currently hostile, in the process of
+                        ; docking, inside the hold having been scooped, and so
+                        ; on. The default values for each ship type are taken
+                        ; from the table at E%, and you can find out more detail
+                        ; in the deep dive on "Advanced tactics with the NEWB
+                        ; flags"
 
 .P
 
- SKIP 3
+ SKIP 3                 ; Temporary storage, used in a number of places
 
 .XC
 
- SKIP 1
+ SKIP 1                 ; The x-coordinate of the text cursor (i.e. the text
+                        ; column), which can be from 0 to 32
+                        ;
+                        ; A value of 0 denotes the leftmost column and 32 the
+                        ; rightmost column, but because the top part of the
+                        ; screen (the space view) has a white border that
+                        ; clashes with columns 0 and 32, text is only shown
+                        ; in columns 1-31
 
 .COL
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used to store colour information
+                        ; when drawing pixels in the dashboard
 
 .YC
 
- SKIP 1
+ SKIP 1                 ; The y-coordinate of the text cursor (i.e. the text
+                        ; row), which can be from 0 to 23
+                        ;
+                        ; The screen actually has 31 character rows if you
+                        ; include the dashboard, but the text printing routines
+                        ; only work on the top part (the space view), so the
+                        ; text cursor only goes up to a maximum of 23, the row
+                        ; just before the screen splits
+                        ;
+                        ; A value of 0 denotes the top row, but because the
+                        ; top part of the screen has a white border that clashes
+                        ; with row 0, text is always shown at row 1 or greater
 
 .QQ17
 
- SKIP 1
+ SKIP 1                 ; Contains a number of flags that affect how text tokens
+                        ; are printed, particularly capitalisation:
+                        ;
+                        ;   * If all bits are set (255) then text printing is
+                        ;     disabled
+                        ;
+                        ;   * Bit 7: 0 = ALL CAPS
+                        ;            1 = Sentence Case, bit 6 determines the
+                        ;                case of the next letter to print
+                        ;
+                        ;   * Bit 6: 0 = print the next letter in upper case
+                        ;            1 = print the next letter in lower case
+                        ;
+                        ;   * Bits 0-5: If any of bits 0-5 are set, print in
+                        ;               lower case
+                        ;
+                        ; So:
+                        ;
+                        ;   * QQ17 = 0 means case is set to ALL CAPS
+                        ;
+                        ;   * QQ17 = %10000000 means Sentence Case, currently
+                        ;            printing upper case
+                        ;
+                        ;   * QQ17 = %11000000 means Sentence Case, currently
+                        ;            printing lower case
+                        ;
+                        ;   * QQ17 = %11111111 means printing is disabled
+
+.K3
+
+ SKIP 0                 ; Temporary storage, used in a number of places
 
 .XX2
 
- SKIP 16
+ SKIP 14                ; Temporary storage, used to store the visibility of the
+                        ; ship's faces during the ship-drawing routine at LL9
 
- K3 = XX2
- K4 = XX2+14
+.K4
+
+ SKIP 2                 ; Temporary storage, used in a number of places
 
 .XX16
 
- SKIP 18
-
-; ZP up to K3+1 always paged in
+ SKIP 18                ; Temporary storage for a block of values, used in a
+                        ; number of places
 
 .XX0
 
- SKIP 2
+ SKIP 2                 ; Temporary storage, used to store the address of a ship
+                        ; blueprint. For example, it is used when we add a new
+                        ; ship to the local bubble in routine NWSHP, and it
+                        ; contains the address of the current ship's blueprint
+                        ; as we loop through all the nearby ships in the main
+                        ; flight loop
 
 .INF
 
- SKIP 2
+ SKIP 2                 ; Temporary storage, typically used for storing the
+                        ; address of a ship's data block, so it can be copied
+                        ; to and from the internal workspace at INWK
 
 .V
 
- SKIP 2
+ SKIP 2                 ; Temporary storage, typically used for storing an
+                        ; address pointer
 
 .XX
 
- SKIP 2
+ SKIP 2                 ; Temporary storage, typically used for storing a 16-bit
+                        ; x-coordinate
 
 .YY
 
- SKIP 2
+ SKIP 2                 ; Temporary storage, typically used for storing a 16-bit
+                        ; y-coordinate
 
 .SUNX
 
- SKIP 2
+ SKIP 2                 ; The 16-bit x-coordinate of the vertical centre axis
+                        ; of the sun (which might be off-screen)
 
 .BETA
 
- SKIP 1
+ SKIP 1                 ; The current pitch angle beta, which is reduced from
+                        ; JSTY to a sign-magnitude value between -8 and +8
+                        ;
+                        ; This describes how fast we are pitching our ship, and
+                        ; determines how fast the universe pitches around us
+                        ;
+                        ; The sign bit is also stored in BET2, while the
+                        ; opposite sign is stored in BET2+1
 
 .BET1
 
- SKIP 1
+ SKIP 1                 ; The magnitude of the pitch angle beta, i.e. |beta|,
+                        ; which is a positive value between 0 and 8
 
 .QQ22
 
- SKIP 2
+ SKIP 2                 ; The two hyperspace countdown counters
+                        ;
+                        ; Before a hyperspace jump, both QQ22 and QQ22+1 are
+                        ; set to 15
+                        ;
+                        ; QQ22 is an internal counter that counts down by 1
+                        ; each time TT102 is called, which happens every
+                        ; iteration of the main game loop. When it reaches
+                        ; zero, the on-screen counter in QQ22+1 gets
+                        ; decremented, and QQ22 gets set to 5 and the countdown
+                        ; continues (so the first tick of the hyperspace counter
+                        ; takes 15 iterations to happen, but subsequent ticks
+                        ; take 5 iterations each)
+                        ;
+                        ; QQ22+1 contains the number that's shown on-screen
+                        ; during the countdown. It counts down from 15 to 1, and
+                        ; when it hits 0, the hyperspace engines kick in
 
 .ECMA
 
- SKIP 1
+ SKIP 1                 ; The E.C.M. countdown timer, which determines whether
+                        ; an E.C.M. system is currently operating:
+                        ;
+                        ;   * 0 = E.C.M. is off
+                        ;
+                        ;   * Non-zero = E.C.M. is on and is counting down
+                        ;
+                        ; The counter starts at 32 when an E.C.M. is activated,
+                        ; either by us or by an opponent, and it decreases by 1
+                        ; in each iteration of the main flight loop until it
+                        ; reaches zero, at which point the E.C.M. switches off.
+                        ; Only one E.C.M. can be active at any one time, so
+                        ; there is only one counter
 
 .ALP1
 
- SKIP 1
+ SKIP 1                 ; Magnitude of the roll angle alpha, i.e. |alpha|,
+                        ; which is a positive value between 0 and 31
 
 .ALP2
 
- SKIP 2
+ SKIP 2                 ; Bit 7 of ALP2 = sign of the roll angle in ALPHA
+                        ;
+                        ; Bit 7 of ALP2+1 = opposite sign to ALP2 and ALPHA
 
 .XX15
 
- SKIP 6
+ SKIP 0                 ; Temporary storage, typically used for storing screen
+                        ; coordinates in line-drawing routines
+                        ;
+                        ; There are six bytes of storage, from XX15 TO XX15+5.
+                        ; The first four bytes have the following aliases:
+                        ;
+                        ;   X1 = XX15
+                        ;   Y1 = XX15+1
+                        ;   X2 = XX15+2
+                        ;   Y2 = XX15+3
+                        ;
+                        ; These are typically used for describing lines in terms
+                        ; of screen coordinates, i.e. (X1, Y1) to (X2, Y2)
+                        ;
+                        ; The last two bytes of XX15 do not have aliases
 
- ztemp0 = XX15
- ztemp1 = ztemp0+1
- ztemp2 = ztemp1+1
- ztemp3 = ztemp2+1
+.ztemp0
+
+ SKIP 0                 ; ???
+
+.X1
+
+ SKIP 1                 ; Temporary storage, typically used for x-coordinates in
+                        ; line-drawing routines
+
+.ztemp1
+
+ SKIP 0                 ; ???
+
+.Y1
+
+ SKIP 1                 ; Temporary storage, typically used for y-coordinates in
+                        ; line-drawing routines
+
+.ztemp2
+
+ SKIP 0                 ; ???
+
+.X2
+
+ SKIP 1                 ; Temporary storage, typically used for x-coordinates in
+                        ; line-drawing routines
+
+.ztemp3
+
+ SKIP 0                 ; ???
+
+.Y2
+
+ SKIP 1                 ; Temporary storage, typically used for y-coordinates in
+                        ; line-drawing routines
+
+ SKIP 2                 ; The last two bytes of the XX15 block
 
 .XX12
 
- SKIP 6
-
- X1 = XX15
- Y1 = X1+1
- X2 = Y1+1
- Y2 = X2+1
+ SKIP 6                 ; Temporary storage for a block of values, used in a
+                        ; number of places
 
 .K
 
- SKIP 4
+ SKIP 4                 ; Temporary storage, used in a number of places
 
 .LAS
 
- SKIP 1
+ SKIP 1                 ; Contains the laser power of the laser fitted to the
+                        ; current space view (or 0 if there is no laser fitted
+                        ; to the current view)
+                        ;
+                        ; This gets set to bits 0-6 of the laser power byte from
+                        ; the commander data block, which contains the laser's
+                        ; power (bit 7 doesn't denote laser power, just whether
+                        ; or not the laser pulses, so that is not stored here)
 
 .MSTG
 
- SKIP 1
+ SKIP 1                 ; The current missile lock target
+                        ;
+                        ;   * $FF = no target
+                        ;
 
 .KEYLOOK
 
- SKIP 17
+ SKIP 0                 ; KEYLOOK, KLO, KL and thiskey all share the same
+                        ; address
 
- thiskey = KEYLOOK
+.KLO
 
- KLO = KEYLOOK
- KL = KLO
- KY1 = KLO+1
- KY2 = KLO+2
- KY3 = KLO+3
- KY4 = KLO+4
- KY5 = KLO+5
- KY6 = KLO+6
- KY7 = KLO+7
- KY12 = KLO+8
- KY13 = KLO+9
- KY14 = KLO+10
- KY15 = KLO+11
- KY16 = KLO+12
- KY17 = KLO+13
- KY18 = KLO+14
- KY19 = KLO+15
- KY20 = KLO+16
+ SKIP 0                 ; KEYLOOK, KLO, KL and thiskey all share the same
+                        ; address
+
+.thiskey
+
+ SKIP 0                 ; If a key is being pressed that is not in the keyboard
+                        ; table at KYTB, it can be stored in KL and thisley (as
+                        ; seen in routine DK4, for example)
+
+.KL
+
+ SKIP 1                 ; The following bytes implement a key logger that
+                        ; enables Elite to scan for concurrent key presses of
+                        ; the primary flight keys, plus a secondary flight key
+                        ;
+                        ; See the deep dive on "The key logger" for more details
+                        ;
+                        ; If a key is being pressed that is not in the keyboard
+                        ; table at KYTB, it can be stored here (as seen in
+                        ; routine DK4, for example)
+
+.KY1
+
+ SKIP 1                 ; "?" is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+
+.KY2
+
+ SKIP 1                 ; Space is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+
+.KY3
+
+ SKIP 1                 ; "<" is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+
+.KY4
+
+ SKIP 1                 ; ">" is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+
+.KY5
+
+ SKIP 1                 ; "X" is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+
+.KY6
+
+ SKIP 1                 ; "S" is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+
+.KY7
+
+ SKIP 1                 ; "A" is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+                        ;
+                        ; This is also set when the joystick fire button has
+                        ; been pressed
+
+.KY12
+
+ SKIP 1                 ; "B" is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+
+.KY13
+
+ SKIP 1                 ; ESCAPE is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+
+.KY14
+
+ SKIP 1                 ; "T" is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+
+.KY15
+
+ SKIP 1                 ; "U" is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+
+.KY16
+
+ SKIP 1                 ; "M" is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+
+.KY17
+
+ SKIP 1                 ; "E" is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+
+.KY18
+
+ SKIP 1                 ; "J" is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+
+.KY19
+
+ SKIP 1                 ; "C" is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
+
+.KY20
+
+ SKIP 1                 ; "P" is being pressed
+                        ;
+                        ;   * 0 = no
+                        ;
+                        ;   * Non-zero = yes
 
 .LSP
 
- SKIP 1
+ SKIP 1                 ; The ball line heap pointer, which contains the number
+                        ; of the first free byte after the end of the LSX2 and
+                        ; LSY2 heaps (see the deep dive on "The ball line heap"
+                        ; for details)
 
 .QQ15
 
- SKIP 6
+ SKIP 6                 ; The three 16-bit seeds for the selected system, i.e.
+                        ; the one in the crosshairs in the Short-range Chart
+                        ;
+                        ; See the deep dives on "Galaxy and system seeds" and
+                        ; "Twisting the system seeds" for more details
+
+.K5
+
+ SKIP 0                 ; Temporary storage used to store segment coordinates
+                        ; across successive calls to BLINE, the ball line
+                        ; routine
 
 .XX18
 
- SKIP 9
+ SKIP 4                 ; Temporary storage used to store coordinates in the
+                        ; LL9 ship-drawing routine
+
+.K6
+
+ SKIP 5                 ; Temporary storage, typically used for storing
+                        ; coordinates during vector calculations
 
 .QQ19
 
- SKIP 6
-
- K5 = XX18
- K6 = K5+4
+ SKIP 6                 ; Temporary storage, used in a number of places
 
 .BET2
 
- SKIP 2
+ SKIP 2                 ; Bit 7 of BET2 = sign of the pitch angle in BETA
+                        ;
+                        ; Bit 7 of BET2+1 = opposite sign to BET2 and BETA
 
 .DELTA
 
- SKIP 1
+ SKIP 1                 ; Our current speed, in the range 1-40
 
 .DELT4
 
- SKIP 2
+ SKIP 2                 ; Our current speed * 64 as a 16-bit value
+                        ;
+                        ; This is stored as DELT4(1 0), so the high byte in
+                        ; DELT4+1 therefore contains our current speed / 4
 
 .U
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used in a number of places
 
 .Q
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used in a number of places
 
 .R
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used in a number of places
 
 .S
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used in a number of places
 
 .XSAV
 
- SKIP 1
+ SKIP 1                 ; Temporary storage for saving the value of the X
+                        ; register, used in a number of places
 
 .YSAV
 
- SKIP 1
+ SKIP 1                 ; Temporary storage for saving the value of the Y
+                        ; register, used in a number of places
 
 .XX17
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used in BPRNT to store the number
+                        ; of characters to print, and as the edge counter in the
+                        ; main ship-drawing routine
 
 .QQ11
 
- SKIP 1
+ SKIP 1                 ; The type of the current view:
+                        ;
+                        ;   0   = Space view
+                        ;   1   = Title screen
+                        ;         Get commander name ("@", save/load commander)
+                        ;         In-system jump just arrived ("J")
+                        ;
+                        ; This value is typically set by calling routine TT66
 
 .ZZ
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, typically used for distance values
 
 .XX13
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, typically used in the line-drawing
+                        ; routines
 
 .MCNT
 
- SKIP 1
+ SKIP 1                 ; The main loop counter
+                        ;
+                        ; This counter determines how often certain actions are
+                        ; performed within the main loop. See the deep dive on
+                        ; "Scheduling tasks with the main loop counter" for more
+                        ; details
 
 .DL
 
- SKIP 1
+ SKIP 1                 ; Vertical sync flag
+                        ;
+                        ; DL gets set to 30 every time we reach vertical sync on
+                        ; the video system, which happens 50 times a second
+                        ; (50Hz). The WSCAN routine uses this to pause until the
+                        ; vertical sync, by setting DL to 0 and then monitoring
+                        ; its value until it changes to 30
 
 .TYPE
 
- SKIP 1
+ SKIP 1                 ; The current ship type
+                        ;
+                        ; This is where we store the current ship type for when
+                        ; we are iterating through the ships in the local bubble
+                        ; as part of the main flight loop. See the table at XX21
+                        ; for information about ship types
 
 .ALPHA
 
- SKIP 1
+ SKIP 1                 ; The current roll angle alpha, which is reduced from
+                        ; JSTX to a sign-magnitude value between -31 and +31
+                        ;
+                        ; This describes how fast we are rolling our ship, and
+                        ; determines how fast the universe rolls around us
+                        ;
+                        ; The sign bit is also stored in ALP2, while the
+                        ; opposite sign is stored in ALP2+1
 
-;.PBUP
-;
+;.PBUP                  ; These instructions are commented out in the original
+;                       ; source
 ;SKIP 1
-;
-;.HBUP
-;
-; SKIP 1
-;
-;.LBUP
-;
-; SKIP 1
+
+;.HBUP                  ; These instructions are commented out in the original
+;                       ; source
+;SKIP 1
+
+;.LBUP                  ; These instructions are commented out in the original
+;                       ; source
+;SKIP 1
 
 .QQ12
 
- SKIP 1
+ SKIP 1                 ; Our "docked" status
+                        ;
+                        ;   * 0 = we are not docked
+                        ;
+                        ;   * $FF = we are docked
 
 .TGT
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, typically used as a target value
+                        ; for counters when drawing explosion clouds and partial
+                        ; circles
 
 .FLAG
 
- SKIP 1
+ SKIP 1                 ; A flag that's used to define whether this is the first
+                        ; call to the ball line routine in BLINE, so it knows
+                        ; whether to wait for the second call before storing
+                        ; segment data in the ball line heap
 
 .CNT
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, typically used for storing the
+                        ; number of iterations required when looping
 
 .CNT2
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used in the planet-drawing routine
+                        ; to store the segment number where the arc of a partial
+                        ; circle should start
 
 .STP
 
- SKIP 1
+ SKIP 1                 ; The step size for drawing circles
+                        ;
+                        ; Circles in Elite are split up into 64 points, and the
+                        ; step size determines how many points to skip with each
+                        ; straight-line segment, so the smaller the step size,
+                        ; the smoother the circle. The values used are:
+                        ;
+                        ;   * 2 for big planets and the circles on the charts
+                        ;   * 4 for medium planets and the launch tunnel
+                        ;   * 8 for small planets and the hyperspace tunnel
+                        ;
+                        ; As the step size increases we move from smoother
+                        ; circles at the top to more polygonal at the bottom.
+                        ; See the CIRCLE2 routine for more details
 
 .XX4
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used in a number of places
 
 .XX20
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used in a number of places
 
 .LSNUM
 
- SKIP 1
+ SKIP 1                 ; The pointer to the current position in the ship line
+                        ; heap as we work our way through the new ship's edges
+                        ; (and the corresponding old ship's edges) when drawing
+                        ; the ship in the main ship-drawing routine at LL9
 
 .LSNUM2
 
- SKIP 1
+ SKIP 1                 ; The size of the existing ship line heap for the ship
+                        ; we are drawing in LL9, i.e. the number of lines in the
+                        ; old ship that is currently shown on-screen and which
+                        ; we need to erase
 
 .RAT
 
- SKIP 1
+ SKIP 1                 ; Used to store different signs depending on the current
+                        ; space view, for use in calculating stardust movement
 
 .RAT2
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used to store the pitch and roll
+                        ; signs when moving objects and stardust
 
 .K2
 
- SKIP 4
+ SKIP 4                 ; Temporary storage, used in a number of places
 
 .widget
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used to store the original argument
+                        ; in A in the logarithmic FMLTU and LL28 routines
 
 .dontclip
 
- SKIP 1
+ SKIP 1                 ; This is set to 0 in the RES2 routine, but the value is
+                        ; never actually read
 
 .Yx2M1
 
- SKIP 1
+ SKIP 1                 ; This is used to store the number of pixel rows in the
+                        ; space view minus 1, which is also the y-coordinate of
+                        ; the bottom pixel row of the space view (it is set to
+                        ; 191 in the RES2 routine)
 
-.text
+.text                   ; ???
 
  SKIP 1
 
 .messXC
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used to store the text column
+                        ; of the in-flight message in MESS, so it can be erased
+                        ; from the screen at the correct time
 
 .newzp
 
- SKIP 1
+ SKIP 1                 ; This is used by the STARS2 routine for storing the
+                        ; stardust particle's delta_x value
 
 .T
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used in a number of places
 
 .JSTX
 
- SKIP 1
+ SKIP 1                 ; Our current roll rate
+                        ;
+                        ; This value is shown in the dashboard's RL indicator,
+                        ; and determines the rate at which we are rolling
+                        ;
+                        ; The value ranges from 1 to 255 with 128 as the centre
+                        ; point, so 1 means roll is decreasing at the maximum
+                        ; rate, 128 means roll is not changing, and 255 means
+                        ; roll is increasing at the maximum rate
 
 .JSTY
 
- SKIP 1
+ SKIP 1                 ; Our current pitch rate
+                        ;
+                        ; This value is shown in the dashboard's DC indicator,
+                        ; and determines the rate at which we are pitching
+                        ;
+                        ; The value ranges from 1 to 255 with 128 as the centre
+                        ; point, so 1 means pitch is decreasing at the maximum
+                        ; rate, 128 means pitch is not changing, and 255 means
+                        ; pitch is increasing at the maximum rate
 
 .LSX
 
- SKIP 1
+ SKIP 1                 ; LSX contains the status of the sun line heap at LSO
+                        ;
+                        ;   * $FF indicates the sun line heap is empty
+                        ;
+                        ;   * Otherwise the LSO heap contains the line data for
+                        ;     the sun
 
 .FSH
 
- SKIP 1
+ SKIP 1                 ; Forward shield status
+                        ;
+                        ;   * 0 = empty
+                        ;
+                        ;   * $FF = full
 
 .ASH
 
- SKIP 1
+ SKIP 1                 ; Aft shield status
+                        ;
+                        ;   * 0 = empty
+                        ;
+                        ;   * $FF = full
 
 .ENERGY
 
- SKIP 1
+ SKIP 1                 ; Energy bank status
+                        ;
+                        ;   * 0 = empty
+                        ;
+                        ;   * $FF = full
 
 .QQ3
 
- SKIP 1
+ SKIP 1                 ; The selected system's economy (0-7)
+                        ;
+                        ;   * 0 = Rich Industrial
+                        ;   * 1 = Average Industrial
+                        ;   * 2 = Poor Industrial
+                        ;   * 3 = Mainly Industrial
+                        ;   * 4 = Mainly Agricultural
+                        ;   * 5 = Rich Agricultural
+                        ;   * 6 = Average Agricultural
+                        ;   * 7 = Poor Agricultural
+                        ;
+                        ; See the deep dive on "Generating system data" for more
+                        ; information on economies
 
 .QQ4
 
- SKIP 1
+ SKIP 1                 ; The selected system's government (0-7)
+                        ;
+                        ; See the deep dive on "Generating system data" for more
+                        ; details of the various government types
 
 .QQ5
 
- SKIP 1
+ SKIP 1                 ; The selected system's tech level (0-14)
+                        ;
+                        ; See the deep dive on "Generating system data" for more
+                        ; information on tech levels
 
 .QQ6
 
- SKIP 2
+ SKIP 2                 ; The selected system's population in billions * 10
+                        ; (1-71), so the maximum population is 7.1 billion
+                        ;
+                        ; See the deep dive on "Generating system data" for more
+                        ; details on population levels
 
 .QQ7
 
- SKIP 2
+ SKIP 2                 ; The selected system's productivity in M CR (96-62480)
+                        ;
+                        ; See the deep dive on "Generating system data" for more
+                        ; details about productivity levels
 
 .QQ8
 
- SKIP 2
+ SKIP 2                 ; The distance from the current system to the selected
+                        ; system in light years * 10, stored as a 16-bit number
+                        ;
+                        ; The distance will be 0 if the selected system is the
+                        ; current system
+                        ;
+                        ; The galaxy chart is 102.4 light years wide and 51.2
+                        ; light years tall (see the intra-system distance
+                        ; calculations in routine TT111 for details), which
+                        ; equates to 1024 x 512 in terms of QQ8
 
 .QQ9
 
- SKIP 1
+ SKIP 1                 ; The galactic x-coordinate of the crosshairs in the
+                        ; galaxy chart (and, most of the time, the selected
+                        ; system's galactic x-coordinate)
 
 .QQ10
 
- SKIP 1
+ SKIP 1                 ; The galactic y-coordinate of the crosshairs in the
+                        ; galaxy chart (and, most of the time, the selected
+                        ; system's galactic y-coordinate)
 
 .NOSTM
 
- SKIP 1
+ PRINT "Zero page variables from ", ~ZP, " to ", ~P%
 
 ; ******************************************************************************
 ;
