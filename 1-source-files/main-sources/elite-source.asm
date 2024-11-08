@@ -1117,9 +1117,9 @@ ENDIF
                         ; the bottom pixel row of the space view (it is set to
                         ; 191 in the RES2 routine)
 
-.text                   ; ???
+.text
 
- SKIP 1
+ SKIP 1                 ; ???
 
 .messXC
 
@@ -2128,7 +2128,7 @@ ENDIF
 
  LOAD_A% = LOAD%
 
- JMP S% ;@@
+ JMP S%                 ; ???
 
 ; ******************************************************************************
 ;
@@ -2255,6 +2255,15 @@ ENDIF
 
  NEXT
 
+; ******************************************************************************
+;
+;       Name: SCTBX1
+;       Type: Variable
+;   Category: Screen
+;    Summary: ???
+;
+; ******************************************************************************
+
 .SCTBX1
 
 FOR I%, 0, 255
@@ -2263,6 +2272,15 @@ FOR I%, 0, 255
 
 NEXT
 
+; ******************************************************************************
+;
+;       Name: SCTBX2
+;       Type: Variable
+;   Category: Screen
+;    Summary: ???
+;
+; ******************************************************************************
+
 .SCTBX2
 
 FOR I%, 0, 255
@@ -2270,6 +2288,15 @@ FOR I%, 0, 255
  EQUB (I% + 8) DIV 7
 
 NEXT
+
+; ******************************************************************************
+;
+;       Name: wtable
+;       Type: Variable
+;   Category: Save and load
+;    Summary: ???
+;
+; ******************************************************************************
 
 .wtable
 
@@ -2290,91 +2317,196 @@ NEXT
  EQUD &F6F5F4F3
  EQUD &FBFAF9F7
  EQUD &FFFEFDFC
- 
-IF (P% - wtable) > (P% AND $FF)
- ERROR "Wtable crosses page bndry."
-ENDIF
+
+; ******************************************************************************
+;
+;       Name: Option variables
+;       Type: Workspace
+;    Address: $4543 to $4562
+;   Category: Workspaces
+;    Summary: Variables used to store the game options
+;
+; ******************************************************************************
 
 .COMC
 
- SKIP 1
+ SKIP 1                 ; The colour of the dot on the compass
+                        ;
+                        ;   * $F0 = the object in the compass is in front of us,
+                        ;     so the dot is yellow/white ???
+                        ;
+                        ;   * $FF = the object in the compass is behind us, so
+                        ;     the dot is green/cyan ???
 
 .dials
 
- EQUD 0
+ EQUD 0                 ; These bytes appear to be unused
  EQUD 0
  EQUD 0
  EQUW 0
 
 .mscol
 
- EQUD 0
+ EQUD 0                 ; This byte appears to be unused
 
 .DFLAG
 
- SKIP 1
+ EQUB 0                 ; This byte appears to be unused
 
 .DNOIZ
 
- SKIP 1
+ SKIP 1                 ; Sound on/off configuration setting
+                        ;
+                        ;   * 0 = sound is on (default)
+                        ;
+                        ;   * Non-zero = sound is off
+                        ;
+                        ; Toggled by pressing "S" when paused, see the DK4
+                        ; routine for details
 
 .DAMP
 
- SKIP 1 ; D
+ SKIP 1                 ; Keyboard damping configuration setting
+                        ;
+                        ;   * 0 = damping is enabled (default)
+                        ;
+                        ;   * $FF = damping is disabled
+                        ;
+                        ; Toggled by pressing "D" when paused, see the DKS3
+                        ; routine for details
 
 .DJD
 
- SKIP 1 ; A
+ SKIP 1                 ; Keyboard auto-recentre configuration setting
+                        ;
+                        ;   * 0 = auto-recentre is enabled (default)
+                        ;
+                        ;   * $FF = auto-recentre is disabled
+                        ;
+                        ; Toggled by pressing "A" when paused, see the DKS3
+                        ; routine for details
 
 .PATG
 
- SKIP 1 ; X
+ SKIP 1                 ; Configuration setting to show the author names on the
+                        ; start-up screen and enable manual hyperspace mis-jumps
+                        ;
+                        ;   * 0 = no author names or manual mis-jumps (default)
+                        ;
+                        ;   * $FF = show author names and allow manual mis-jumps
+                        ;
+                        ; Toggled by pressing "X" when paused, see the DKS3
+                        ; routine for details
+                        ;
+                        ; This needs to be turned on for manual mis-jumps to be
+                        ; possible. To do a manual mis-jump, first toggle the
+                        ; author display by pausing the game and pressing "X",
+                        ; and during the next hyperspace, hold down ??? to
+                        ; force a mis-jump. See routine ee5 for the "AND PATG"
+                        ; instruction that implements this logic
 
 .FLH
 
- SKIP 1 ; F
+ SKIP 1                 ; Flashing console bars configuration setting
+                        ;
+                        ;   * 0 = static bars (default)
+                        ;
+                        ;   * $FF = flashing bars
+                        ;
+                        ; Toggled by pressing "F" when paused, see the DKS3
+                        ; routine for details
 
 .JSTGY
 
 IF _IB_DISK
 
- EQUB $FF
+ EQUB $FF               ; Reverse joystick Y-channel configuration setting
+                        ;
+                        ;   * 0 = reversed Y-channel
+                        ;
+                        ;   * $FF = standard Y-channel (default)
+                        ;
+                        ; Toggled by pressing "Y" when paused, see the DKS3
+                        ; routine for details
 
 ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
 
- SKIP 1 ; Y
+ SKIP 1                 ; Reverse joystick Y-channel configuration setting
+                        ;
+                        ;   * 0 = reversed Y-channel
+                        ;
+                        ;   * $FF = standard Y-channel (default)
+                        ;
+                        ; Toggled by pressing "Y" when paused, see the DKS3
+                        ; routine for details
 
 ENDIF
 
 .JSTE
 
- SKIP 1 ; J
+ SKIP 1                 ; Reverse both joystick channels configuration setting
+                        ;
+                        ;   * 0 = standard channels (default)
+                        ;
+                        ;   * $FF = reversed channels
+                        ;
+                        ; Toggled by pressing "J" when paused, see the DKS3
+                        ; routine for details
 
 .JSTK
 
- SKIP 1 ; K
+ SKIP 1                 ; Keyboard or joystick configuration setting
+                        ;
+                        ;   * 0 = keyboard (default)
+                        ;
+                        ;   * $FF = joystick
+                        ;
+                        ; Toggled by pressing "K" when paused, see the DKS3
+                        ; routine for details
 
 .UPTOG
 
- SKIP 1 ; U
+ SKIP 1                 ; The configuration setting for toggle key "U", which
+                        ; isn't actually used but is still updated by pressing
+                        ; "U" while the game is paused. This is a configuration
+                        ; option from some non-BBC versions of Elite that lets
+                        ; you switch between lower-case and upper-case text
 
 .DISK
 
- SKIP 1 ; T
+ SKIP 1                 ; The configuration setting for toggle key "T", which
+                        ; isn't actually used but is still updated by pressing
+                        ; "T" while the game is paused. This is a configuration
+                        ; option from some non-BBC versions of Elite that lets
+                        ; you switch between tape and disc
 
 .MULIE
 
- SKIP 1
+ SKIP 1					\ ???
 
 IF _IB_DISK
 
- EQUB $0B
+.L4562
+
+ EQUB $0B               ; ??? Related to joystick fire button in TITLE
 
 ENDIF
 
+; ******************************************************************************
+;
+;       Name: TGINT
+;       Type: Variable
+;   Category: Keyboard
+;    Summary: The keys used to toggle configuration settings when the game is
+;             paused
+;
+; ******************************************************************************
+
 .TGINT
 
- EQUS "DAXFYJKUT"
+ EQUS "DAXFYJKUT"       ; The configuration keys in the same order as their
+                        ; configuration bytes (starting from DAMP)
+
  RTS  ;checksum here
 
 .S%
@@ -24562,7 +24694,7 @@ ENDIF
 
 IF _IB_DISK
 
- AND $4562
+ AND L4562              ; ???
 
 ENDIF
 
