@@ -12856,17 +12856,22 @@ Saving file '3-assembled-output/DATA.unprot.bin'
 .QQ10
      00E1
 .NOSTM
-Zero page variables from &0  to &E2 
+     00E2
+ZP workspace from &0 to &E2 inclusive
 .XX3
      0100
 .K%
      0800
+K% workspace from &800 to &927 inclusive
 .UP
+     0200
      0200
 .FRIN
      0241
 .MANY
      024A
+.SSPR
+     024C
 .JUNK
      026B
 .auto
@@ -12943,6 +12948,7 @@ Zero page variables from &0  to &E2
      029E
 .LASER
      029F
+     02A3
 .CRGO
      02A5
 .QQ20
@@ -12961,6 +12967,7 @@ Zero page variables from &0  to &E2
      02BC
 .ESCP
      02BD
+     02BE
 .TRIBBLE
      02BF
 .TALLYL
@@ -12978,7 +12985,6 @@ Zero page variables from &0  to &E2
 .SVC
      02D8
      02D9
-     02DA
      02DB
 .MCH
      02DC
@@ -13008,7 +13014,9 @@ Zero page variables from &0  to &E2
      02FB
 .frump
      0301
+UP workspace from &200 to &301 inclusive
 .WP
+     0400
 .LSX2
      0400
 .LSY2
@@ -13027,6 +13035,7 @@ Zero page variables from &0  to &E2
      06FC
 .SZL
      0709
+WP workspace from &400 to &715 inclusive
      4000   4C 6D 45   JMP &456D
 .log
      4003   08
@@ -27711,8 +27720,6 @@ Execute at &4000
 Reload at &9BE0 
 S.ELTK &9BE0  &A300  &4000  &9643 
 Saving file '3-assembled-output/ELTK.bin'
-&4000 41723 17773 2048  (Free: 5 )  ZP: &0 
- ZP: &0 , WP: &400 , UP: &200 
 Addresses for the scramble routines in elite-checksum.py
 B% = &4000 
 G% = &45EA 

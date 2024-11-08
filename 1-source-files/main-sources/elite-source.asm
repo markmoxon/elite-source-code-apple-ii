@@ -326,14 +326,11 @@ ENDIF
  stkptr  =  atemp0+1
  idfld   =  stkptr+1
 
-IF (buffer AND $FF) OR (buffr2 AND $FF)
- ERROR "STOP: buffer/buffr2 not on page boundary"
-ENDIF
-
 ; ******************************************************************************
 ;
 ;       Name: ZP
 ;       Type: Workspace
+;    Address: $0000 to $00E2
 ;   Category: Workspaces
 ;    Summary: Lots of important variables are stored in the zero page workspace
 ;             as it is quicker and more space-efficient to access memory here
@@ -697,9 +694,15 @@ ENDIF
 
 .thiskey
 
- SKIP 0                 ; If a key is being pressed that is not in the keyboard
-                        ; table at KYTB, it can be stored in KL and thisley (as
-                        ; seen in routine DK4, for example)
+ SKIP 0                 ; The following bytes implement a key logger that
+                        ; enables Elite to scan for concurrent key presses of
+                        ; the primary flight keys, plus a secondary flight key
+                        ;
+                        ; See the deep dive on "The key logger" for more details
+                        ;
+                        ; If a key is being pressed that is not in the keyboard
+                        ; table at KYTB, it can be stored here (as seen in
+                        ; routine DK4, for example)
 
 .KL
 
@@ -936,6 +939,19 @@ ENDIF
                         ;   1   = Title screen
                         ;         Get commander name ("@", save/load commander)
                         ;         In-system jump just arrived ("J")
+                        ;         Data on System screen (key "7")
+                        ;   2   = Buy Cargo screen (key "2")
+                        ;   3   = Mis-jump just arrived (witchspace)
+                        ;   4   = Sell Cargo screen (key "3")
+                        ;   6   = Death screen
+                        ;   8   = Status Mode screen (key "9")
+                        ;         Inventory screen (key "0")
+                        ;   13  = Rotating ship view (title or mission screen)
+                        ;   16  = Market Price screen (key "8")
+                        ;   32  = Equip Ship screen (key "4")
+                        ;   64  = Long-range Chart (key "5")
+                        ;   128 = Short-range Chart (key "6")
+                        ;   255 = Launch view
                         ;
                         ; This value is typically set by calling routine TT66
 
@@ -1131,6 +1147,13 @@ ENDIF
                         ; point, so 1 means roll is decreasing at the maximum
                         ; rate, 128 means roll is not changing, and 255 means
                         ; roll is increasing at the maximum rate
+                        ;
+                        ; This value is updated by "<" and ">" key presses, or
+                        ; if joysticks are enabled, from the joystick. If
+                        ; keyboard damping is enabled (which it is by default),
+                        ; the value is slowly moved towards the centre value of
+                        ; 128 (no roll) if there are no key presses or joystick
+                        ; movement
 
 .JSTY
 
@@ -1143,6 +1166,13 @@ ENDIF
                         ; point, so 1 means pitch is decreasing at the maximum
                         ; rate, 128 means pitch is not changing, and 255 means
                         ; pitch is increasing at the maximum rate
+                        ;
+                        ; This value is updated by "S" and "X" key presses, or
+                        ; if joysticks are enabled, from the joystick. If
+                        ; keyboard damping is enabled (which it is by default),
+                        ; the value is slowly moved towards the centre value of
+                        ; 128 (no pitch) if there are no key presses or joystick
+                        ; movement
 
 .LSX
 
@@ -1249,7 +1279,11 @@ ENDIF
 
 .NOSTM
 
- PRINT "Zero page variables from ", ~ZP, " to ", ~P%
+ SKIP 1                 ; The number of stardust particles shown on screen,
+                        ; which is 12 (#NOST) for normal space, and 3 for
+                        ; witchspace
+
+ PRINT "ZP workspace from ", ~ZP, "to ", ~P%-1, "inclusive"
 
 ; ******************************************************************************
 ;
@@ -1277,7 +1311,7 @@ ENDIF
 ;
 ;       Name: K%
 ;       Type: Workspace
-;    Address: $0800 to ???
+;    Address: $0800 to $0927
 ;   Category: Workspaces
 ;    Summary: Ship data blocks and ship line heaps
 ;  Deep dive: Ship data blocks
@@ -1298,353 +1332,789 @@ ENDIF
 
  SKIP NOSH * NI%        ; Ship data blocks and ship line heap
 
-; ******************************************
+ PRINT "K% workspace from ", ~K%, "to ", ~P%-1, "inclusive"
 
- ORG $200
+; ******************************************************************************
+;
+;       Name: UP
+;       Type: Workspace
+;    Address: $0200 to $0301
+;   Category: Workspaces
+;    Summary: Configuration variables
+;
+; ******************************************************************************
+
+ ORG $0200
 
 .UP
 
+ SKIP 0                 ; The start of the UP workspace
+
 ;.QQ16
 
- SKIP 65
+ SKIP 65                ; This QQ16 label is present in the original source, but
+                        ; it is overridden by the QQ16 label in the Elite A
+                        ; section, so this declaration has no effect. BeebAsm
+                        ; does not allow labels to be defined twice, so this one
+                        ; is commented out
 
 .FRIN
 
- SKIP NOSH+1
+ SKIP NOSH + 1          ; Slots for the ships in the local bubble of universe
+                        ;
+                        ; There are #NOSH + 1 slots, but the ship-spawning
+                        ; routine at NWSHP only populates #NOSH of them, so
+                        ; (the last slot is effectively used as a null
+                        ; terminator when shuffling the slots down in the
+                        ; KILLSHP routine)
+                        ;
+                        ; See the deep dive on "The local bubble of universe"
+                        ; for details of how Elite stores the local universe in
+                        ; FRIN, UNIV and K%
 
 .MANY
 
- SKIP NTY+1
+ SKIP SST               ; The number of ships of each type in the local bubble
+                        ; of universe
+                        ;
+                        ; The number of ships of type X in the local bubble is
+                        ; stored at MANY+X
+                        ;
+                        ; See the deep dive on "Ship blueprints" for a list of
+                        ; ship types
 
- SSPR = MANY+SST
+.SSPR
+
+ SKIP NTY + 1 - SST     ; "Space station present" flag
+                        ;
+                        ;   * Non-zero if we are inside the space station's safe
+                        ;     zone
+                        ;
+                        ;
+                        ; This flag is at MANY+SST, which is no coincidence, as
+                        ; MANY+SST is a count of how many space stations there
+                        ; are in our local bubble, which is the same as saying
+                        ; "space station present"
 
 .JUNK
 
- SKIP 1
+ SKIP 1                 ; The amount of junk in the local bubble
+                        ;
+                        ; "Junk" is defined as being one of these:
+                        ;
+                        ;   * Escape pod
+                        ;   * Alloy plate
+                        ;   * Cargo canister
+                        ;   * Asteroid
+                        ;   * Splinter
+                        ;   * Shuttle
+                        ;   * Transporter
 
 .auto
 
- SKIP 1
+ SKIP 1                 ; Docking computer activation status
+                        ;
+                        ;   * 0 = Docking computer is off
+                        ;
+                        ;   * Non-zero = Docking computer is running
 
 .ECMP
 
- SKIP 1
+ SKIP 1                 ; Our E.C.M. status
+                        ;
+                        ;   * 0 = E.C.M. is off
+                        ;
+                        ;   * Non-zero = E.C.M. is on
 
 .MJ
 
- SKIP 1
+ SKIP 1                 ; Are we in witchspace (i.e. have we mis-jumped)?
+                        ;
+                        ;   * 0 = no, we are in normal space
+                        ;
+                        ;   * $FF = yes, we are in witchspace
 
 .CABTMP
 
- SKIP 1
+ SKIP 1                 ; Cabin temperature
+                        ;
+                        ; The ambient cabin temperature in deep space is 30,
+                        ; which is displayed as one notch on the dashboard bar
+                        ;
+                        ; We get higher temperatures closer to the sun
+                        ;
+                        ; CABTMP shares a location with MANY, but that's OK as
+                        ; MANY+0 would contain the number of ships of type 0,
+                        ; and as there is no ship type 0 (they start at 1), the
+                        ; byte at MANY+0 is not used for storing a ship type
+                        ; and can be used for the cabin temperature instead
 
 .LAS2
 
- SKIP 1
+ SKIP 1                 ; Laser power for the current laser
+                        ;
+                        ;   * Bits 0-6 contain the laser power of the current
+                        ;     space view
+                        ;
+                        ;   * Bit 7 denotes whether or not the laser pulses:
+                        ;
+                        ;     * 0 = pulsing laser
+                        ;
+                        ;     * 1 = beam laser (i.e. always on)
 
 .MSAR
 
- SKIP 1
+ SKIP 1                 ; The targeting state of our leftmost missile
+                        ;
+                        ;   * 0 = missile is not looking for a target, or it
+                        ;     already has a target lock (indicator is not
+                        ;     yellow/white)
+                        ;
+                        ;   * Non-zero = missile is currently looking for a
+                        ;     target (indicator is yellow/white)
 
 .VIEW
 
- SKIP 1
+ SKIP 1                 ; The number of the current space view
+                        ;
+                        ;   * 0 = front
+                        ;   * 1 = rear
+                        ;   * 2 = left
+                        ;   * 3 = right
 
 .LASCT
 
- SKIP 1
+ SKIP 1                 ; The laser pulse count for the current laser
+                        ;
+                        ; This is a counter that defines the gap between the
+                        ; pulses of a pulse laser. It is set as follows:
+                        ;
+                        ;   * 0 for a beam laser
+                        ;
+                        ;   * 10 for a pulse laser
+                        ;
+                        ;
+                        ; In comparison, beam lasers fire continuously as the
+                        ; value of LASCT is always 0
 
 .GNTMP
 
- SKIP 1
+ SKIP 1                 ; Laser temperature (or "gun temperature")
+                        ;
+                        ; If the laser temperature exceeds 242 then the laser
+                        ; overheats and cannot be fired again until it has
+                        ; cooled down
 
 .HFX
 
- SKIP 1
+ SKIP 1                 ; This flag is unused in this version of Elite. In the
+                        ; other versions, setting HFX to a non-zero value makes
+                        ; the hyperspace rings multi-coloured, but ???
 
 .EV
 
- SKIP 1
+ SKIP 1                 ; The "extra vessels" spawning counter
+                        ;
+                        ; This counter is set to 0 on arrival in a system and
+                        ; following an in-system jump, and is bumped up when we
+                        ; spawn bounty hunters or pirates (i.e. "extra vessels")
+                        ;
+                        ; It decreases by 1 each time we consider spawning more
+                        ; "extra vessels" in part 4 of the main game loop, so
+                        ; increasing the value of EV has the effect of delaying
+                        ; the spawning of more vessels
+                        ;
+                        ; In other words, this counter stops bounty hunters and
+                        ; pirates from continually appearing, and ensures that
+                        ; there's a delay between spawnings
 
 .DLY
 
- SKIP 1
+ SKIP 1                 ; In-flight message delay
+                        ;
+                        ; This counter is used to keep an in-flight message up
+                        ; for a specified time before it gets removed. The value
+                        ; in DLY is decremented each time we start another
+                        ; iteration of the main game loop at TT100
 
 .de
 
- SKIP 1
+ SKIP 1                 ; Equipment destruction flag
+                        ;
+                        ;   * Bit 1 denotes whether or not the in-flight message
+                        ;     about to be shown by the MESS routine is about
+                        ;     destroyed equipment:
+                        ;
+                        ;     * 0 = the message is shown normally
+                        ;
+                        ;     * 1 = the string " DESTROYED" gets added to the
+                        ;       end of the message
 
 .LASX
 
- SKIP 1
+ SKIP 1                 ; The x-coordinate of the tip of the laser line
 
 .LASY
 
- SKIP 1
+ SKIP 1                 ; The y-coordinate of the tip of the laser line
 
 .XX24
 
- SKIP 1
+ SKIP 1                 ; This byte appears to be unused
 
 .ALTIT
 
- SKIP 1
+ SKIP 1                 ; Our altitude above the surface of the planet or sun
+                        ;
+                        ;   * 255 = we are a long way above the surface
+                        ;
+                        ;   * 1-254 = our altitude as the square root of:
+                        ;
+                        ;       x_hi^2 + y_hi^2 + z_hi^2 - 6^2
+                        ;
+                        ;     where our ship is at the origin, the centre of the
+                        ;     planet/sun is at (x_hi, y_hi, z_hi), and the
+                        ;     radius of the planet/sun is 6
+                        ;
+                        ;   * 0 = we have crashed into the surface
 
 .SWAP
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used to store a flag that records
+                        ; whether or not we had to swap a line's start and end
+                        ; coordinates around when clipping the line in routine
+                        ; LL145 (the flag is used in places like BLINE to swap
+                        ; them back)
 
 .XP
 
- SKIP 1
+ SKIP 1                 ; The x-coordinate of the current character as we
+                        ; construct the lines for the Star Wars scroll text
 
 .YP
 
- SKIP 1
+ SKIP 1                 ; The y-coordinate of the current character as we
+                        ; construct the lines for the Star Wars scroll text
 
 .YS
 
- SKIP 1
+ SKIP 1                 ; Temporary storage for saving the index into the TB
+                        ; tables in the SLIDE routine
 
 .BALI
 
- SKIP 1
+ SKIP 1                 ; The progress of the Star Wars scroll text as it
+                        ; scrolls, from 254 (off the bottom of the screen) to 2
+                        ; (fully scrolled). Can also be thought of as a measure
+                        ; of how much of the scroll text has yet to appear
+                        ; on-screen
 
 .UPO
 
- SKIP 1
+ SKIP 1                 ; Used as an index into the UB tables when projecting
+                        ; the scroll text lines onto the Star Wars perspective
+                        ; view and then onto the screen
 
 .boxsize
 
- SKIP 1
+ SKIP 1                 ; This byte appears to be unused
 
 .distaway
 
- SKIP 1
+ SKIP 1                 ; Used to store the nearest distance of the rotating
+                        ; ship on the title screen
 
 .XSAV2
 
- SKIP 1
+ SKIP 1                 ; This byte appears to be unused
 
 .YSAV2
 
- SKIP 1
+ SKIP 1                 ; This byte appears to be unused
 
 .NAME
 
- SKIP 8
+ SKIP 8                 ; The current commander name
+                        ;
+                        ; The commander name can be up to 7 characters (the DFS
+                        ; limit for filenames), and is terminated by a carriage
+                        ; return
 
 .TP
 
- SKIP 1
+ SKIP 1                 ; The current mission status
+                        ;
+                        ;   * Bits 0-1 = Mission 1 status
+                        ;
+                        ;     * %00 = Mission not started
+                        ;     * %01 = Mission in progress, hunting for ship
+                        ;     * %11 = Constrictor killed, not debriefed yet
+                        ;     * %10 = Mission and debrief complete
+                        ;
+                        ;   * Bits 2-3 = Mission 2 status
+                        ;
+                        ;     * %00 = Mission not started
+                        ;     * %01 = Mission in progress, plans not picked up
+                        ;     * %10 = Mission in progress, plans picked up
+                        ;     * %11 = Mission complete
 
 .QQ0
 
- SKIP 1
+ SKIP 1                 ; The current system's galactic x-coordinate (0-256)
 
 .QQ1
 
- SKIP 1
+ SKIP 1                 ; The current system's galactic y-coordinate (0-256)
 
 .QQ21
 
- SKIP 6
+ SKIP 6                 ; The three 16-bit seeds for the current galaxy
+                        ;
+                        ; These seeds define system 0 in the current galaxy, so
+                        ; they can be used as a starting point to generate all
+                        ; 256 systems in the galaxy
+                        ;
+                        ; Using a galactic hyperdrive rotates each byte to the
+                        ; left (rolling each byte within itself) to get the
+                        ; seeds for the next galaxy, so after eight galactic
+                        ; jumps, the seeds roll around to the first galaxy again
+                        ;
+                        ; See the deep dives on "Galaxy and system seeds" and
+                        ; "Twisting the system seeds" for more details
 
 .CASH
 
- SKIP 4
+ SKIP 4                 ; Our current cash pot
+                        ;
+                        ; The cash stash is stored as a 32-bit unsigned integer,
+                        ; with the most significant byte in CASH and the least
+                        ; significant in CASH+3. This is big-endian, which is
+                        ; the opposite way round to most of the numbers used in
+                        ; Elite - to use our notation for multi-byte numbers,
+                        ; the amount of cash is CASH(0 1 2 3)
 
 .QQ14
 
- SKIP 1
+ SKIP 1                 ; Our current fuel level (0-70)
+                        ;
+                        ; The fuel level is stored as the number of light years
+                        ; multiplied by 10, so QQ14 = 1 represents 0.1 light
+                        ; years, and the maximum possible value is 70, for 7.0
+                        ; light years
 
 .COK
 
- SKIP 1
+ SKIP 1                 ; Flags used to generate the competition code
+                        ;
+                        ; See the deep dive on "The competition code" for
+                        ; details of these flags and how they are used in
+                        ; generating and decoding the competition code
 
 .GCNT
 
- SKIP 1
+ SKIP 1                 ; The number of the current galaxy (0-7)
+                        ;
+                        ; When this is displayed in-game, 1 is added to the
+                        ; number, so we start in galaxy 1 in-game, but it's
+                        ; stored as galaxy 0 internally
+                        ;
+                        ; The galaxy number increases by one every time a
+                        ; galactic hyperdrive is used, and wraps back around to
+                        ; the start after eight galaxies
 
 .LASER
 
- SKIP 6
+ SKIP 4                 ; The specifications of the lasers fitted to each of the
+                        ; four space views:
+                        ;
+                        ;   * Byte #0 = front view
+                        ;   * Byte #1 = rear view
+                        ;   * Byte #2 = left view
+                        ;   * Byte #3 = right view
+                        ;
+                        ; For each of the views:
+                        ;
+                        ;   * 0 = no laser is fitted to this view
+                        ;
+                        ;   * Non-zero = a laser is fitted to this view, with
+                        ;     the following specification:
+                        ;
+                        ;     * Bits 0-6 contain the laser's power
+                        ;
+                        ;     * Bit 7 determines whether or not the laser pulses
+                        ;       (0 = pulse or mining laser) or is always on
+                        ;       (1 = beam or military laser)
+
+ SKIP 2                 ; These bytes appear to be unused (they were originally
+                        ; used for up/down lasers, but they were dropped)
 
 .CRGO
 
- SKIP 1
+ SKIP 1                 ; Our ship's cargo capacity
+                        ;
+                        ;   * 22 = standard cargo bay of 20 tonnes
+                        ;
+                        ;   * 37 = large cargo bay of 35 tonnes
+                        ;
+                        ; The value is two greater than the actual capacity to
+                        ; make the maths in tnpr slightly more efficient
 
 .QQ20
 
- SKIP 17
+ SKIP 17                ; The contents of our cargo hold
+                        ;
+                        ; The amount of market item X that we have in our hold
+                        ; can be found in the X-th byte of QQ20. For example:
+                        ;
+                        ;   * QQ20 contains the amount of food (item 0)
+                        ;
+                        ;   * QQ20+7 contains the amount of computers (item 7)
+                        ;
+                        ; See QQ23 for a list of market item numbers and their
+                        ; storage units
 
 .ECM
 
- SKIP 1
+ SKIP 1                 ; E.C.M. system
+                        ;
+                        ;   * 0 = not fitted
+                        ;
+                        ;   * $FF = fitted
 
 .BST
 
- SKIP 1
+ SKIP 1                 ; Fuel scoops (BST stands for "barrel status")
+                        ;
+                        ;   * 0 = not fitted
+                        ;
+                        ;   * $FF = fitted
 
 .BOMB
 
- SKIP 1
+ SKIP 1                 ; Energy bomb
+                        ;
+                        ;   * 0 = not fitted
+                        ;
+                        ;   * $7F = fitted
 
 .ENGY
 
- SKIP 1
+ SKIP 1                 ; Energy unit
+                        ;
+                        ;   * 0 = not fitted
+                        ;
+                        ;   * Non-zero = fitted
+                        ;
+                        ; The actual value determines the refresh rate of our
+                        ; energy banks, as they refresh by ENGY+1 each time (so
+                        ; our ship's energy level goes up by 2 each time if we
+                        ; have an energy unit fitted, otherwise it goes up by 1)
 
 .DKCMP
 
- SKIP 1
+ SKIP 1                 ; Docking computer
+                        ;
+                        ;   * 0 = not fitted
+                        ;
+                        ;   * $FF = fitted
 
 .GHYP
 
- SKIP 1
+ SKIP 1                 ; Galactic hyperdrive
+                        ;
+                        ;   * 0 = not fitted
+                        ;
+                        ;   * $FF = fitted
 
 .ESCP
 
- SKIP 2
+ SKIP 1                 ; Escape pod
+                        ;
+                        ;   * 0 = not fitted
+                        ;
+                        ;   * $FF = fitted
+
+ SKIP 1                 ; This byte appears to be unused
 
 .TRIBBLE
 
- SKIP 2
+ SKIP 2                 ; The number of Trumbles in the cargo hold
 
 .TALLYL
 
- SKIP 1
+ SKIP 1                 ; Combat rank fraction
+                        ;
+                        ; Contains the fraction part of the kill count, which
+                        ; together with the integer in TALLY(1 0) determines our
+                        ; combat rank. The fraction is stored as the numerator
+                        ; of a fraction with a denominator of 256, so a TALLYL
+                        ; of 128 would represent 0.5 (i.e. 128 / 256)
 
 .NOMSL
 
- SKIP 1
+ SKIP 1                 ; The number of missiles we have fitted (0-4)
 
 .FIST
 
- SKIP 1
+ SKIP 1                 ; Our legal status (FIST stands for "fugitive/innocent
+                        ; status"):
+                        ;
+                        ;   * 0 = Clean
+                        ;
+                        ;   * 1-49 = Offender
+                        ;
+                        ;   * 50+ = Fugitive
+                        ;
+                        ; You get 64 points if you kill a cop, so that's a fast
+                        ; ticket to fugitive status
 
 .AVL
 
- SKIP 17
+ SKIP 17                ; Market availability in the current system
+                        ;
+                        ; The available amount of market item X is stored in
+                        ; the X-th byte of AVL, so for example:
+                        ;
+                        ;   * AVL contains the amount of food (item 0)
+                        ;
+                        ;   * AVL+7 contains the amount of computers (item 7)
+                        ;
+                        ; See QQ23 for a list of market item numbers and their
+                        ; storage units, and the deep dive on "Market item
+                        ; prices and availability" for details of the algorithm
+                        ; used for calculating each item's availability
 
 .QQ26
 
- SKIP 1
+ SKIP 1                 ; A random value used to randomise market data
+                        ;
+                        ; This value is set to a new random number for each
+                        ; change of system, so we can add a random factor into
+                        ; the calculations for market prices (for details of how
+                        ; this is used, see the deep dive on "Market prices")
 
 .TALLY
 
- SKIP 2
+ SKIP 2                 ; Our combat rank
+                        ;
+                        ; The combat rank is stored as the number of kills, in a
+                        ; 16-bit number TALLY(1 0) - so the high byte is in
+                        ; TALLY+1 and the low byte in TALLY
+                        ;
+                        ; If the high byte in TALLY+1 is 0 then we have between
+                        ; 0 and 255 kills, so our rank is Harmless, Mostly
+                        ; Harmless, Poor, Average or Above Average, according to
+                        ; the value of the low byte in TALLY:
+                        ;
+                        ;   Harmless        = %00000000 to %00000011 = 0 to 3
+                        ;   Mostly Harmless = %00000100 to %00000111 = 4 to 7
+                        ;   Poor            = %00001000 to %00001111 = 8 to 15
+                        ;   Average         = %00010000 to %00011111 = 16 to 31
+                        ;   Above Average   = %00100000 to %11111111 = 32 to 255
+                        ;
+                        ; If the high byte in TALLY+1 is non-zero then we are
+                        ; Competent, Dangerous, Deadly or Elite, according to
+                        ; the high byte in TALLY+1:
+                        ;
+                        ;   Competent       = 1           = 256 to 511 kills
+                        ;   Dangerous       = 2 to 9      = 512 to 2559 kills
+                        ;   Deadly          = 10 to 24    = 2560 to 6399 kills
+                        ;   Elite           = 25 and up   = 6400 kills and up
+                        ;
+                        ; You can see the rating calculation in the STATUS
+                        ; subroutine
 
 .SVC
 
- SKIP 1
+ SKIP 1                 ; The save count
+                        ;
+                        ; When a new commander is created, the save count gets
+                        ; set to 128. This value gets halved each time the
+                        ; commander file is saved, but it is otherwise unused.
+                        ; It is presumably part of the security system for the
+                        ; competition, possibly another flag to catch out
+                        ; entries with manually altered commander files
 
- SKIP 1
+ SKIP 2                 ; The commander file checksum
+                        ;
+                        ; These two bytes are reserved for the commander file
+                        ; checksum, so when the current commander block is
+                        ; copied from here to the last saved commander block at
+                        ; NA%, CHK and CHK2 get overwritten
 
- SKIP 1
+ SKIP 1                 ; The second commander file checksum
+                        ;
+                        ; This byte is reserved for the second commander file
+                        ; checksum in CHK3
 
- SKIP 1
+ NT% = SVC + 3 - TP     ; This sets the variable NT% to the size of the current
+                        ; commander data block, which starts at TP and ends at
+                        ; SVC+3 (inclusive), i.e. with the last checksum byte
 
 .MCH
 
- SKIP 1
-
- NT% = MCH-1-TP
+ SKIP 1                 ; The text token number of the in-flight message that is
+                        ; currently being shown, and which will be removed by
+                        ; the me2 routine when the counter in DLY reaches zero
 
 .COMX
 
- SKIP 1
+ SKIP 1                 ; The x-coordinate of the compass dot
 
 .COMY
 
- SKIP 1
+ SKIP 1                 ; The y-coordinate of the compass dot
 
 .dialc
 
- SKIP 14
+ SKIP 14                ; ???
 
 .QQ24
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used to store the current market
+                        ; item's price in routine TT151
 
 .QQ25
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used to store the current market
+                        ; item's availability in routine TT151
 
 .QQ28
 
- SKIP 1
+ SKIP 1                 ; The current system's economy (0-7)
+                        ;
+                        ;   * 0 = Rich Industrial
+                        ;   * 1 = Average Industrial
+                        ;   * 2 = Poor Industrial
+                        ;   * 3 = Mainly Industrial
+                        ;   * 4 = Mainly Agricultural
+                        ;   * 5 = Rich Agricultural
+                        ;   * 6 = Average Agricultural
+                        ;   * 7 = Poor Agricultural
+                        ;
+                        ; See the deep dive on "Generating system data" for more
+                        ; information on economies
 
 .QQ29
 
- SKIP 1
+ SKIP 1                 ; Temporary storage, used in a number of places
 
 .gov
 
- SKIP 1
+ SKIP 1                 ; The current system's government type (0-7)
+                        ;
+                        ; See the deep dive on "Generating system data" for
+                        ; details of the various government types
 
 .tek
 
- SKIP 1
+ SKIP 1                 ; The current system's tech level (0-14)
+                        ;
+                        ; See the deep dive on "Generating system data" for more
+                        ; information on tech levels
 
 .SLSP
 
- SKIP 2
+ SKIP 2                 ; The address of the bottom of the ship line heap
+                        ;
+                        ; The ship line heap is a descending block of memory
+                        ; extended downwards by the NWSHP routine when adding
+                        ; new ships (and their associated ship line heaps), in
+                        ; which case SLSP is lowered to provide more heap space,
+                        ; assuming there is enough free memory to do so
 
 .QQ2
 
- SKIP 6
+ SKIP 6                 ; The three 16-bit seeds for the current system, i.e.
+                        ; the one we are currently in
+                        ;
+                        ; See the deep dives on "Galaxy and system seeds" and
+                        ; "Twisting the system seeds" for more details
 
 .safehouse
 
- SKIP 6
+ SKIP 6                 ; Backup storage for the seeds for the selected system
+                        ;
+                        ; The seeds for the current system get stored here as
+                        ; soon as a hyperspace is initiated, so we can fetch
+                        ; them in the hyp1 routine. This fixes a bug in an
+                        ; earlier version where you could hyperspace while
+                        ; docking and magically appear in your destination
+                        ; station
 
 .frump
 
- SKIP 1
+ SKIP 1                 ; Used to store the number of particles in the explosion
+                        ; cloud, though the number is never actually used
 
-; ******************************************
+ PRINT "UP workspace from ", ~UP, "to ", ~P%-1, "inclusive"
 
- ORG $400
+; ******************************************************************************
+;
+;       Name: WP
+;       Type: Workspace
+;    Address: $0400 to $0715
+;   Category: Workspaces
+;    Summary: Variables
+;
+; ******************************************************************************
+
+ ORG $0400
 
 .WP
 
+ SKIP 0                 ; The start of the WP workspace
+
 .LSX2
 
- SKIP 256
+ SKIP 256               ; The ball line heap for storing x-coordinates (see the
+                        ; deep dive on "The ball line heap" for details)
 
 .LSY2
 
- SKIP 256
+ SKIP 256               ; The ball line heap for storing y-coordinates (see the
+                        ; deep dive on "The ball line heap" for details)
 
 .LSO
 
- SKIP 200
+ SKIP 200               ; The ship line heap for the space station (see NWSPS)
+                        ; and the sun line heap (see SUN)
+                        ;
+                        ; The spaces can be shared as our local bubble of
+                        ; universe can support either the sun or a space
+                        ; station, but not both
 
 .SX
 
- SKIP NOST+1
+ SKIP NOST + 1          ; This is where we store the x_hi coordinates for all
+                        ; the stardust particles
 
 .SXL
 
- SKIP NOST+1
+ SKIP NOST + 1          ; This is where we store the x_lo coordinates for all
+                        ; the stardust particles
 
 .SY
 
- SKIP NOST+1
+ SKIP NOST + 1          ; This is where we store the y_hi coordinates for all
+                        ; the stardust particles
 
 .SYL
 
- SKIP NOST+1
+ SKIP NOST + 1          ; This is where we store the y_lo coordinates for all
+                        ; the stardust particles
 
 .SZ
 
- SKIP NOST+1
+ SKIP NOST + 1          ; This is where we store the z_hi coordinates for all
+                        ; the stardust particles
 
 .SZL
 
- SKIP NOST+1
+ SKIP NOST + 1          ; This is where we store the z_lo coordinates for all
+                        ; the stardust particles
 
-; ******************************************
+ PRINT "WP workspace from ", ~WP, "to ", ~P%-1, "inclusive"
 
 ; ******************************************************************************
 ;
@@ -32424,15 +32894,6 @@ ENDIF
 
  PRINT "S.ELTK ", ~CODE_K%, " ", ~P%, " ", ~LOAD%, " ", ~LOAD_J%
  SAVE "3-assembled-output/ELTK.bin", CODE_K%, P%, LOAD%
-
-IF F%>D%
-  ERROR "Code too long."
-ENDIF
-
-; Flag knowledge of F%
-
- PRINT ~CODE%, F%, S%, K%, " (Free: ", D%-F%, ")  ZP: ", ~ZP
- PRINT " ZP: ", ~ZP, ", WP: ", ~WP, ", UP: ", ~UP
 
  PRINT "Addresses for the scramble routines in elite-checksum.py"
  PRINT "B% = ", ~CODE%
