@@ -3908,7 +3908,7 @@ ENDIF
 
 .VRTS
 
-;RTS 
+;RTS
 
 .WHITETEXT
 
@@ -5358,7 +5358,7 @@ ENDIF
 
  \ New TT26 entry for right justified text
 
-.DASC 
+.DASC
 
 .TT26
 
@@ -5462,7 +5462,7 @@ ENDIF
  LDA #12
  JSR CHPR
  LDA DTW5
-;CLC 
+;CLC
  SBC #LL
  STA DTW5
  TAX
@@ -5514,7 +5514,7 @@ ENDIF
  LDA #7
  JMP CHPR
  \..........
- \ ............... DIALS .......................... 
+ \ ............... DIALS ..........................
 
 .DIALS
 
@@ -21625,7 +21625,7 @@ IF _SOURCE_DISK_CODE_FILES
  BIT $86
  BPL L794B
  LDA #$01
-     
+
 .L794B
 
  BIT $87
@@ -25539,7 +25539,7 @@ ENDIF
  INY
  BNE dskerllp
 
-.dskerllp2 
+.dskerllp2
 
  JSR BOOP
 
@@ -28003,7 +28003,7 @@ ENDMACRO
 
 .LL25
 
- JMP PLANET 
+ JMP PLANET
 
 .LL9
 
@@ -28774,7 +28774,7 @@ ENDMACRO
  BCS LL72
  CMP XX20
  BCS LL72
- JMP LL48 
+ JMP LL48
 
 .LL72
 
@@ -29095,7 +29095,7 @@ ENDMACRO
 
  TXA
  EOR #$FF
-;CLC 
+;CLC
  ADC #1
  TAX
  TYA
@@ -29129,7 +29129,7 @@ ENDMACRO
  EOR XX12+3
  RTS
 
-.LL145 
+.LL145
 
 .CLIP
 
@@ -29580,7 +29580,7 @@ ENDMACRO
  EOR #128
  STA INWK+5
 
-.MV44 ; Y = K2-bZ 
+.MV44 ; Y = K2-bZ
 
  LDX ALP1
  LDA INWK+3
@@ -30083,9 +30083,9 @@ ENDMACRO
 ;EQUB 1
 ;EQUB 2
 ;EQUB 3
-;EQUB 4 
-;EQUB 5 
-;EQUB 6 
+;EQUB 4
+;EQUB 5
+;EQUB 6
 ;EQUB 6
 ;.TRIBMA
 ;EQUB 0
@@ -30124,7 +30124,7 @@ ENDMACRO
  BEQ OLDBOX
  JSR ee3
 
-.OLDBOX 
+.OLDBOX
 
  LDA #1
  STA YC
@@ -30176,7 +30176,7 @@ ENDMACRO
 
  LOAD_I% = LOAD% + P% - CODE%
 
-.yetanotherrts 
+.yetanotherrts
 
 .DEMON
 
@@ -30235,7 +30235,7 @@ ENDMACRO
  BIT DNOIZ
  BMI SOUR
 
-.SOHISS2 
+.SOHISS2
 
  LDA $C030
  JSR DORND
@@ -30380,7 +30380,7 @@ ENDMACRO
 .SOUR2
 
  RTS
- \............ 
+ \............
 
 .COLD
 
@@ -30461,7 +30461,7 @@ ENDIF
 .comnam
 
  \ (must be 30 characters long - pad with spaces)
- EQUS "COMMANDER                     " 
+ EQUS "COMMANDER                     "
 
 .rfile
 
@@ -30486,7 +30486,7 @@ ENDIF
 
 .rfile3
 
- RTS  ; C = 1 file not found, C = 0 file found and in buffer 
+ RTS  ; C = 1 file not found, C = 0 file found and in buffer
 
 .wfile
 
@@ -30495,7 +30495,7 @@ ENDIF
  TSX
  STX stkptr
  JSR findf
- BCC oldfil ; branch if file already exists 
+ BCC oldfil ; branch if file already exists
 
 .newfil
 
@@ -30554,7 +30554,7 @@ ENDIF
  STA track
  LDA filsct
  STA sector
- BPL oldfl2 ; always 
+ BPL oldfl2 ; always
 
 .oldfil
 
@@ -30572,7 +30572,7 @@ ENDIF
  INY
  CPY #comsiz
  BNE oldfl3
- JMP wsect ; write first sector of commander file 
+ JMP wsect ; write first sector of commander file
 
 .findf
 
@@ -30656,7 +30656,7 @@ ENDIF
 .rentr9
 
  SEC ; signifies file not found
- RTS 
+ RTS
 
 .getsct
 
@@ -30733,7 +30733,7 @@ ENDIF
 .getscB
 
  SEC ; signifies disc full
- RTS 
+ RTS
 
 .isfull
 
@@ -30749,7 +30749,7 @@ ENDIF
 
 .isful2
 
- RTS ; C = 0 = disc full, C = 1 = enough space 
+ RTS ; C = 0 = disc full, C = 1 = enough space
 
 .gettsl
 
@@ -30764,7 +30764,7 @@ ENDIF
  STA track
  LDA buffer+1,Y ; get sector of first sector of file
  STA sector
- RTS 
+ RTS
 
 .rvtoc
 
@@ -30774,7 +30774,7 @@ ENDIF
  LDA #0
  STA sector
 
- \REM DOS_RW2 
+ \REM DOS_RW2
 
 .rsect
 
@@ -30894,7 +30894,7 @@ ENDIF
 
  LDA track
  JSR seek ; seek to desired track
- JMP trytr2 
+ JMP trytr2
 
 .rdrght
 
@@ -30903,7 +30903,7 @@ ENDIF
  BEQ rttrk ; branch if track does match track id
  DEC seeks
  BNE trytr6
- BEQ trytr5 ; always 
+ BEQ trytr5 ; always
 
 .prterr
 
@@ -30925,7 +30925,7 @@ ENDIF
  LDX slot16
  LDY mtroff,X ; turn motor off
  SEC ; signify error has occured
- RTS 
+ RTS
 
 .rttrk
 
@@ -30973,7 +30973,7 @@ ENDIF
 
  LDX slot16
  LDY mtroff,X ; turn motor off
- RTS ; C = 0 = no error, C = 1 = error, A = error code 
+ RTS ; C = 0 = no error, C = 1 = error, A = error code
 
 .read
 
@@ -31154,7 +31154,7 @@ ENDIF
  LDA Q6L,X
  RTS
 
- \REM DOS_RW3 
+ \REM DOS_RW3
 
 .rdaddr
 
@@ -31242,7 +31242,7 @@ ENDIF
 .rdadrD
 
  SEC
- RTS 
+ RTS
 
 .seek
 
@@ -31301,7 +31301,7 @@ ENDIF
 .seek7
 
  JSR armwat
- CLC 
+ CLC
 
 .step
 
@@ -31319,7 +31319,7 @@ ENDIF
 
 .step3
 
- RTS 
+ RTS
 
 .armwat
 
@@ -31339,7 +31339,7 @@ ENDIF
  SEC
  SBC #1
  BNE armwat
- RTS 
+ RTS
 
 .armtab
 
@@ -31369,7 +31369,7 @@ ENDIF
  EQUB $1C
  EQUB $1C
  EQUB $1C
- EQUB $1C 
+ EQUB $1C
 
 .prenib
 
@@ -31401,7 +31401,7 @@ ENDIF
  STA buffr2+256,X
  DEX
  BPL prenb3
- RTS 
+ RTS
 
 .pstnib
 
@@ -31424,7 +31424,7 @@ ENDIF
  STA buffer,Y
  INY
  BNE pstnb3
- RTS 
+ RTS
 
 .wbyte
 
@@ -31440,14 +31440,14 @@ ENDIF
 
  STA Q6H,X
  ORA Q6L,X
- RTS 
+ RTS
 
 .scttab
 
  EQUD &090B0D00
  EQUD &01030507
  EQUD &080A0C0E
- EQUD &0F020406 
+ EQUD &0F020406
 
 .rtable
 
@@ -31477,7 +31477,7 @@ ENDIF
  EQUD &36353433
  EQUD &39F83837
  EQUD &3D3C3B3A
- EQUW $3F3E 
+ EQUW $3F3E
 
 .MUTILATE
 
@@ -31567,7 +31567,7 @@ ENDIF
  protlen = 0
  BULBCOL = $E0
 
- \  ...................... Scanners  .............................. 
+ \  ...................... Scanners  ..............................
 
 .TWOS
 
@@ -31601,7 +31601,7 @@ ENDIF
  EQUB $E0
  EQUB $C0
 
-.CTWOS 
+.CTWOS
 
 .cellocl
 
@@ -31611,7 +31611,7 @@ ENDIF
  EQUD &AA2AAA2A
  EQUD &D252D252
  EQUD &D252D252
- \............. Line Draw .............. 
+ \............. Line Draw ..............
 
 .SCTBL
 
@@ -31665,7 +31665,7 @@ ENDIF
  \.......
  \.grubbyline RTS
 
-.LL30 
+.LL30
 
 .LOIN
 
@@ -32067,7 +32067,7 @@ ENDIF
 
  JSR P%+3
  INC Y1
- \ ............HLOIN.......... 
+ \ ............HLOIN..........
 
 .HLOIN
 
@@ -32420,7 +32420,7 @@ ENDIF
  RTS
  \ADD AX = AP+SR  Should be in ELITEC (?)
 
- \..........Bay View.......... 
+ \..........Bay View..........
 
 .WSCAN
 
@@ -32460,7 +32460,7 @@ ENDIF
 
  RTS
 
- \ ............. Character Print ..................... 
+ \ ............. Character Print .....................
 
 .CHPR2
 
@@ -32622,11 +32622,11 @@ ENDIF
 
 .RR9
 
-;CLC 
+;CLC
 ;ADC #(FONT MOD 256)
  STA P
 ;BCC P%+3
-;INY 
+;INY
  STY P+1
 
 .letter2
@@ -32830,7 +32830,7 @@ ENDIF
  INC SC+1
  DEX
  BNE mvbllop
- RTS  ;remember ELITEK has different SC!  (NO LONGER) 
+ RTS  ;remember ELITEK has different SC!  (NO LONGER)
 
 .CLYNS
 
