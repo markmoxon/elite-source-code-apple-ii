@@ -14441,7 +14441,10 @@ WP workspace from &400 to &715 inclusive
      45E0   CD 42 02   CMP &0242
      45E3   D0 E5      BNE &45CA
      45E5   60         RTS
-     45E6   B7 AA 45 23
+     45E6   B7
+     45E7   AA
+     45E8   45
+     45E9   23
 .G%
 .DOENTRY
      45EA   20 C4 7A   JSR &7AC4
@@ -15142,17 +15145,20 @@ WP workspace from &400 to &715 inclusive
      4B2D   8E 3C 4B   STX &4B3C
      4B30   B0 9C      BCS &4ACE
 .BOMBPOS
-     4B32   E0 E0 C0 A0
-     4B36   80 60 40 20
-     4B3A   00 00
+     4B32   E0
+     4B33   E0
+     4B34   C0
+     4B35   A0
+     4B36   80
+     4B37   60
+     4B38   40
+     4B39   20
+     4B3A   00
+     4B3B   00
 .BOMBTBX
-     4B3C   00 00 00 00
-     4B40   00 00 00 00
-     4B44   00 00
+     4B3C
 .BOMBTBY
-     4B46   00 00 00 00
-     4B4A   00 00 00 00
-     4B4E   00 00
+     4B46
 .MT27
      4B50   A9 D9      LDA #&D9
      4B52   D0 02      BNE &4B56
