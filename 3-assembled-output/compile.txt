@@ -15446,31 +15446,71 @@ WP workspace from &400 to &715 inclusive
 .TKN2
      4D26   0C
      4D27   0A
-     4D28   41 42 4F ...
+     4D28   41 42 
+     4D2A   4F 55 
+     4D2C   53 45 
+     4D2E   49 54 
+     4D30   49 4C 
+     4D32   45 54 
+     4D34   53 54 
+     4D36   4F 4E 
+     4D38   4C 4F 
+     4D3A   4E 55 
+     4D3C   54 48 
+     4D3E   4E 4F 
 .QQ16
-     4D40   41 4C 4C ...
+     4D40   41 4C 
+     4D42   4C 45 
+     4D44   58 45 
+     4D46   47 45 
+     4D48   5A 41 
+     4D4A   43 45 
+     4D4C   42 49 
+     4D4E   53 4F 
+     4D50   55 53 
+     4D52   45 53 
+     4D54   41 52 
+     4D56   4D 41 
+     4D58   49 4E 
+     4D5A   44 49 
+     4D5C   52 45 
+     4D5E   41 3F 
+     4D60   45 52 
+     4D62   41 54 
+     4D64   45 4E 
+     4D66   42 45 
+     4D68   52 41 
+     4D6A   4C 41 
+     4D6C   56 45 
+     4D6E   54 49 
+     4D70   45 44 
+     4D72   4F 52 
+     4D74   51 55 
+     4D76   41 4E 
+     4D78   54 45 
+     4D7A   49 53 
+     4D7C   52 49 
+     4D7E   4F 4E 
      4D80   3A 30 2E ...
 .NA%
      4D85   4A 41 4D ...
      4D8C   0D
      4D8D   00
-     4D8E   14 AD 4A 5A
+     4D8E   14
+     4D8F   AD
+     4D90   4A 5A
      4D92   48 02 53 B7
      4D96   00 00 03 E8
-     4D9A   46 00
+     4D9A   46
+     4D9B   00
      4D9C   00
-     4D9D   0F 00 00 00
+     4D9D   0F
+     4D9E   00
+     4D9F   00
+     4DA0   00
      4DA1   00 00
      4DA3   16
-     4DA4   00 00 00 00
-     4DA8   00 00 00 00
-     4DAC   00 00 00 00
-     4DB0   00 00 00 00
-     4DB4   00
-     4DB5   00 00 00 00
-     4DB9   00 00
-     4DBB   00
-     4DBC   00 00 00 00
+     4DA4
      4DC0   03
      4DC1   00
      4DC2   10
@@ -15480,7 +15520,8 @@ WP workspace from &400 to &715 inclusive
      4DC6   03
      4DC7   1C
      4DC8   0E
-     4DC9   00 00
+     4DC9   00
+     4DCA   00
      4DCB   0A
      4DCC   00
      4DCD   11
@@ -15489,8 +15530,7 @@ WP workspace from &400 to &715 inclusive
      4DD0   09
      4DD1   08
      4DD2   00
-     4DD3   00
-     4DD4   00 00
+     4DD3
      4DD6   80
 .CHK2
      4DD7   AA
@@ -15498,11 +15538,7 @@ WP workspace from &400 to &715 inclusive
      4DD8   27
 .CHK
      4DD9   03
-     4DDA   00 00 00 00
-     4DDE   00 00 00 00
-     4DE2   00 00 00 00
-     4DE6   00 00 00 00
-     4DEA   00 00 00 00
+     4DDA
 .S1%
      4DEE   3A 30 2E ...
 .NA2%
@@ -15511,7 +15547,8 @@ WP workspace from &400 to &715 inclusive
      4DFB   00
      4DFC   14
      4DFD   AD
-     4DFE   4A 5A 48 02
+     4DFE   4A 5A
+     4E00   48 02
      4E02   53 B7
      4E04   00 00 03 E8
      4E08   46
@@ -15523,10 +15560,22 @@ WP workspace from &400 to &715 inclusive
      4E0E   00
      4E0F   00 00
      4E11   16
-     4E12   00 00 00 00
-     4E16   00 00 00 00
-     4E1A   00 00 00 00
-     4E1E   00 00 00 00
+     4E12   00
+     4E13   00
+     4E14   00
+     4E15   00
+     4E16   00
+     4E17   00
+     4E18   00
+     4E19   00
+     4E1A   00
+     4E1B   00
+     4E1C   00
+     4E1D   00
+     4E1E   00
+     4E1F   00
+     4E20   00
+     4E21   00
      4E22   00
      4E23   00
      4E24   00
@@ -15545,7 +15594,8 @@ WP workspace from &400 to &715 inclusive
      4E34   03
      4E35   1C
      4E36   0E
-     4E37   00 00
+     4E37   00
+     4E38   00
      4E39   0A
      4E3A   00
      4E3B   11
@@ -15560,11 +15610,9 @@ WP workspace from &400 to &715 inclusive
      4E45   AA
      4E46   27
      4E47   03
-     4E48   00 00 00 00
-     4E4C   00 00 00 00
-     4E50   00 00 00 00
+     4E48
 .NAEND%
-     4E54   00 00 00 00
+     4E54
 .scacol
      4E58   00
      4E59   10

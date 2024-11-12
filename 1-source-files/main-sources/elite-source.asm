@@ -2482,7 +2482,7 @@ ENDIF
 
 .MULIE
 
- SKIP 1					\ ???
+ SKIP 1                 ; ???
 
 IF _IB_DISK
 
@@ -2942,7 +2942,7 @@ ENDIF
 ;
 ;       Name: SPMASK
 ;       Type: Variable
-;   Category: Sprites
+;   Category: Missions
 ;    Summary: ???
 ;
 ; ******************************************************************************
@@ -5594,15 +5594,15 @@ ENDIF
 
 .MT8
 
- LDA #6					\ Set A = 6 to denote column 6
+ LDA #6                 ; Set A = 6 to denote column 6
 
 IF _IB_DISK
 
- STA XC					\ Move the text cursor to column 6
+ STA XC                 ; Move the text cursor to column 6
 
 ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
 
- JSR DOXC				\ Move the text cursor to column 6
+ JSR DOXC               ; Move the text cursor to column 6
 
 ENDIF
 
@@ -5939,297 +5939,589 @@ ENDIF
 ;RTS                    ; This instruction is commented out in the original
                         ; source
 
-						\ Fall through into WHITETEXT to return from the
-						\ subroutine
+                        ; Fall through into WHITETEXT to return from the
+                        ; subroutine
+
+; ******************************************************************************
+;
+;       Name: WHITETEXT
+;       Type: Subroutine
+;   Category: Text
+;    Summary: Switch to white text
+;
+; ******************************************************************************
 
 .WHITETEXT
 
-;LDA #32
-;JSR DOVDU19
+;LDA #32                ; These instructions are commented out in the original
+;JSR DOVDU19            ; source
 ;LDA #RED
 ;JMP DOCOL
- RTS
- \............
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: JMTB
+;       Type: Variable
+;   Category: Text
+;    Summary: The extended token table for jump tokens 1-32 (DETOK)
+;  Deep dive: Extended text tokens
+;
+; ******************************************************************************
 
 .JMTB
 
- EQUW MT1
- EQUW MT2
- EQUW TT27
- EQUW TT27
- EQUW MT5
- EQUW MT6
- EQUW DASC
- EQUW MT8
- EQUW MT9
- EQUW DASC
- EQUW NLIN4
- EQUW DASC
- EQUW MT13
- EQUW MT14
- EQUW MT15
- EQUW MT16
- EQUW MT17
- EQUW MT18
- EQUW MT19
- EQUW DASC
- EQUW CLYNS
- EQUW PAUSE
- EQUW MT23
- EQUW PAUSE2
- EQUW BRIS
- EQUW MT26
- EQUW MT27
- EQUW MT28
- EQUW MT29
- EQUW FILEPR
- EQUW OTHERFILEPR
- EQUW DASC
- \.............
+ EQUW MT1               ; Token  1: Switch to ALL CAPS
+ EQUW MT2               ; Token  2: Switch to Sentence Case
+ EQUW TT27              ; Token  3: Print the selected system name
+ EQUW TT27              ; Token  4: Print the commander's name
+ EQUW MT5               ; Token  5: Switch to extended tokens
+ EQUW MT6               ; Token  6: Switch to standard tokens, in Sentence Case
+ EQUW DASC              ; Token  7: Beep
+ EQUW MT8               ; Token  8: Tab to column 6
+ EQUW MT9               ; Token  9: Clear screen, tab to column 1, view type = 1
+ EQUW DASC              ; Token 10: Line feed
+ EQUW NLIN4             ; Token 11: Draw box around title (line at pixel row 19)
+ EQUW DASC              ; Token 12: Carriage return
+ EQUW MT13              ; Token 13: Switch to lower case
+ EQUW MT14              ; Token 14: Switch to justified text
+ EQUW MT15              ; Token 15: Switch to left-aligned text
+ EQUW MT16              ; Token 16: Print the character in DTW7 (drive number)
+ EQUW MT17              ; Token 17: Print system name adjective in Sentence Case
+ EQUW MT18              ; Token 18: Randomly print 1 to 4 two-letter tokens
+ EQUW MT19              ; Token 19: Capitalise first letter of next word only
+ EQUW DASC              ; Token 20: Unused
+ EQUW CLYNS             ; Token 21: Clear the bottom few lines of the space view
+ EQUW PAUSE             ; Token 22: Display ship and wait for key press
+ EQUW MT23              ; Token 23: Move to row 10, white text, set lower case
+ EQUW PAUSE2            ; Token 24: Wait for a key press
+ EQUW BRIS              ; Token 25: Show incoming message screen, wait 2 seconds
+ EQUW MT26              ; Token 26: Fetch line input from keyboard (filename)
+ EQUW MT27              ; Token 27: Print mission captain's name (217-219)
+ EQUW MT28              ; Token 28: Print mission 1 location hint (220-221)
+ EQUW MT29              ; Token 29: Column 6, white text, lower case in words
+ EQUW FILEPR            ; Token 30: Display currently selected media (disk/tape)
+ EQUW OTHERFILEPR       ; Token 31: Display the non-selected media (disk/tape)
+ EQUW DASC              ; Token 32: Unused
+
+; ******************************************************************************
+;
+;       Name: TKN2
+;       Type: Variable
+;   Category: Text
+;    Summary: The extended two-letter token lookup table
+;  Deep dive: Extended text tokens
+;
+; ------------------------------------------------------------------------------
+;
+; Two-letter token lookup table for extended tokens 215-227.
+;
+; ******************************************************************************
 
 .TKN2
 
- EQUB 12
- EQUB 10
- EQUS "ABOUSEITILETSTONLONUTHNO"
+ EQUB 12, 10            ; Token 215 = {crlf}
+ EQUS "AB"              ; Token 216
+ EQUS "OU"              ; Token 217
+ EQUS "SE"              ; Token 218
+ EQUS "IT"              ; Token 219
+ EQUS "IL"              ; Token 220
+ EQUS "ET"              ; Token 221
+ EQUS "ST"              ; Token 222
+ EQUS "ON"              ; Token 223
+ EQUS "LO"              ; Token 224
+ EQUS "NU"              ; Token 225
+ EQUS "TH"              ; Token 226
+ EQUS "NO"              ; Token 227
+
+; ******************************************************************************
+;
+;       Name: QQ16
+;       Type: Variable
+;   Category: Text
+;    Summary: The two-letter token lookup table
+;  Deep dive: Printing text tokens
+;
+; ------------------------------------------------------------------------------
+;
+; Two-letter token lookup table for tokens 128-159. See the deep dive on
+; "Printing text tokens" for details of how the two-letter token system works.
+;
+; These two-letter tokens can also be used in the extended text token system, by
+; adding 100 to the token number. So the extended two-letter token 228 is "AL",
+; the same as the standard two-letter token 128. In this system, the last four
+; tokens are not available, as they would have numbers greater than 255.
+;
+; ******************************************************************************
 
 .QQ16
 
- EQUS "ALLEXEGEZACEBISOUSESARMAINDIREA?ERATENBERALAVETIEDORQUANTEISRION"
- \.............
- EQUS ":0.E."
+ EQUS "AL"              ; Token 128
+ EQUS "LE"              ; Token 129
+ EQUS "XE"              ; Token 130
+ EQUS "GE"              ; Token 131
+ EQUS "ZA"              ; Token 132
+ EQUS "CE"              ; Token 133
+ EQUS "BI"              ; Token 134
+ EQUS "SO"              ; Token 135
+ EQUS "US"              ; Token 136
+ EQUS "ES"              ; Token 137
+ EQUS "AR"              ; Token 138
+ EQUS "MA"              ; Token 139
+ EQUS "IN"              ; Token 140
+ EQUS "DI"              ; Token 141
+ EQUS "RE"              ; Token 142
+ EQUS "A?"              ; Token 143
+ EQUS "ER"              ; Token 144
+ EQUS "AT"              ; Token 145
+ EQUS "EN"              ; Token 146
+ EQUS "BE"              ; Token 147
+ EQUS "RA"              ; Token 148
+ EQUS "LA"              ; Token 149
+ EQUS "VE"              ; Token 150
+ EQUS "TI"              ; Token 151
+ EQUS "ED"              ; Token 152
+ EQUS "OR"              ; Token 153
+ EQUS "QU"              ; Token 154
+ EQUS "AN"              ; Token 155
+ EQUS "TE"              ; Token 156
+ EQUS "IS"              ; Token 157
+ EQUS "RI"              ; Token 158
+ EQUS "ON"              ; Token 159
+
+; ******************************************************************************
+;
+;       Name: NA%
+;       Type: Variable
+;   Category: Save and load
+;    Summary: The data block for the last saved commander
+;
+; ******************************************************************************
+
+ EQUS ":0.E."           ; The drive part of this string (the "0") is updated
+                        ; with the chosen drive in the GTNMEW routine, but the
+                        ; directory part (the "E") is fixed. The variable is
+                        ; followed directly by the commander file at NA%, which
+                        ; starts with the commander name, so the full string at
+                        ; NA%-5 is in the format ":0.E.jameson", which gives the
+                        ; full filename of the commander file
 
 .NA%
 
 IF _IB_DISK
 
- EQUS ("JAMESON")
-
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
-
- EQUS ("jameson")
-
-ENDIF
-
+ EQUS "JAMESON"         ; The current commander name
  EQUB 13
- EQUB 0
+
+ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+
+ EQUS "jameson"         ; The current commander name
+ EQUB 13
+
+ENDIF
 
 IF _IB_DISK
 
- EQUD &5A4AAD14
+                        ; The following is workspace noise ???
+
+ EQUB 0                 ; TP = Mission status, #0
+
+ EQUB 20                ; QQ0 = Current system X-coordinate (Lave), #1
+ EQUB 173               ; QQ1 = Current system Y-coordinate (Lave), #2
+
+ EQUW $5A4A             ; ??? Workspace noise
  EQUD &B7530248
- EQUD &E8030000
- EQUW $0046
- EQUB 0 ;Fuel-Gal
- EQUD $0F
- EQUW 0
- EQUB $16 ;Laser-Cargo
+
+ EQUD &E8030000         ; CASH = Amount of cash (100 Cr), #3-6
+
+ EQUB 70                ; QQ14 = Fuel level, #7
+
+ EQUB 0                 ; COK = Competition flags, #8
+
+ EQUB 0                 ; GCNT = Galaxy number, 0-7, #9
+
+ EQUB POW               ; LASER = Front laser, #10
+
+ EQUB 0                 ; LASER+1 = Rear laser, #11
+
+ EQUB 0                 ; LASER+2 = Left laser, #12
+
+ EQUB 0                 ; LASER+3 = Right laser, #13
+
+ EQUW 0                 ; ??? Workspace noise
+
+ EQUB 22                ; CRGO = Cargo capacity, #14
+
+ SKIP 28                ; Placeholders for bytes #15 to #41
+
+ EQUB 3                 ; NOMSL = Number of missiles, #42
+
+ EQUB 0                 ; FIST = Legal status ("fugitive/innocent status"), #43
 
 ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
 
- EQUD 0
- EQUD 0 ;Base seed
- EQUD 0 ;Cash
- EQUW 0
- EQUB 0 ;Fuel-Gal
- EQUD 0
- EQUW 0
- EQUB 0 ;Laser-Cargo
+ SKIP 53                ; Placeholders for bytes #0 to #52
 
 ENDIF
 
- EQUD 0
- EQUD 0
- EQUD 0
- EQUD 0
- EQUB 0 ; crgo
- EQUD 0 ; ECM-ENGY
- EQUW 0
- EQUB 0 ;DCK-escp
- EQUD 0 ; EXPAND
+ EQUB 16                ; AVL+0  = Market availability of food, #53
+ EQUB 15                ; AVL+1  = Market availability of textiles, #54
+ EQUB 17                ; AVL+2  = Market availability of radioactives, #55
+ EQUB 0                 ; AVL+3  = Market availability of slaves, #56
+ EQUB 3                 ; AVL+4  = Market availability of liquor/Wines, #57
+ EQUB 28                ; AVL+5  = Market availability of luxuries, #58
+ EQUB 14                ; AVL+6  = Market availability of narcotics, #59
+ EQUB 0                 ; AVL+7  = Market availability of computers, #60
+ EQUB 0                 ; AVL+8  = Market availability of machinery, #61
+ EQUB 10                ; AVL+9  = Market availability of alloys, #62
+ EQUB 0                 ; AVL+10 = Market availability of firearms, #63
+ EQUB 17                ; AVL+11 = Market availability of furs, #64
+ EQUB 58                ; AVL+12 = Market availability of minerals, #65
+ EQUB 7                 ; AVL+13 = Market availability of gold, #66
+ EQUB 9                 ; AVL+14 = Market availability of platinum, #67
+ EQUB 8                 ; AVL+15 = Market availability of gem-stones, #68
+ EQUB 0                 ; AVL+16 = Market availability of alien items, #69
 
-IF _IB_DISK
+ SKIP 3                 ; Placeholders for bytes #70 to #72
 
- EQUB 3 ; MISSILES
+ EQUB 128               ; SVC = Save count, #73
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
-
- EQUB 0 ; MISSILES
-
-ENDIF
-
- EQUB 0 ; FIST
- EQUB 16
- EQUB 15
- EQUB 17
- EQUB 0
- EQUB 3
- EQUB 28
- EQUB 14
- EQUW 0
- EQUB 10
- EQUB 0
- EQUB 17
- EQUB 58
- EQUB 7
- EQUB 9
- EQUB 8
- EQUB 0
- EQUB 0 ;QQ26
- EQUW 0 ;TALLY
- EQUB 128 ;SVC
-
-IF _IB_DISK
+; ******************************************************************************
+;
+;       Name: CHK2
+;       Type: Variable
+;   Category: Save and load
+;    Summary: Second checksum byte for the saved commander data file
+;  Deep dive: Commander save files
+;             The competition code
+;
+; ------------------------------------------------------------------------------
+;
+; Second commander checksum byte. If the default commander is changed, a new
+; checksum will be calculated and inserted by the elite-checksum.py script.
+;
+; The offset of this byte within a saved commander file is also shown (it's at
+; byte #74).
+;
+; ******************************************************************************
 
 .CHK2
 
- EQUB $AA
+IF _IB_DISK
 
-.CHK3
-
- EQUB $27
-
-.CHK
-
- EQUB $03
+ EQUB $03 EOR $A9       ; The checksum value for the default commander, EOR'd
+                        ; with $A9 to make it harder to tamper with the checksum
+                        ; byte, #74
 
 ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
 
-.CHK2
-
- EQUB 0
-
-.CHK3
-
- EQUB 0
-
-.CHK
-
- EQUB 0
+ EQUB 0                 ; Placeholder for the checksum in byte #74
 
 ENDIF
 
- EQUD 0
- EQUD 0
- EQUD 0
- EQUD 0
- EQUD 0
- \.........
+; ******************************************************************************
+;
+;       Name: CHK3
+;       Type: Variable
+;   Category: Save and load
+;    Summary: Third checksum byte for the saved commander data file
+;  Deep dive: Commander save files
+;             The competition code
+;
+; ------------------------------------------------------------------------------
+;
+; Commander checksum byte for the Apple II and Commodore 64 versions only. If
+; the default commander is changed, a new checksum will be calculated and
+; inserted by the elite-checksum.py script.
+;
+; The offset of this byte within a saved commander file is also shown (it's at
+; byte #75).
+;
+; ******************************************************************************
 
- \ZIP
+.CHK3
+
+IF _IB_DISK
+
+ EQUB $27               ; The third checksum value for the default commander,
+                        ; #75
+
+ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+
+ EQUB 0                 ; Placeholder for the checksum in byte #75
+
+ENDIF
+
+; ******************************************************************************
+;
+;       Name: CHK
+;       Type: Variable
+;   Category: Save and load
+;    Summary: First checksum byte for the saved commander data file
+;  Deep dive: Commander save files
+;             The competition code
+;
+; ------------------------------------------------------------------------------
+;
+; Commander checksum byte. If the default commander is changed, a new checksum
+; will be calculated and inserted by the elite-checksum.py script.
+;
+; The offset of this byte within a saved commander file is also shown (it's at
+; byte #76).
+;
+; ******************************************************************************
+
+.CHK
+
+IF _IB_DISK
+
+ EQUB $03               ; The checksum value for the default commander, #76
+
+ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+
+ EQUB 0                 ; Placeholder for the checksum in byte #76
+
+ENDIF
+
+ SKIP 20                ; These bytes appear to be unused
+
+; ******************************************************************************
+;
+;       Name: S1%
+;       Type: Variable
+;   Category: Save and load
+;    Summary: The drive and directory number used when saving or loading a
+;             commander file
+;  Deep dive: Commander save files
+;
+; ------------------------------------------------------------------------------
+;
+; This is a BBC Micro drive and directory string. It is not used in this version
+; of Elite and is left over from the BBC Micro version.
+;
+; ******************************************************************************
 
 .S1%
 
  EQUS ":0.E."
 
+; ******************************************************************************
+;
+;       Name: NA2%
+;       Type: Variable
+;   Category: Save and load
+;    Summary: The data block for the default commander
+;  Deep dive: Commander save files
+;             The competition code
+;
+; ------------------------------------------------------------------------------
+;
+; Contains the default commander data, with the name at NA% and the data at
+; NA%+8 onwards. The size of the data block is given in NT% (which also includes
+; the two checksum bytes that follow this block). This block is initially set up
+; with the default commander, which can be maxed out for testing purposes by
+; setting Q% to TRUE.
+;
+; The commander's name is stored at NA%, and can be up to 7 characters long
+; (the DFS filename limit). It is terminated with a carriage return character,
+; ASCII 13.
+;
+; The offset of each byte within a saved commander file is also shown as #0, #1
+; and so on, so the kill tally, for example, is in bytes #71 and #72 of the
+; saved file. The related variable name from the current commander block is
+; also shown.
+;
+; ******************************************************************************
+
 .NA2%
 
- EQUS ("JAMESON")
- EQUB 13
- EQUB 0
- EQUB 20 ; QQ0
- EQUB 173 ; QQ1
- EQUD &2485A4A ; QQ21
- EQUW $B753 ;Base seed
- EQUD (((&E8030000)AND(NOT(Q%)))+((&CA9A3B)AND Q%))\CASH,&80969800
- EQUB 70 ;fuel
- EQUB Q%AND128 ;COK-UP
- EQUB 0 ;GALACTIC COUNT
- EQUB (Armlas ANDQ%)+(POW AND(NOT(Q%)))
- EQUB (POW)AND Q%
- EQUB (POW+128)AND Q%
- EQUB Mlas AND Q%
- EQUW 0 ;LASER
- EQUB 22+(15 AND Q%) ;37 CRGO
- EQUD 0
- EQUD 0
- EQUD 0
- EQUD 0
- EQUB 0 ; crgo
- EQUB Q% ;ECM
- EQUB Q% ;BST
- EQUB Q%AND127 ;BOMB
- EQUB Q%AND1 ;ENGY++
- EQUB Q% ;DCK COMP
- EQUB Q% ;GHYP
- EQUB Q% ;ESCP
- EQUD FALSE ;EXPAND
- EQUB 3+(Q%AND1) ;MISSILES
- EQUB FALSE ;FIST
- EQUB 16
- EQUB 15
- EQUB 17
- EQUB 0
- EQUB 3
- EQUB 28
- EQUB 14
- EQUW 0
- EQUB 10
- EQUB 0
- EQUB 17
- EQUB 58
- EQUB 7
- EQUB 9
- EQUB 8
- EQUB 0
- EQUB 0 ;QQ26
- EQUW (20000ANDQ%) ;TALLY
- EQUB 128 ;SVC
+ EQUS "JAMESON"         ; The current commander name, which defaults to JAMESON
+ EQUB 13                ;
+                        ; The commander name can be up to seven characters (the
+                        ; DFS limit for filenames), and is terminated by a
+                        ; carriage return
 
- \.CHK2
+                        ; NA%+8 is the start of the commander data block
+                        ;
+                        ; This block contains the last saved commander data
+                        ; block. As the game is played it uses an identical
+                        ; block at location TP to store the current commander
+                        ; state, and that block is copied here when the game is
+                        ; saved. Conversely, when the game starts up, the block
+                        ; here is copied to TP, which restores the last saved
+                        ; commander when we die
+                        ;
+                        ; The initial state of this block defines the default
+                        ; commander. Q% can be set to TRUE to give the default
+                        ; commander lots of credits and equipment
 
- EQUB $AA
+ EQUB 0                 ; TP = Mission status, #0
 
- \.CHK3
+ EQUB 20                ; QQ0 = Current system X-coordinate (Lave), #1
+ EQUB 173               ; QQ1 = Current system Y-coordinate (Lave), #2
 
- EQUB $27
+ EQUW $5A4A             ; QQ21 = Seed s0 for system 0, galaxy 0 (Tibedied), #3-4
+ EQUW $0248             ; QQ21 = Seed s1 for system 0, galaxy 0 (Tibedied), #5-6
+ EQUW $B753             ; QQ21 = Seed s2 for system 0, galaxy 0 (Tibedied), #7-8
 
- \.CHK
+IF Q%
+ EQUD &00CA9A3B         ; CASH = Amount of cash (100,000,000 Cr), #9-12
+ELSE
+ EQUD &E8030000         ; CASH = Amount of cash (100 Cr), #9-12
+ENDIF
 
- EQUB $03
- EQUD 0
- EQUD 0
- EQUD 0
+ EQUB 70                ; QQ14 = Fuel level, #13
+
+ EQUB %10000000 AND Q%  ; COK = Competition flags, #14
+
+ EQUB 0                 ; GCNT = Galaxy number, 0-7, #15
+
+IF Q%
+ EQUB Armlas            ; LASER = Front laser, #16
+ELSE
+ EQUB POW               ; LASER = Front laser, #16
+ENDIF
+
+ EQUB POW AND Q%        ; LASER = Rear laser, #16
+
+ EQUB (POW+128) AND Q%  ; LASER+2 = Left laser, #18
+
+ EQUB Mlas AND Q%       ; LASER+3 = Right laser, #19
+
+ EQUW 0                 ; These bytes appear to be unused (they were originally
+                        ; used for up/down lasers, but they were dropped),
+                        ; #20-21
+
+ EQUB 22 + (15 AND Q%)  ; CRGO = Cargo capacity, #22
+
+ EQUB 0                 ; QQ20+0  = Amount of food in cargo hold, #23
+ EQUB 0                 ; QQ20+1  = Amount of textiles in cargo hold, #24
+ EQUB 0                 ; QQ20+2  = Amount of radioactives in cargo hold, #25
+ EQUB 0                 ; QQ20+3  = Amount of slaves in cargo hold, #26
+ EQUB 0                 ; QQ20+4  = Amount of liquor/Wines in cargo hold, #27
+ EQUB 0                 ; QQ20+5  = Amount of luxuries in cargo hold, #28
+ EQUB 0                 ; QQ20+6  = Amount of narcotics in cargo hold, #29
+ EQUB 0                 ; QQ20+7  = Amount of computers in cargo hold, #30
+ EQUB 0                 ; QQ20+8  = Amount of machinery in cargo hold, #31
+ EQUB 0                 ; QQ20+9  = Amount of alloys in cargo hold, #32
+ EQUB 0                 ; QQ20+10 = Amount of firearms in cargo hold, #33
+ EQUB 0                 ; QQ20+11 = Amount of furs in cargo hold, #34
+ EQUB 0                 ; QQ20+12 = Amount of minerals in cargo hold, #35
+ EQUB 0                 ; QQ20+13 = Amount of gold in cargo hold, #36
+ EQUB 0                 ; QQ20+14 = Amount of platinum in cargo hold, #37
+ EQUB 0                 ; QQ20+15 = Amount of gem-stones in cargo hold, #38
+ EQUB 0                 ; QQ20+16 = Amount of alien items in cargo hold, #39
+
+ EQUB Q%                ; ECM = E.C.M. system, #40
+
+ EQUB Q%                ; BST = Fuel scoops ("barrel status"), #41
+
+ EQUB Q% AND 127        ; BOMB = Energy bomb, #42
+
+ EQUB Q% AND 1          ; ENGY = Energy/shield level, #43
+
+ EQUB Q%                ; DKCMP = Docking computer, #44
+
+ EQUB Q%                ; GHYP = Galactic hyperdrive, #45
+
+ EQUB Q%                ; ESCP = Escape pod, #46
+
+ EQUD 0                 ; These four bytes appear to be unused, #47-50
+
+ EQUB 3 + (Q% AND 1)    ; NOMSL = Number of missiles, #51
+
+ EQUB 0                 ; FIST = Legal status ("fugitive/innocent status"), #52
+
+ EQUB 16                ; AVL+0  = Market availability of food, #53
+ EQUB 15                ; AVL+1  = Market availability of textiles, #54
+ EQUB 17                ; AVL+2  = Market availability of radioactives, #55
+ EQUB 0                 ; AVL+3  = Market availability of slaves, #56
+ EQUB 3                 ; AVL+4  = Market availability of liquor/Wines, #57
+ EQUB 28                ; AVL+5  = Market availability of luxuries, #58
+ EQUB 14                ; AVL+6  = Market availability of narcotics, #59
+ EQUB 0                 ; AVL+7  = Market availability of computers, #60
+ EQUB 0                 ; AVL+8  = Market availability of machinery, #61
+ EQUB 10                ; AVL+9  = Market availability of alloys, #62
+ EQUB 0                 ; AVL+10 = Market availability of firearms, #63
+ EQUB 17                ; AVL+11 = Market availability of furs, #64
+ EQUB 58                ; AVL+12 = Market availability of minerals, #65
+ EQUB 7                 ; AVL+13 = Market availability of gold, #66
+ EQUB 9                 ; AVL+14 = Market availability of platinum, #67
+ EQUB 8                 ; AVL+15 = Market availability of gem-stones, #68
+ EQUB 0                 ; AVL+16 = Market availability of alien items, #69
+
+ EQUB 0                 ; QQ26 = Random byte that changes for each visit to a
+                        ; system, for randomising market prices, #70
+
+ EQUW 20000 AND Q%      ; TALLY = Number of kills, #71-72
+
+ EQUB 128               ; SVC = Save count, #73
+
+;.CHK2                  ; This label is commented out in the original source
+
+ EQUB $AA               ; The CHK2 checksum value for the default commander
+
+;.CHK3                  ; This label is commented out in the original source
+
+ EQUB $27               ; The CHK3 checksum value for the default commander
+
+;.CHK                   ; This label is commented out in the original source
+
+ EQUB $03               ; The CHK checksum value for the default commander
+
+ SKIP 12                ; These bytes appear to be unused
 
 .NAEND%
 
- EQUD 0
+ SKIP 4                 ; These bytes appear to be unused
+
+; ******************************************************************************
+;
+;       Name: scacol
+;       Type: Variable
+;   Category: Drawing ships
+;    Summary: Ship colours on the scanner
+;
+; ******************************************************************************
 
 .scacol
 
- EQUB 0
- EQUB BLUE
- EQUB BLUE
- EQUB RED
- EQUB RED
- EQUB RED ;barrel
- EQUB RED
- EQUB RED
- EQUB RED
- EQUB CYAN
- EQUB CYAN ;transp
- EQUB CYAN
- EQUB MAG
- EQUB MAG
- EQUB MAG
- EQUB RED
- EQUB CYAN ;Viper
- EQUB CYAN
- EQUB CYAN
- EQUB CYAN
- EQUB CYAN
- EQUB CYAN
- EQUB CYAN
- EQUB BLUE ;Wor
- EQUB CYAN
- EQUB CYAN
- EQUB MAG
- EQUB CYAN
- EQUB CYAN ;Moray
- EQUB FUZZY
- EQUB CYAN
- EQUB CYAN ;Con
- EQUB 0
+ EQUB 0                 ; This byte appears to be unused
+
+ EQUB BLUE              ; Missile
+ EQUB BLUE              ; Coriolis space station
+ EQUB RED               ; Escape pod
+ EQUB RED               ; Alloy plate
+ EQUB RED               ; Cargo canister
+ EQUB RED               ; Boulder
+ EQUB RED               ; Asteroid
+ EQUB RED               ; Splinter
+ EQUB CYAN              ; Shuttle
+ EQUB CYAN              ; Transporter
+ EQUB CYAN              ; Cobra Mk III
+ EQUB MAG               ; Python
+ EQUB MAG               ; Boa
+ EQUB MAG               ; Anaconda
+ EQUB RED               ; Rock hermit (asteroid)
+ EQUB CYAN              ; Viper
+ EQUB CYAN              ; Sidewinder
+ EQUB CYAN              ; Mamba
+ EQUB CYAN              ; Krait
+ EQUB CYAN              ; Adder
+ EQUB CYAN              ; Gecko
+ EQUB CYAN              ; Cobra Mk I
+ EQUB BLUE              ; Worm
+ EQUB CYAN              ; Cobra Mk III (pirate)
+ EQUB CYAN              ; Asp Mk II
+ EQUB MAG               ; Python (pirate)
+ EQUB CYAN              ; Fer-de-lance
+ EQUB CYAN              ; Moray
+ EQUB FUZZY             ; Thargoid
+ EQUB CYAN              ; Thargon
+ EQUB CYAN              ; Constrictor
+
+ EQUB 0                 ; These bytes appear to be unused
  EQUB CYAN
  EQUD 0
 
@@ -26805,7 +27097,7 @@ ENDIF
 ;       Name: CHECK2
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Calculate the second checksum for the last saved commander data
+;    Summary: Calculate the third checksum for the last saved commander data
 ;             block (Commodore 64 and Apple II versions onlt)
 ;
 ; ******************************************************************************
@@ -27463,7 +27755,7 @@ ENDIF
  BPL SVL1               ; Loop back until we have copied all the bytes in the
                         ; commander data block
 
- JSR CHECK2             ; Call CHECK2 to calculate the second checksum for the
+ JSR CHECK2             ; Call CHECK2 to calculate the third checksum for the
                         ; last saved commander and return it in A
 
  STA CHK3               ; Store the checksum in CHK3, which is at the end of the
