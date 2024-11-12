@@ -16562,7 +16562,7 @@ Saving file '3-assembled-output/ELTA.bin'
 .DTW3
      5529   00
 .DTW4
-     552A
+     552A   00
 .DTW5
      552B   00
 .DTW6
@@ -26716,7 +26716,6 @@ Saving file '3-assembled-output/ELTJ.bin'
      9BF9   F0
      9BFA   E0
      9BFB   C0
-.CTWOS
 .cellocl
      9BFC   02 82 02 82
      9C00   02 82 02 82
@@ -27432,7 +27431,7 @@ Saving file '3-assembled-output/ELTJ.bin'
      A0DE   68         PLA
      A0DF   91 0A      STA (&0A),Y
      A0E1   4C 30 A1   JMP &A130
-.TT67_copy
+.TT67X
      A0E4   A9 0C      LDA #&0C
 .CHPR
      A0E6   85 38      STA &38
