@@ -2597,8 +2597,7 @@ IF _IB_DISK
 
 ENDIF
 
- JSR COLD               ; Copy the recursive tokens and ship blueprints to their
-                        ; correct locations
+ JSR COLD               ; ???
 
  JMP BEGIN              ; Jump to BEGIN to start the game
 
@@ -38298,63 +38297,196 @@ ENDMACRO
 
  LOAD_I% = LOAD% + P% - CODE%
 
+; ******************************************************************************
+;
+;       Name: yetanotherrts
+;       Type: Subroutine
+;   Category: Tactics
+;    Summary: Contains an RTS
+;
+; ------------------------------------------------------------------------------
+;
+; This routine contains an RTS so we can return from the SFRMIS subroutine with
+; a branch instruction.
+;
+; It also contains the DEMON label, which implements the demo in the 6502
+; Second Processor version, so this acts as a stub for the JSR DEMON call during
+; conversion of the 6502 Second Processor version into the later Commodore 64,
+; Apple II and BBC Master versions.
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   DEMON               Contains an RTS
+;
+; ******************************************************************************
+
 .yetanotherrts
 
 .DEMON
 
- RTS ;<<
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: ECMOF
+;       Type: Subroutine
+;   Category: Sound
+;    Summary: Switch off the E.C.M.
+;
+; ------------------------------------------------------------------------------
+;
+; Switch the E.C.M. off, turn off the dashboard bulb and make the sound of the
+; E.C.M. switching off).
+;
+; ******************************************************************************
 
 .ECMOF
 
- LDA #0
- STA ECMA
+ LDA #0                 ; Set ECMA and ECMP to 0 to indicate that no E.C.M. is
+ STA ECMA               ; currently running
  STA ECMP
- JMP ECBLB ;@@
+
+ JMP ECBLB              ; Update the E.C.M. indicator bulb on the dashboard and
+                        ; return from the subroutine using a tail call
+
+; ******************************************************************************
+;
+;       Name: SFRMIS
+;       Type: Subroutine
+;   Category: Tactics
+;    Summary: Add an enemy missile to our local bubble of universe
+;
+; ------------------------------------------------------------------------------
+;
+; An enemy has fired a missile, so add the missile to our universe if there is
+; room, and if there is, make the appropriate warnings and noises.
+;
+; ******************************************************************************
 
 .SFRMIS
 
- LDX #MSL
- JSR SFS1-2
- BCC yetanotherrts
- LDA #$78
- JSR MESS
- LDY #50
- JMP SOHISS ; @@
+ LDX #MSL               ; Set X to the ship type of a missile, and call SFS1-2
+ JSR SFS1-2             ; to add the missile to our universe with an AI flag
+                        ; of %11111110 (AI enabled, hostile, no E.C.M.)
+
+ BCC yetanotherrts      ; The C flag will be set if the call to SFS1-2 was a
+                        ; success, so if it's clear, jump to yetanotherrts to
+                        ; return from the subroutine (as yetanotherrts contains
+                        ; an RTS)
+
+ LDA #120               ; Print recursive token 120 ("INCOMING MISSILE") as an
+ JSR MESS               ; in-flight message
+
+ LDY #50                ; Call the SOHISS routine with Y = 50 to make the sound
+ JMP SOHISS             ; of the missile being launched and return from the
+                        ; subroutine using a tail call
+
+; ******************************************************************************
+;
+;       Name: EXNO2
+;       Type: Subroutine
+;   Category: Status
+;    Summary: Process us making a kill
+;  Deep dive: Combat rank
+;
+; ------------------------------------------------------------------------------
+;
+; We have killed a ship, so increase the kill tally, displaying an iconic
+; message of encouragement if the kill total is a multiple of 256, and then
+; make a nearby explosion sound.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   X                   The type of the ship that was killed
+;
+; ******************************************************************************
 
 .EXNO2
 
- LDA TALLYL
- CLC
- ADC KWL%-1,X
- STA TALLYL
- LDA TALLY
- ADC KWH%-1,X
- STA TALLY
- BCC davidscockup
- INC TALLY+1
- LDA #101
- JSR MESS
+ LDA TALLYL             ; We now add the fractional kill count to our tally,
+ CLC                    ; starting with the fractional bytes:
+ ADC KWL%-1,X           ;
+ STA TALLYL             ;   TALLYL = TALLYL + fractional kill count
+                        ;
+                        ; where the fractional kill count is taken from the
+                        ; KWL% table, according to the ship's type (we look up
+                        ; the X-1-th value from KWL% because ship types start
+                        ; at 1 rather than 0)
+
+ LDA TALLY              ; And then we add the low byte of TALLY(1 0):
+ ADC KWH%-1,X           ;
+ STA TALLY              ;   TALLY = TALLY + carry + integer kill count
+                        ;
+                        ; where the integer kill count is taken from the KWH%
+                        ; table in the same way
+
+ BCC davidscockup       ; If there is no carry, jump straight to EXNO3 to skip
+                        ; the following three instructions
+
+ INC TALLY+1            ; Increment the high byte of the kill count in TALLY
+
+ LDA #101               ; The kill total is a multiple of 256, so it's time
+ JSR MESS               ; for a pat on the back, so print recursive token 101
+                        ; ("RIGHT ON COMMANDER!") as an in-flight message
 
 .davidscockup
 
- LDY #55
- BNE SOEXPL ; @@
+ LDY #55                ; Call the SOEXPL routine with Y = 55 to make the sound
+ BNE SOEXPL             ; of a ship exploding, returning from the subroutine
+                        ; using a tail call
+
+; ******************************************************************************
+;
+;       Name: EXNO
+;       Type: Subroutine
+;   Category: Sound
+;    Summary: Make the sound of a laser strike or ship explosion
+;
+; ------------------------------------------------------------------------------
+;
+; Make the two-part explosion sound of us making a laser strike, or of another
+; ship exploding.
+;
+; ******************************************************************************
 
 .EXNO
 
- LDY #15
- BNE SOEXPL ; @@
- \...................
+ LDY #15                ; Call the SOEXPL routine with Y = 15 to make the sound
+ BNE SOEXPL             ; of us making a hit or kill and return from the
+                        ; subroutine using a tail call (this BNE is effectively
+                        ; a JMP as Y is never zero)
+
+; ******************************************************************************
+;
+;       Name: BOOP
+;       Type: Subroutine
+;   Category: Sound
+;    Summary: Make a long, low beep
+;
+; ******************************************************************************
 
 .BOOP
 
- LDY #99
+ LDY #99                ; ???
  LDX #$FF
  BNE SOBEEP
 
+; ******************************************************************************
+;
+;       Name: SOHISS
+;       Type: Subroutine
+;   Category: Sound
+;    Summary: ???
+;
+; ******************************************************************************
+
 .SOHISS
 
- BIT DNOIZ
+ BIT DNOIZ              ; ???
  BMI SOUR
 
 .SOHISS2
@@ -38370,13 +38502,31 @@ ENDMACRO
  LDA $C030
  RTS
 
+; ******************************************************************************
+;
+;       Name: EXNO3
+;       Type: Subroutine
+;   Category: Sound
+;    Summary: Make an explosion sound
+;
+; ******************************************************************************
+
 .EXNO3
 
- LDY #40
+ LDY #40                ; ???
+
+; ******************************************************************************
+;
+;       Name: SOEXPL
+;       Type: Subroutine
+;   Category: Sound
+;    Summary: Make an explosion sound
+;
+; ******************************************************************************
 
 .SOEXPL
 
- BIT DNOIZ
+ BIT DNOIZ              ; ???
  BMI SOUR
  LDX #50
  STX T3
@@ -38399,9 +38549,26 @@ ENDMACRO
  LDA $C030
  RTS
 
+; ******************************************************************************
+;
+;       Name: BEEP
+;       Type: Subroutine
+;   Category: Sound
+;    Summary: Make a short, high beep
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   SOBEEP              ???
+;
+;   SOUR                Contains an RTS
+;
+; ******************************************************************************
+
 .BEEP
 
- LDY #30
+ LDY #30                ; ???
  LDX #110
 
 .SOBEEP
@@ -38424,9 +38591,18 @@ ENDMACRO
 
  RTS
 
+; ******************************************************************************
+;
+;       Name: SOBLIP
+;       Type: Subroutine
+;   Category: Sound
+;    Summary: ???
+;
+; ******************************************************************************
+
 .SOBLIP
 
- BIT DNOIZ
+ BIT DNOIZ              ; ???
  BMI SOUR
  STX T3
 
@@ -38443,9 +38619,18 @@ ENDMACRO
  LDA $C030
  RTS
 
+; ******************************************************************************
+;
+;       Name: LASNOISE
+;       Type: Subroutine
+;   Category: Sound
+;    Summary: ???
+;
+; ******************************************************************************
+
 .LASNOISE
 
- LDY #11
+ LDY #11                ; ???
  LDX #150
 
 .SOBLOP
@@ -38467,14 +38652,32 @@ ENDMACRO
  LDA $C030
  RTS
 
+; ******************************************************************************
+;
+;       Name: LASNOISE2
+;       Type: Subroutine
+;   Category: Sound
+;    Summary: ???
+;
+; ******************************************************************************
+
 .LASNOISE2
 
- LDY #11
+ LDY #11                ; ???
  LDX #130
+
+; ******************************************************************************
+;
+;       Name: SOBOMB
+;       Type: Subroutine
+;   Category: Sound
+;    Summary: ???
+;
+; ******************************************************************************
 
 .SOBOMB
 
- BIT DNOIZ
+ BIT DNOIZ              ; ???
  BMI SOUR
  LDY #25
 
@@ -38493,21 +38696,38 @@ ENDMACRO
  LDA $C030
  RTS
 
+; ******************************************************************************
+;
+;       Name: CLICK
+;       Type: Subroutine
+;   Category: Sound
+;    Summary: ???
+;
+; ******************************************************************************
+
 .CLICK
 
- BIT DNOIZ
+ BIT DNOIZ              ; ???
  BMI SOUR2
  LDA $C030
 
 .SOUR2
 
  RTS
- \............
+
+; ******************************************************************************
+;
+;       Name: COLD
+;       Type: Subroutine
+;   Category: Loader
+;    Summary: Configure memory and set up NMI and character handlers ???
+;
+; ******************************************************************************
 
 .COLD
 
  \Page out KERNAL etc
- JSR HGR
+ JSR HGR                ; ???
  LDA #8
  STA SC+1
  LDX #2
@@ -38545,10 +38765,21 @@ ENDIF
 
  RTS
 
+; ******************************************************************************
+;
+;       Name: NMIpissoff
+;       Type: Subroutine
+;   Category: Loader
+;    Summary: Acknowledge NMI interrupts and ignore tham
+;
+; ******************************************************************************
+
 .NMIpissoff
 
- CLI
- RTI
+ CLI                    ; Enable interrupts, so we acknowledge the NMI and
+                        ; basically ignore it
+
+ RTI                    ; Return from the interrupt
 
 ; ******************************************************************************
 ;
