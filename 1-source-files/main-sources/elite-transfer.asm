@@ -53,18 +53,30 @@
                         ; the same as the load address as it doesn't get moved
                         ; after loading
 
+ ZP1 = 0                ; ???
+
+ ZP2 = 2                ; ???
+
+ CODE2 = $4000          ; ???
+
+ STORE = $D000          ; ???
+
 ; ******************************************************************************
 ;
-; Load the compiled binaries to create the Big Code File
+; Load the compiled binaries to transfer to an Apple II
 ;
 ; ******************************************************************************
 
  ORG CODE%
 
- ZP1 = 0
- ZP2 = 2
- CODE2 = $4000
- STORE = $D000
+; ******************************************************************************
+;
+;       Name: ENTRY
+;       Type: Subroutine
+;   Category: Loader
+;    Summary: ???
+;
+; ******************************************************************************
 
 .ENTRY
 
@@ -115,10 +127,10 @@
 
 IF _SOURCE_DISK_BUILD
 
- EQUB $C6, $C7, $C7, $C8, $C9, $C9, $CA, $CA
- EQUB $CB, $CC, $CC, $CD, $CD, $CE, $CE, $CF
- EQUB $CF, $D0, $D0, $D1, $D1, $D2, $D2, $D3
- EQUB $D3, $D4, $D4, $D5, $D5, $D5, $D6, $D6
+ EQUB $C6, $C7, $C7, $C8, $C9, $C9, $CA, $CA   ; These bytes appear to be
+ EQUB $CB, $CC, $CC, $CD, $CD, $CE, $CE, $CF   ; unused and just contain random
+ EQUB $CF, $D0, $D0, $D1, $D1, $D2, $D2, $D3   ; workspace noise left over from
+ EQUB $D3, $D4, $D4, $D5, $D5, $D5, $D6, $D6   ; the BBC Micro assembly process
  EQUB $D7, $D7, $D8, $D8, $D9, $D9, $D9, $DA
  EQUB $DA, $DB, $DB, $DB, $DC, $DC, $DD, $DD
  EQUB $DD, $DE, $DE, $DE, $DF, $DF, $E0, $E0
