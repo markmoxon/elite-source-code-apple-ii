@@ -26767,6 +26767,7 @@ Saving file '3-assembled-output/ELTJ.bin'
      9C60   3E 3E
      9C62   3F 3F
 .LL30
+     9C64
 .LOIN
      9C64   84 B1      STY &B1
      9C66   A9 80      LDA #&80
@@ -27761,6 +27762,7 @@ Saving file '3-assembled-output/ELTJ.bin'
      A2F8   66 CD      ROR &CD
      A2FA   60         RTS
 .F%
+     A2FB
      A2FB   83
      A2FC   6F
      A2FD   63
