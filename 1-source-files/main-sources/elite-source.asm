@@ -2163,9 +2163,7 @@ IF _MATCH_ORIGINAL_BINARIES
 
  FOR I%, 1, 255
 
-  B% = INT($2000 * LOG(I%) / LOG(2) + 0.5)
-
-  EQUB B% DIV 256
+  EQUB HI(INT($2000 * LOG(I%) / LOG(2) + 0.5))
 
  NEXT
 
@@ -2175,9 +2173,7 @@ ELSE
 
  FOR I%, 1, 255
 
-  B% = INT($2000 * LOG(I%) / LOG(2) + 0.5)
-
-  EQUB B% DIV 256
+  EQUB HI(INT($2000 * LOG(I%) / LOG(2) + 0.5))
 
  NEXT
 
@@ -2208,9 +2204,7 @@ IF _MATCH_ORIGINAL_BINARIES
 
  FOR I%, 1, 255
 
-  B% = INT($2000 * LOG(I%) / LOG(2) + 0.5)
-
-  EQUB B% MOD 256
+  EQUB LO(INT($2000 * LOG(I%) / LOG(2) + 0.5))
 
  NEXT
 
@@ -2220,9 +2214,7 @@ ELSE
 
  FOR I%, 1, 255
 
-  B% = INT($2000 * LOG(I%) / LOG(2) + 0.5)
-
-  EQUB B% MOD 256
+  EQUB LO(INT($2000 * LOG(I%) / LOG(2) + 0.5))
 
  NEXT
 
@@ -2251,7 +2243,7 @@ ENDIF
 
  FOR I%, 0, 255
 
-  EQUB INT(2^((I% / 2 + 128) / 16) + 0.5) DIV 256
+  EQUB HI(INT(2^((I% / 2 + 128) / 16) + 0.5))
 
  NEXT
 
@@ -2530,13 +2522,13 @@ IF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
 
 ENDIF
 
- LDA #STORE MOD 256
+ LDA #LO(STORE)
  STA SC
- LDA #STORE DIV 256
+ LDA #HI(STORE)
  STA SC+1
- LDA #CODE2 MOD 256
+ LDA #LO(CODE2)
  STA P
- LDA #CODE2 DIV 256
+ LDA #HI(CODE2)
  STA P+1
 
 IF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
@@ -27466,7 +27458,7 @@ ENDIF
  LDA RAND               ; Calculate the next two values f2 and f3 in the feeder
  ROL A                  ; sequence:
  TAX                    ;
- ADC RAND+2             ;   * f2 = (f1 << 1) mod 256 + C flag on entry
+ ADC RAND+2             ;   * f2 = (f1 << 1) MOD 256 + C flag on entry
  STA RAND               ;   * f3 = f0 + f2 + (1 if bit 7 of f1 is set)
  STX RAND+2             ;   * C flag is set according to the f3 calculation
 
@@ -29574,7 +29566,7 @@ ENDIF
 ;       Name: COPYNAME
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Copy  the last saved commander's name from ??? to ???
+;    Summary: Copy the last saved commander's name from ??? to ???
 ;
 ; ******************************************************************************
 
@@ -38749,13 +38741,13 @@ ENDMACRO
  STA $200,Y
  DEY
  BNE zerowkl2
- LDA #(NMIpissoff MOD 256)
+ LDA #LO(NMIpissoff)
  STA NMIV
- LDA #(NMIpissoff DIV 256)
+ LDA #HI(NMIpissoff)
  STA NMIV+1
- LDA #(CHPR2 MOD 256)
+ LDA #LO(CHPR2)
  STA CHRV
- LDA #(CHPR2 DIV 256)
+ LDA #HI(CHPR2)
  STA CHRV+1
  SEI
 
@@ -38809,6 +38801,15 @@ ENDIF
 
  LOAD_J% = LOAD% + P% - CODE%
 
+; ******************************************************************************
+;
+;       Name: comnam
+;       Type: Variable
+;   Category: Save and load
+;    Summary: ???
+;
+; ******************************************************************************
+
 ; DOS_RW1
 
 .comnam
@@ -38816,10 +38817,30 @@ ENDIF
  \ (must be 30 characters long - pad with spaces)
  EQUS "COMMANDER                     "
 
+; ******************************************************************************
+;
+;       Name: rfile
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Read a Commander file from a DOS disk into buffer
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              C = 1 file not found, C = 0 file found and in buffer
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   rfile3              Contains an RTS
+;
+; ******************************************************************************
+
 .rfile
 
- \ read a Commander file from a DOS disc into buffer
- TSX
+ TSX                    ; ???
  STX stkptr
  JSR findf
  LDA #5
@@ -38839,12 +38860,20 @@ ENDIF
 
 .rfile3
 
- RTS  ; C = 1 file not found, C = 0 file found and in buffer
+ RTS
+
+; ******************************************************************************
+;
+;       Name: wfile
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Write a commander file from buffer to a DOS disk
+;
+; ******************************************************************************
 
 .wfile
 
- \ write a commander file from buffer to a DOS disc
- JSR MUTILATE
+ JSR MUTILATE           ; ???
  TSX
  STX stkptr
  JSR findf
@@ -38927,11 +38956,34 @@ ENDIF
  BNE oldfl3
  JMP wsect ; write first sector of commander file
 
+; ******************************************************************************
+;
+;       Name: findf
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Find an existing file
+;
+; ******************************************************************************
+
 .findf
 
- \ find an existing file
- CLC
+ CLC                    ; ???
  BCC rentry ; always
+
+; ******************************************************************************
+;
+;       Name: finde
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: ???
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   rentry              ???
+;
+; ******************************************************************************
 
 .finde
 
@@ -39011,10 +39063,18 @@ ENDIF
  SEC ; signifies file not found
  RTS
 
+; ******************************************************************************
+;
+;       Name: getsct
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Allocate one free sector from VTOC - doesn't update VTOC on disk
+;
+; ******************************************************************************
+
 .getsct
 
- \ allocate one free sector from VTOC - doesn't update VTOC on disc
- LDA #0
+ LDA #0                 ; ???
  STA ztemp0 ; init allocation flag
  BEQ getsc4 ; always
 
@@ -39088,10 +39148,18 @@ ENDIF
  SEC ; signifies disc full
  RTS
 
+; ******************************************************************************
+;
+;       Name: isfull
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Search VTOC for tsl sector and commander file sector
+;
+; ******************************************************************************
+
 .isfull
 
- \ search VTOC for tsl sector and commander file sector
- JSR rvtoc ; read VTOC
+ JSR rvtoc              ; read VTOC ???
  JSR getsct ; find free sector for tsl
  BCS isful2 ; branch if disc full
  STX tsltrk
@@ -39104,10 +39172,18 @@ ENDIF
 
  RTS ; C = 0 = disc full, C = 1 = enough space
 
+; ******************************************************************************
+;
+;       Name: gettsl
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Read a file's track sector list
+;
+; ******************************************************************************
+
 .gettsl
 
- \ read a file's track sector list
- LDA buffer,Y ; get track of tsl
+ LDA buffer,Y           ; get track of tsl ???
  STA track
  LDA buffer+1,Y ; get sector of tsl
  STA sector
@@ -39119,26 +39195,56 @@ ENDIF
  STA sector
  RTS
 
+; ******************************************************************************
+;
+;       Name: rvtoc
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Read VTOC sector into buffer
+;
+; ******************************************************************************
+
 .rvtoc
 
- \ read VTOC sector into buffer
- LDA #17
+ LDA #17                ; ???
  STA track
  LDA #0
  STA sector
+
+; ******************************************************************************
+;
+;       Name: rsect
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Read sector from disk into buffer
+;
+; ******************************************************************************
 
  \REM DOS_RW2
 
 .rsect
 
- \ read sector from disc into buffer
- CLC
+ CLC                    ; ???
  BCC wsect2 ; always
+
+; ******************************************************************************
+;
+;       Name: wsect
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Write sector from buffer to disk
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   wsect2              ???
+;
+; ******************************************************************************
 
 .wsect
 
- \ write sector from buffer to disc
- SEC
+ SEC                    ; ???
 
 .wsect2
 
@@ -39328,10 +39434,18 @@ ENDIF
  LDY mtroff,X ; turn motor off
  RTS ; C = 0 = no error, C = 1 = error, A = error code
 
+; ******************************************************************************
+;
+;       Name: read
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Read sector
+;
+; ******************************************************************************
+
 .read
 
- \ read sector
- LDY #32
+ LDY #32                ; ???
 
 .read2
 
@@ -39425,10 +39539,18 @@ ENDIF
  CLC
  RTS
 
+; ******************************************************************************
+;
+;       Name: write
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Write sector
+;
+; ******************************************************************************
+
 .write
 
- \ write sector
- SEC
+ SEC                    ; ???
  STX ztemp1
  LDA Q6H,X
  LDA Q7L,X
@@ -39506,6 +39628,15 @@ ENDIF
 
  LDA Q6L,X
  RTS
+
+; ******************************************************************************
+;
+;       Name: rdaddr
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Read track address field
+;
+; ******************************************************************************
 
  \REM DOS_RW3
 
@@ -39597,10 +39728,19 @@ ENDIF
  SEC
  RTS
 
+; ******************************************************************************
+;
+;       Name: seek
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: ???
+;
+; ******************************************************************************
+
 .seek
 
  \ A = desired track
- STX ztemp0
+ STX ztemp0             ; ???
  ASL A
  CMP curtrk
  BEQ step3 ; branch if head already over desired track
@@ -39656,10 +39796,26 @@ ENDIF
  JSR armwat
  CLC
 
+; ******************************************************************************
+;
+;       Name: step
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Step drive head
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   step2               ???
+;
+;   step3               Contains an RTS
+;
+; ******************************************************************************
+
 .step
 
- \ step drive head
- LDA curtrk
+ LDA curtrk             ; ???
 
 .step2
 
@@ -39674,10 +39830,18 @@ ENDIF
 
  RTS
 
+; ******************************************************************************
+;
+;       Name: armwat
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Arm move delay
+;
+; ******************************************************************************
+
 .armwat
 
- \ arm move delay
- LDX #17
+ LDX #17                ; ???
 
 .armwt2
 
@@ -39694,6 +39858,15 @@ ENDIF
  BNE armwat
  RTS
 
+; ******************************************************************************
+;
+;       Name: armtab
+;       Type: Variable
+;   Category: Save and load
+;    Summary: ???
+;
+; ******************************************************************************
+
 .armtab
 
  EQUB 1
@@ -39708,6 +39881,15 @@ ENDIF
  EQUB $1C
  EQUB $1C
  EQUB $1C
+
+; ******************************************************************************
+;
+;       Name: armtb2
+;       Type: Variable
+;   Category: Save and load
+;    Summary: ???
+;
+; ******************************************************************************
 
 .armtb2
 
@@ -39724,10 +39906,18 @@ ENDIF
  EQUB $1C
  EQUB $1C
 
+; ******************************************************************************
+;
+;       Name: prenib
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Convert 256*8 bit bytes to 342*6 bit 'nibbles'
+;
+; ******************************************************************************
+
 .prenib
 
- \ comverts 256*8 bit bytes to 342*6 bit 'nibbles'
- LDX #0
+ LDX #0                 ; ???
  LDY #2
 
 .prenb2
@@ -39756,10 +39946,18 @@ ENDIF
  BPL prenb3
  RTS
 
+; ******************************************************************************
+;
+;       Name: pstnib
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Convert 342*6 bit 'nibbles' to 256*8 bit bytes
+;
+; ******************************************************************************
+
 .pstnib
 
- \ convert 342*6 bit 'nibbles' to 256*8 bit bytes
- LDY #0
+ LDY #0                 ; ???
 
 .pstnb2
 
@@ -39779,10 +39977,26 @@ ENDIF
  BNE pstnb3
  RTS
 
+; ******************************************************************************
+;
+;       Name: wbyte
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Write one byte to disk
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   wbyte2              ???
+;
+;   wbyte3              ???
+;
+; ******************************************************************************
+
 .wbyte
 
- \ write one byte to disc
- CLC
+ CLC                    ; ???
 
 .wbyte2
 
@@ -39795,12 +40009,30 @@ ENDIF
  ORA Q6L,X
  RTS
 
+; ******************************************************************************
+;
+;       Name: scttab
+;       Type: Variable
+;   Category: Save and load
+;    Summary: ???
+;
+; ******************************************************************************
+
 .scttab
 
  EQUD &090B0D00
  EQUD &01030507
  EQUD &080A0C0E
  EQUD &0F020406
+
+; ******************************************************************************
+;
+;       Name: rtable
+;       Type: Variable
+;   Category: Save and load
+;    Summary: ???
+;
+; ******************************************************************************
 
 .rtable
 
@@ -39831,6 +40063,21 @@ ENDIF
  EQUD &39F83837
  EQUD &3D3C3B3A
  EQUW $3F3E
+
+; ******************************************************************************
+;
+;       Name: MUTILATE
+;       Type: Variable
+;   Category: Save and load
+;    Summary: ???
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   MUTIL3              ???
+;
+; ******************************************************************************
 
 .MUTILATE
 
@@ -39864,6 +40111,15 @@ ENDIF
  DEY
  BPL MUTIL1
  RTS
+
+; ******************************************************************************
+;
+;       Name: UNMUTILATE
+;       Type: Variable
+;   Category: Save and load
+;    Summary: ???
+;
+; ******************************************************************************
 
 .UNMUTILATE
 
@@ -40018,6 +40274,15 @@ ENDIF
  EQUB $E0
  EQUB $C0
 
+; ******************************************************************************
+;
+;       Name: cellocl
+;       Type: Variable
+;   Category: Drawing the screen
+;    Summary: ???
+;
+; ******************************************************************************
+
 .cellocl
 
  EQUD &82028202
@@ -40027,7 +40292,14 @@ ENDIF
  EQUD &D252D252
  EQUD &D252D252
 
- \............. Line Draw ..............
+; ******************************************************************************
+;
+;       Name: SCTBL
+;       Type: Variable
+;   Category: Drawing the screen
+;    Summary: ???
+;
+; ******************************************************************************
 
 .SCTBL
 
@@ -40043,6 +40315,15 @@ ENDIF
  EQUW $D050
  EQUW $D050
  EQUW $D050
+
+; ******************************************************************************
+;
+;       Name: SCTBH
+;       Type: Variable
+;   Category: Drawing the screen
+;    Summary: ???
+;
+; ******************************************************************************
 
 .SCTBH
 
@@ -40062,6 +40343,15 @@ ENDIF
  EQUW $2020
  EQUW $2020
  EQUW $2020   ;safety
+
+; ******************************************************************************
+;
+;       Name: SCTBH2
+;       Type: Variable
+;   Category: Drawing the screen
+;    Summary: ???
+;
+; ******************************************************************************
 
 .SCTBH2
 
@@ -40746,19 +41036,19 @@ ENDIF
 
 .ECBLB
 
- LDA #(ECBT MOD 256)
+ LDA #LO(ECBT)
  LDX #56
  BNE BULB
 
 .SPBLB
 
- LDA #(SPBT MOD 256)
+ LDA #LO(SPBT)
  LDX #192
 
 .BULB
 
  STA P
- LDA #(SPBT DIV 256)
+ LDA #HI(SPBT)
  STA P+1
  LDA #22
  STA YC
@@ -41034,11 +41324,11 @@ ENDIF
 .letter
 
  \plot character A at X,YC*8
- LDY #((FONT DIV 256)-1)
+ LDY #HI(FONT)-1
  ASL A
  ASL A
  BCC P%+4
- LDY #((FONT DIV 256)+1)
+ LDY #HI(FONT)+1
  ASL A
  BCC RR9
  INY
@@ -41046,7 +41336,7 @@ ENDIF
 .RR9
 
 ;CLC
-;ADC #(FONT MOD 256)
+;ADC #LO(FONT)
  STA P
 ;BCC P%+3
 ;INY
