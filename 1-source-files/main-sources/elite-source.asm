@@ -73,8 +73,6 @@ ENDIF
  Q% = _MAX_COMMANDER    ; Set Q% to TRUE to max out the default commander, FALSE
                         ; for the standard default commander
 
- USA% = FALSE           ; ???
-
  NOST = 12              ; The number of stardust particles in normal space (this
                         ; goes down to 3 in witchspace)
 
@@ -196,23 +194,6 @@ ENDIF
  CYAN = WHITE
  MAG = WHITE
 
- sfxplas = 0            ; ???
- sfxelas = 1
- sfxhit = 2
- sfxexpl = 3
- sfxwhosh = 4
- sfxbeep = 5
- sfxboop = 6
- sfxhyp1 = 7
- sfxeng = 8
- sfxecm = 9
- sfxblas = 10
- sfxalas = 11
- sfxmlas = 12
- sfxbomb = 13
- sfxtrib = 14
- sfxelas2 = 15
-
  NRU% = 0               ; The number of planetary systems with extended system
                         ; description overrides in the RUTOK table
                         ;
@@ -282,8 +263,6 @@ ENDIF
  FONT = $1D00           ; The address of the game's text font
 
  SCBASE = $2000         ; The address of screen memory
-
- DLOC% = SCBASE         ; ???
 
  R% = $BFFF             ; The address of the last byte of game code
 
@@ -2127,7 +2106,21 @@ ENDIF
 
  LOAD_A% = LOAD%
 
- JMP S%                 ; ???
+; ******************************************************************************
+;
+;       Name: ENTRY
+;       Type: Subroutine
+;   Category: Loader
+;    Summary: An entry point at the start of the game binary
+;
+; ******************************************************************************
+
+ JMP S%                 ; Jump to S% to decrypt and run the game
+                        ;
+                        ; This instruction would be used to start the game if
+                        ; the game binary was loaded with a BRUN command with no
+                        ; execution address, which is not the case here, so
+                        ; perhaps it is left over from development
 
 ; ******************************************************************************
 ;
@@ -2473,7 +2466,13 @@ ENDIF
 
 .MULIE
 
- SKIP 1                 ; ???
+ SKIP 1                 ; A flag to record whether the RESET routine is
+                        ; currently being run, in which case the music
+                        ; configuration variables may be in a state of flux
+                        ;
+                        ;   * 0 = the RESET routine is not being run
+                        ;
+                        ;   * $FF = the RESET routine is in-progress
 
 IF _IB_DISK
 
@@ -3338,15 +3337,22 @@ IF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES
 
 ELIF _SOURCE_DISK_CODE_FILES
 
- EOR KLO+$29            ; ???
- BEQ MA68
+ EOR KLO+$29            ; This code is left over from the Commodore 64 version
+ BEQ MA68               ;
+                        ; It corrects for phantom key presses of the "C" key,
+                        ; which isn't a problem on the Apple II, so this code
+                        ; was removed for the release version
+                        ;
+                        ; There is a comment in the original source of "kill
+                        ; phantom Cs" that seems to confirm this
 
 ENDIF
 
- STA auto               ; ???
+ STA auto               ; Set auto to the non-zero value of A, so the docking
+                        ; computer is activated
 
-;JSR startbd            ; These instructions are commented out in the original
-;kill phantom Cs        ; source
+;JSR startbd            ; This instruction is commented out in the original
+                        ; source
 
 .MA68
 
@@ -4219,7 +4225,11 @@ ENDIF
  BPL MA77               ; BOMB is now negative, so this skips to MA21 if our
                         ; energy bomb is not going off
 
- JSR BOMBEFF2           ; ???
+ JSR BOMBEFF2           ; Call BOMBEFF2 to erase the energy bomb zig-zag
+                        ; lightning bolt that we drew in part 3, make the sound
+                        ; of the energy bomb going off, draw a new lightning
+                        ; bolt, and repeat the process four times so the bolt
+                        ; flashes
 
  ASL BOMB               ; We set off our energy bomb, so rotate BOMB to the
                         ; left by one place. BOMB was rotated left once already
@@ -4233,7 +4243,7 @@ ENDIF
                         ; instruction as the bomb is still going off
 
  JSR BOMBOFF            ; Our energy bomb has finished going off, so call
-                        ; BOMBOFF to draw the ???, which
+                        ; BOMBOFF to draw the zig-zag lightning bolt, which
                         ; erases it from the screen
 
 .MA77
@@ -4597,6 +4607,7 @@ ENDIF
 ;JSR SETL1
 ;LSR TRIBBLE+1
 ;ROR TRIBBLE
+;
 ;.nokilltr
 
  LDA BST                ; If we don't have fuel scoops fitted, jump to BA23 to
@@ -29238,14 +29249,18 @@ ENDIF
 
  STX TYPE               ; Store the ship type in location TYPE
 
- LDA #$FF               ; ???
- STA MULIE
+ LDA #$FF               ; Set MULIE to $FF to indicate that the RESET routine is
+ STA MULIE              ; in-progress, so we don't try to stop any music that
+                        ; may be playing (as RESET updates the music variables,
+                        ; so trying to update the music variables will lead to
+                        ; unpredictable behaviour)
 
  JSR RESET              ; Reset our ship so we can use it for the rotating
                         ; title ship
 
- LDA #0                 ; ???
- STA MULIE
+ LDA #0                 ; Set MULIE to 0 to indicate that the RESET routine is
+ STA MULIE              ; no longer being run, so the stopbd routine can work
+                        ; again
 
  JSR ZEKTRAN            ; Call ZEKTRAN to clear the key logger
 
@@ -38750,10 +38765,6 @@ ENDMACRO
  STA CHRV+1
  SEI
 
-IF NOT(USA%)
- \UK CHECK
-ENDIF
-
  RTS
 
 ; ******************************************************************************
@@ -41941,7 +41952,6 @@ ENDIF
 ;       Type: Subroutine
 ;   Category: Text
 ;    Summary: Move the text cursor to a specific column
-;
 ;
 ; ------------------------------------------------------------------------------
 ;
