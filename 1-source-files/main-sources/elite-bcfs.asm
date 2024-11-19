@@ -132,10 +132,10 @@
 
 IF _SOURCE_DISK_BUILD
 
- EQUB $79, $68, $00, $00, $EA, $82, $74, $31   ; These bytes appear to be
- EQUB $00, $8F, $79, $6E, $00, $00, $05, $8A   ; unused and just contain random
- EQUB $74, $33, $00, $8F, $79, $7C, $00, $00   ; workspace noise left over from
- EQUB $FE, $83, $4C, $4F, $4F, $50, $00, $8F   ; the BBC Micro assembly process
+ EQUB $79, $68, $00, $00, $EA, $82, $74, $31    ; These bytes appear to be
+ EQUB $00, $8F, $79, $6E, $00, $00, $05, $8A    ; unused and just contain random
+ EQUB $74, $33, $00, $8F, $79, $7C, $00, $00    ; workspace noise left over from
+ EQUB $FE, $83, $4C, $4F, $4F, $50, $00, $8F    ; the BBC Micro assembly process
  EQUB $79, $A6, $00, $00
 
 ELIF _IB_DISK OR _SOURCE_DISK_CODE_FILES OR _SOURCE_DISK_ELT_FILES

@@ -75,10 +75,10 @@ ENDIF
 
 IF _IB_DISK
 
- EQUB $5B, $79, $55, $82, $56, $88, $5B, $75   ; These bytes appear to be
- EQUB $53, $6F, $4E, $76, $4E, $7E, $54, $6F   ; unused and just contain random
- EQUB $4E, $76, $4E, $75, $53, $7E, $54, $79   ; workspace noise left over from
- EQUB $55, $82, $56, $81, $5B, $88, $5B, $90   ; the BBC Micro assembly process
+ EQUB $5B, $79, $55, $82, $56, $88, $5B, $75    ; These bytes appear to be
+ EQUB $53, $6F, $4E, $76, $4E, $7E, $54, $6F    ; unused and just contain random
+ EQUB $4E, $76, $4E, $75, $53, $7E, $54, $79    ; workspace noise left over from
+ EQUB $55, $82, $56, $81, $5B, $88, $5B, $90    ; the BBC Micro assembly process
  EQUB $61, $90, $63, $8C, $61, $90, $63, $90
  EQUB $61, $8C, $61, $60, $45, $5F, $44, $5F
  EQUB $44, $64, $45, $60, $45, $64, $45, $8A

@@ -47,23 +47,37 @@
 ;
 ; ******************************************************************************
 
- CODE% = $0A00          ; The address where the main game code file is run
+ CODE% = $0A00          ; The address where the transfer code is run
 
- LOAD% = $0A00          ; The load address of the main game code file, which is
-                        ; the same as the load address as it doesn't get moved
-                        ; after loading
+ LOAD% = $0A00          ; The address where the transfer code is loaded
 
- ZP1 = 0                ; ???
+ CODE2 = $4000          ; The address where the main game code file is loaded
 
- ZP2 = 2                ; ???
-
- CODE2 = $4000          ; ???
-
- STORE = $D000          ; ???
+ STORE = $D000          ; The address where the main game code file is run
 
 ; ******************************************************************************
 ;
-; Load the compiled binaries to transfer to an Apple II
+;       Name: ZP
+;       Type: Workspace
+;    Address: $0018 to $001B
+;   Category: Workspaces
+;    Summary: Important variables used by the loader
+;
+; ******************************************************************************
+
+ ORG $0000
+
+.ZP1
+
+ SKIP 2                 ; Stores addresses used for moving content around
+
+.ZP2
+
+ SKIP 2                 ; Stores addresses used for moving content around
+
+; ******************************************************************************
+;
+; ELITE TRANSFER
 ;
 ; ******************************************************************************
 
@@ -73,7 +87,7 @@
 ;
 ;       Name: ENTRY
 ;       Type: Subroutine
-;   Category: Loader
+;   Category: Utility routines
 ;    Summary: ???
 ;
 ; ******************************************************************************
@@ -125,12 +139,21 @@
  STA ZP1
  RTS
 
+; ******************************************************************************
+;
+;       Name: Game data and binaries
+;       Type: Subroutine
+;   Category: Utility routines
+;    Summary: The game data and binaries to transfer to an Apple II
+;
+; ******************************************************************************
+
 IF _SOURCE_DISK_BUILD
 
- EQUB $C6, $C7, $C7, $C8, $C9, $C9, $CA, $CA   ; These bytes appear to be
- EQUB $CB, $CC, $CC, $CD, $CD, $CE, $CE, $CF   ; unused and just contain random
- EQUB $CF, $D0, $D0, $D1, $D1, $D2, $D2, $D3   ; workspace noise left over from
- EQUB $D3, $D4, $D4, $D5, $D5, $D5, $D6, $D6   ; the BBC Micro assembly process
+ EQUB $C6, $C7, $C7, $C8, $C9, $C9, $CA, $CA    ; These bytes appear to be
+ EQUB $CB, $CC, $CC, $CD, $CD, $CE, $CE, $CF    ; unused and just contain random
+ EQUB $CF, $D0, $D0, $D1, $D1, $D2, $D2, $D3    ; workspace noise left over from
+ EQUB $D3, $D4, $D4, $D5, $D5, $D5, $D6, $D6    ; the BBC Micro assembly process
  EQUB $D7, $D7, $D8, $D8, $D9, $D9, $D9, $DA
  EQUB $DA, $DB, $DB, $DB, $DC, $DC, $DD, $DD
  EQUB $DD, $DE, $DE, $DE, $DF, $DF, $E0, $E0

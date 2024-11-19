@@ -248,13 +248,12 @@ ENDIF
  BRKV = $03F0           ; The break vector that we intercept to enable us to
                         ; handle and display system errors
 
- IRQV = $03FE           ; The IRQV vector that we intercept to implement the
-                        ; split-screen mode ???
-
  CHRV = $0036           ; The CHRV vector that we intercept with our custom
                         ; text printing routine
 
- NMIV = $03FC           ; ???
+ NMIV = $03FC           ; The NMI vector that we intercept with our custom NMI
+                        ; handler, which just acknowledges NMI interrupts and
+                        ; ignores tham
 
  QQ18 = $0B60           ; The address of the text token table, as set in
                         ; elite-data.asm
@@ -2292,23 +2291,23 @@ NEXT
 
 .wtable
 
- EQUD &9B9A9796
- EQUD &A69F9E9D
- EQUD &ADACABA7
- EQUD &B3B2AFAE
- EQUD &B7B6B5B4
- EQUD &BCBBBAB9
- EQUD &CBBFBEBD
- EQUD &D3CFCECD
+ EQUD $9B9A9796
+ EQUD $A69F9E9D
+ EQUD $ADACABA7
+ EQUD $B3B2AFAE
+ EQUD $B7B6B5B4
+ EQUD $BCBBBAB9
+ EQUD $CBBFBEBD
+ EQUD $D3CFCECD
 
- EQUD &DAD9D7D6
- EQUD &DEDDDCDB
- EQUD &E7E6E5DF
- EQUD &ECEBEAE9
- EQUD &F2EFEEED
- EQUD &F6F5F4F3
- EQUD &FBFAF9F7
- EQUD &FFFEFDFC
+ EQUD $DAD9D7D6
+ EQUD $DEDDDCDB
+ EQUD $E7E6E5DF
+ EQUD $ECEBEAE9
+ EQUD $F2EFEEED
+ EQUD $F6F5F4F3
+ EQUD $FBFAF9F7
+ EQUD $FFFEFDFC
 
 ; ******************************************************************************
 ;
@@ -6122,9 +6121,9 @@ IF _IB_DISK
  EQUB 173               ; QQ1 = Current system Y-coordinate (Lave), #2
 
  EQUW $5A4A             ; ??? Workspace noise
- EQUD &B7530248
+ EQUD $B7530248
 
- EQUD &E8030000         ; CASH = Amount of cash (100 Cr), #3-6
+ EQUD $E8030000         ; CASH = Amount of cash (100 Cr), #3-6
 
  EQUB 70                ; QQ14 = Fuel level, #7
 
@@ -6357,9 +6356,9 @@ ENDIF
  EQUW $B753             ; QQ21 = Seed s2 for system 0, galaxy 0 (Tibedied), #7-8
 
 IF Q%
- EQUD &00CA9A3B         ; CASH = Amount of cash (100,000,000 Cr), #9-12
+ EQUD $00CA9A3B         ; CASH = Amount of cash (100,000,000 Cr), #9-12
 ELSE
- EQUD &E8030000         ; CASH = Amount of cash (100 Cr), #9-12
+ EQUD $E8030000         ; CASH = Amount of cash (100 Cr), #9-12
 ENDIF
 
  EQUB 70                ; QQ14 = Fuel level, #13
@@ -8942,7 +8941,7 @@ ENDIF
 
 .TENS
 
- EQUD &00E87648
+ EQUD $00E87648
 
 ; ******************************************************************************
 ;
@@ -32041,7 +32040,7 @@ ENDMACRO
  ITEM 32,  -1, 't',  53, %00000011  ; 12 = Minerals
  ITEM 97,  -1, 'k',  66, %00000111  ; 13 = Gold
 
-;EQUD &360A118          ; This data is commented out in the original source
+;EQUD $360A118          ; This data is commented out in the original source
 
  ITEM 171, -2, 'k',  55, %00011111  ; 14 = Platinum
  ITEM 45,  -1, 'g', 250, %00001111  ; 15 = Gem-Stones
@@ -38762,7 +38761,7 @@ ENDIF
 ;       Name: NMIpissoff
 ;       Type: Subroutine
 ;   Category: Loader
-;    Summary: Acknowledge NMI interrupts and ignore tham
+;    Summary: Acknowledge NMI interrupts and ignore them
 ;
 ; ******************************************************************************
 
@@ -40020,10 +40019,10 @@ ENDIF
 
 .scttab
 
- EQUD &090B0D00
- EQUD &01030507
- EQUD &080A0C0E
- EQUD &0F020406
+ EQUD $090B0D00
+ EQUD $01030507
+ EQUD $080A0C0E
+ EQUD $0F020406
 
 ; ******************************************************************************
 ;
@@ -40036,32 +40035,32 @@ ENDIF
 
 .rtable
 
- EQUD &99980100
- EQUD &049C0302
- EQUD &A1A00605
- EQUD &A5A4A3A2
- EQUD &A9A80807
- EQUD &0B0A09AA
- EQUD &B1B00D0C
- EQUD &11100F0E
- EQUD &14B81312
- EQUD &18171615
- EQUD &C1C01A19
- EQUD &C5C4C3C2
- EQUD &C9C8C7C6
- EQUD &1CCC1BCA
- EQUD &D1D01E1D
- EQUD &D5D41FD2
- EQUD &22D82120
- EQUD &26252423
- EQUD &E1E02827
- EQUD &29E4E3E2
- EQUD &2CE82B2A
- EQUD &302F2E2D
- EQUD &F1F03231
- EQUD &36353433
- EQUD &39F83837
- EQUD &3D3C3B3A
+ EQUD $99980100
+ EQUD $049C0302
+ EQUD $A1A00605
+ EQUD $A5A4A3A2
+ EQUD $A9A80807
+ EQUD $0B0A09AA
+ EQUD $B1B00D0C
+ EQUD $11100F0E
+ EQUD $14B81312
+ EQUD $18171615
+ EQUD $C1C01A19
+ EQUD $C5C4C3C2
+ EQUD $C9C8C7C6
+ EQUD $1CCC1BCA
+ EQUD $D1D01E1D
+ EQUD $D5D41FD2
+ EQUD $22D82120
+ EQUD $26252423
+ EQUD $E1E02827
+ EQUD $29E4E3E2
+ EQUD $2CE82B2A
+ EQUD $302F2E2D
+ EQUD $F1F03231
+ EQUD $36353433
+ EQUD $39F83837
+ EQUD $3D3C3B3A
  EQUW $3F3E
 
 ; ******************************************************************************
@@ -40161,21 +40160,6 @@ ENDIF
 
  LOAD_K% = LOAD% + P% - CODE%
 
- OSWRCH = $FFEE
- OSBYTE = $FFF4
- OSWORD = $FFF1
- OSFILE = $FFDD
- SCLI = $FFF7
- VIA = $FE40
- USVIA = VIA
- IRQ1V = $204
- VSCAN = 57
- WRCHV = $20E
- WORDV = $20C
- RDCHV = $210
- protlen = 0
- BULBCOL = $E0
-
 ; ******************************************************************************
 ;
 ;       Name: TWOS
@@ -40193,7 +40177,7 @@ ENDIF
 
 .TWOS
 
- EQUD &08040201         ; ???
+ EQUD $08040201         ; ???
  EQUW $2010
  EQUB $40
 
@@ -40214,7 +40198,7 @@ ENDIF
 
 .TWOS2
 
- EQUD &988C8683         ; ???
+ EQUD $988C8683         ; ???
  EQUW $E0B0
  EQUB $C0
 
@@ -40285,12 +40269,12 @@ ENDIF
 
 .cellocl
 
- EQUD &82028202
- EQUD &82028202
- EQUD &AA2AAA2A
- EQUD &AA2AAA2A
- EQUD &D252D252
- EQUD &D252D252
+ EQUD $82028202
+ EQUD $82028202
+ EQUD $AA2AAA2A
+ EQUD $AA2AAA2A
+ EQUD $D252D252
+ EQUD $D252D252
 
 ; ******************************************************************************
 ;
@@ -41079,12 +41063,12 @@ ENDIF
 .MASKT
 
  EQUD 0
- EQUD &552A55
- EQUD &2A552A
- EQUD &7F7F7F
- EQUD &D5AAD5
- EQUD &AAD5AA
- EQUD &AAAAAA
+ EQUD $552A55
+ EQUD $2A552A
+ EQUD $7F7F7F
+ EQUD $D5AAD5
+ EQUD $AAD5AA
+ EQUD $AAAAAA
 
 ; ******************************************************************************
 ;
@@ -41343,8 +41327,8 @@ ENDIF
 
 .SPBT
 
- EQUD &7F077F7F         ; ???
- EQUD &7F7F707F
+ EQUD $7F077F7F         ; ???
+ EQUD $7F7F707F
 
 ; ******************************************************************************
 ;
