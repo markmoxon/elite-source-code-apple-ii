@@ -12609,7 +12609,6 @@ S.C.DATA &B00  &2000  &B00  &B00
 Saving file '3-assembled-output/DATA.unprot.bin'
 .ZP
      0000
-     0000
 .RAND
      0002
 .T1
@@ -14349,7 +14348,7 @@ WP workspace from &400 to &715 inclusive
 .mscol
      4552   00 00 00 00
 .DFLAG
-     4556   00
+     4556
 .DNOIZ
      4557
 .DAMP
@@ -14446,6 +14445,7 @@ WP workspace from &400 to &715 inclusive
      45E8   45
      45E9   23
 .G%
+     45EA
 .DOENTRY
      45EA   20 C4 7A   JSR &7AC4
      45ED   20 41 5D   JSR &5D41
