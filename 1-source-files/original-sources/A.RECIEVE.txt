@@ -1,0 +1,5 @@
+    5*APPLE
+   10DIM L% &1000
+   20FOR I%=L% TO L%+&2FF
+   30INPUT ?I%
+   40NEXT
