@@ -694,7 +694,7 @@ ENDIF
 
 .KY1
 
- SKIP 1                 ; "?" is being pressed
+ SKIP 1                 ; "?" is being pressed (slow down)
                         ;
                         ;   * 0 = no
                         ;
@@ -702,7 +702,7 @@ ENDIF
 
 .KY2
 
- SKIP 1                 ; Space is being pressed
+ SKIP 1                 ; Space is being pressed (speed up)
                         ;
                         ;   * 0 = no
                         ;
@@ -710,7 +710,7 @@ ENDIF
 
 .KY3
 
- SKIP 1                 ; "<" is being pressed
+ SKIP 1                 ; "<" is being pressed (roll left)
                         ;
                         ;   * 0 = no
                         ;
@@ -718,7 +718,7 @@ ENDIF
 
 .KY4
 
- SKIP 1                 ; ">" is being pressed
+ SKIP 1                 ; ">" is being pressed (roll right)
                         ;
                         ;   * 0 = no
                         ;
@@ -726,7 +726,7 @@ ENDIF
 
 .KY5
 
- SKIP 1                 ; "X" is being pressed
+ SKIP 1                 ; "X" is being pressed (pull up)
                         ;
                         ;   * 0 = no
                         ;
@@ -734,7 +734,7 @@ ENDIF
 
 .KY6
 
- SKIP 1                 ; "S" is being pressed
+ SKIP 1                 ; "S" is being pressed (pitch down)
                         ;
                         ;   * 0 = no
                         ;
@@ -742,7 +742,7 @@ ENDIF
 
 .KY7
 
- SKIP 1                 ; "A" is being pressed
+ SKIP 1                 ; "A" is being pressed (fire lasers)
                         ;
                         ;   * 0 = no
                         ;
@@ -753,7 +753,7 @@ ENDIF
 
 .KY12
 
- SKIP 1                 ; "B" is being pressed
+ SKIP 1                 ; "B" is being pressed (energy bomb)
                         ;
                         ;   * 0 = no
                         ;
@@ -761,7 +761,7 @@ ENDIF
 
 .KY13
 
- SKIP 1                 ; ESCAPE is being pressed
+ SKIP 1                 ; ESCAPE is being pressed (launch escape pod)
                         ;
                         ;   * 0 = no
                         ;
@@ -769,7 +769,7 @@ ENDIF
 
 .KY14
 
- SKIP 1                 ; "T" is being pressed
+ SKIP 1                 ; "T" is being pressed (target missile)
                         ;
                         ;   * 0 = no
                         ;
@@ -777,7 +777,7 @@ ENDIF
 
 .KY15
 
- SKIP 1                 ; "U" is being pressed
+ SKIP 1                 ; "U" is being pressed (unarm missile)
                         ;
                         ;   * 0 = no
                         ;
@@ -785,7 +785,7 @@ ENDIF
 
 .KY16
 
- SKIP 1                 ; "M" is being pressed
+ SKIP 1                 ; "M" is being pressed (fire missile)
                         ;
                         ;   * 0 = no
                         ;
@@ -793,7 +793,7 @@ ENDIF
 
 .KY17
 
- SKIP 1                 ; "E" is being pressed
+ SKIP 1                 ; "E" is being pressed (activate E.C.M.)
                         ;
                         ;   * 0 = no
                         ;
@@ -801,7 +801,7 @@ ENDIF
 
 .KY18
 
- SKIP 1                 ; "J" is being pressed
+ SKIP 1                 ; "J" is being pressed (in-system jump)
                         ;
                         ;   * 0 = no
                         ;
@@ -809,7 +809,7 @@ ENDIF
 
 .KY19
 
- SKIP 1                 ; "C" is being pressed
+ SKIP 1                 ; "C" is being pressed (activate docking computer)
                         ;
                         ;   * 0 = no
                         ;
@@ -817,7 +817,7 @@ ENDIF
 
 .KY20
 
- SKIP 1                 ; "P" is being pressed
+ SKIP 1                 ; "P" is being pressed (deactivate docking computer)
                         ;
                         ;   * 0 = no
                         ;
@@ -2308,7 +2308,7 @@ NEXT
 ;       Type: Workspace
 ;    Address: $4543 to $4562
 ;   Category: Workspaces
-;    Summary: Variables used to store the game options
+;    Summary: Variables that are predominantly used to store the game options
 ;
 ; ******************************************************************************
 
@@ -4042,9 +4042,7 @@ ENDIF
 
  CMP #(Armlas AND 127)  ; If the laser is not a military laser, jump to MA14+2
  BNE MA14+2             ; to skip the following, as only military lasers have
-                        ; any effect on the Constrictor or Cougar (or the Elite
-                        ; logo, should you ever bump into one of those out there
-                        ; in the black...)
+                        ; any effect on the Constrictor or Cougar
 
  LSR LAS                ; Divide the laser power of the current view by 4, so
  LSR LAS                ; the damage inflicted on the super-ship is a quarter of
@@ -10449,7 +10447,7 @@ ENDIF
 ;ORA #1                 ; pod (so using an escape pod is not a solution to the
 ;STA TRIBBLE            ; trouble with Trumbles)
 ;LDA #0                 ;
-;STA TRIBBLE+1          ; The Master version does not contains the Trumble
+;STA TRIBBLE+1          ; This version of Elite does not contain the Trumble
 ;.nosurviv              ; mission, so the code is disabled
 
  LDA #70                ; Our replacement ship is delivered with a full tank of
@@ -23279,7 +23277,7 @@ ENDIF
                         ;           = x +/- random * cloud size
 
  BNE EX4                ; If A is non-zero, the particle is off-screen as the
-                        ; coordinate is bigger than 255), so jump to EX11 to do
+                        ; coordinate is bigger than 255), so jump to EX4 to do
                         ; the next particle
 
                         ; Otherwise X contains a random x-coordinate within the
@@ -23393,13 +23391,17 @@ ENDIF
 ;       Type: Variable
 ;   Category: Drawing ships
 ;    Summary: An unused block of explosion data
+;    Summary: A table to shift X left by one place when X is 0 or 1
 ;
 ; ******************************************************************************
 
 .exlook
 
- EQUB 0                 ; These bytes appear to be unused, and are left over
- EQUB 2                 ; from the Commodore 64 version of Elite
+ EQUB %00               ; Looking up exlook,X will return X shifted left by one
+ EQUB %10               ; place, where X is 0 or 1
+                        ;
+                        ; This is not used in this version of Elite; it is left
+                        ; over from the Commodore 64 version of Elite
 
 ; ******************************************************************************
 ;
@@ -26310,20 +26312,12 @@ ENDIF
 ;                       being pressed or joystick movement, as an integer (see
 ;                       above)
 ;
-; ------------------------------------------------------------------------------
-;
-; Other entry points:
-;
-;   TJ1                 Check for cursor key presses and return the combined
-;                       deltas for the digital joystick and cursor keys (Master
-;                       Compact only)
-;
 ; ******************************************************************************
 
 .TT17
 
  LDA QQ11               ; If this not the space view, skip the following three
- BNE TT17afterall       ; instructions to move onto the SHIFT key logic
+ BNE TT17afterall       ; instructions to move onto the cursor key logic
 
  JSR DOKEY              ; This is the space view, so scan the keyboard for
                         ; flight controls and pause keys, (or the equivalent on
@@ -31136,7 +31130,7 @@ ENDIF
  EQUS " "               ; Space     KYTB+2      Speed up
  EQUS ","               ; <         KYTB+3      Roll left
  EQUS "."               ; >         KYTB+4      Roll right
- EQUS "X"               ; X         KYTB+5      Pitch up
+ EQUS "X"               ; X         KYTB+5      Pull up
  EQUS "S"               ; S         KYTB+6      Pitch down
  EQUS "A"               ; A         KYTB+7      Fire lasers
 
@@ -38940,7 +38934,7 @@ ENDMACRO
 
  LDA comnam,X
  ORA #$80
- STA buffer+3,Y ; copy commander name to file name field
+ STA buffer+3,Y ; copy commander name to filename field
  INY
  INX
  CPX #30

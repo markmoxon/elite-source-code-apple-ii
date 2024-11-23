@@ -1770,14 +1770,14 @@ ENDMACRO
  ETWO 'C', 'E'          ;                4. EXIT{crlf}
  ECHR 'S'               ;               "
  ECHR 'S'               ;
- ECHR ' '               ; ??? Redo encoding:
- ECHR 'M'               ;
- ECHR 'E'               ; Encoded as:   "{9}{11}{1}{8} <241>SK AC<233>SS ME
- ETWO 'N', 'U'          ;                <225><215>{10}{2}1. [149]<215>2. SA
- ETWO '-', '-'          ;                <250> [154] {4}<215>3. CATALOGUE DISK
- EJMP 10                ;                <215>4. DEL<221>E FI<229><215>5.
- EJMP 2                 ;                 DEFAULT {1}JAMESON{2}<215>6. EX<219>
- ECHR '1'               ;                <215>"
+ ECHR ' '               ; Encoded as:   "{9}{11}{1}{8} <241>SK AC<233>SS ME
+ ECHR 'M'               ;                <225><215>{10}{2}1. [149]<215>2. SA
+ ECHR 'E'               ;                <250> [154] {4}<215>3. DEFAULT {1}JAMES
+ ETWO 'N', 'U'          ;                ON{2}<215>4. EX<219><215>"
+ ETWO '-', '-'
+ EJMP 10
+ EJMP 2
+ ECHR '1'
  ECHR '.'
  ECHR ' '
  ETOK 149
