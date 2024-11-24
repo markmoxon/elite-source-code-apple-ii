@@ -29217,9 +29217,13 @@ ENDIF
 
  STA COK                ; Store the updated competition flags in COK
 
- JSR CHECK2             ; ???
- CMP CHK3
- BNE doitagain
+ JSR CHECK2             ; Call CHECK2 to calculate the third checksum for the
+                        ; last saved commander and return it in A
+
+ CMP CHK3               ; If the calculated checksum does not match the value in
+ BNE doitagain          ; CHK3, then loop back to repeat the checks - in other
+                        ; words, we enter an infinite loop here, as the checksum
+                        ; routine will keep returning the same incorrect value
 
  RTS                    ; Return from the subroutine
 
@@ -29431,6 +29435,9 @@ ENDIF
 
  JSR RDKEY              ; Scan the keyboard for a key press and return the
                         ; key in X (or 0 for no key press)
+                        ;
+                        ; This also clears the C flag if no keys are being
+                        ; pressed
 
  DEC MCNT               ; Decrement the main loop counter
 
