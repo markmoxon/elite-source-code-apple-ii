@@ -13056,10 +13056,6 @@ ENDIF
 ;   Category: Drawing circles
 ;    Summary: Make the hyperspace sound and draw the hyperspace tunnel
 ;
-; ------------------------------------------------------------------------------
-;
-; See the IRQ1 routine for details on the multi-coloured effect that's used.
-;
 ; ******************************************************************************
 
 .LL164
@@ -38122,15 +38118,15 @@ ENDMACRO
 ;       Name: beamcol
 ;       Type: Variable
 ;   Category: Drawing lines
-;    Summary: Colours for ???
+;    Summary: An unused table of laser colours
 ;
 ; ******************************************************************************
 
 .beamcol
 
- EQUB VIOLET            ; ???
- EQUB RED
- EQUB GREEN
+ EQUB VIOLET            ; These bytes appear to be unused - perhaps they were
+ EQUB RED               ; going to be used to set different colours of laser
+ EQUB GREEN             ; beam for the different lasers?
  EQUB WHITE
 
 ; ******************************************************************************
@@ -38342,16 +38338,9 @@ ENDMACRO
 ; This routine contains an RTS so we can return from the SFRMIS subroutine with
 ; a branch instruction.
 ;
-; It also contains the DEMON label, which implements the demo in the 6502
-; Second Processor version, so this acts as a stub for the JSR DEMON call during
-; conversion of the 6502 Second Processor version into the later Commodore 64,
-; Apple II and BBC Master versions.
-;
-; ------------------------------------------------------------------------------
-;
-; Other entry points:
-;
-;   DEMON               Contains an RTS
+; It also contains the DEMON label, which is left over from the 6502 Second
+; Processor version, where it implements the demo (there is no demo in this
+; version of Elite).
 ;
 ; ******************************************************************************
 
