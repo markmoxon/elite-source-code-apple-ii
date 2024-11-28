@@ -49,6 +49,7 @@
  _SOURCE_DISK_BUILD         = (_VARIANT = 2)
  _SOURCE_DISK_CODE_FILES    = (_VARIANT = 3)
  _SOURCE_DISK_ELT_FILES     = (_VARIANT = 4)
+ _SOURCE_DISK               = (_VARIANT = 2) OR (_VARIANT = 3) OR (_VARIANT = 4)
 
 ; ******************************************************************************
 ;

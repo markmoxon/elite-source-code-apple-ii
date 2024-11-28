@@ -32,6 +32,7 @@
  _SOURCE_DISK_BUILD         = (_VARIANT = 2)
  _SOURCE_DISK_CODE_FILES    = (_VARIANT = 3)
  _SOURCE_DISK_ELT_FILES     = (_VARIANT = 4)
+ _SOURCE_DISK               = (_VARIANT = 2) OR (_VARIANT = 3) OR (_VARIANT = 4)
 
 ; ******************************************************************************
 ;
@@ -49,7 +50,7 @@ IF _IB_DISK
 
  TT170 = $7ED2          ; The address of the TT170 routine in the main game code
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  BEGIN = $7EAB          ; The address of the BEGIN routine in the main game code
 

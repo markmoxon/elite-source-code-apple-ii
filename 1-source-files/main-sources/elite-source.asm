@@ -42,6 +42,7 @@
  _SOURCE_DISK_BUILD         = (_VARIANT = 2)
  _SOURCE_DISK_CODE_FILES    = (_VARIANT = 3)
  _SOURCE_DISK_ELT_FILES     = (_VARIANT = 4)
+ _SOURCE_DISK               = (_VARIANT = 2) OR (_VARIANT = 3) OR (_VARIANT = 4)
 
 ; ******************************************************************************
 ;
@@ -59,7 +60,7 @@ IF _IB_DISK
 
  CODE2 = $2000          ; The address where the dashboard image is run ???
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  STORE = $D000          ; The address where the dashboard image is loaded ???
 
@@ -2413,7 +2414,7 @@ IF _IB_DISK
                         ; Toggled by pressing "Y" when paused, see the DKS3
                         ; routine for details
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  SKIP 1                 ; Reverse joystick Y-channel configuration setting
                         ;
@@ -2514,7 +2515,7 @@ ENDIF
 
 .S%
 
-IF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+IF _SOURCE_DISK
 
  CLD                    ; Clear the D flag to make sure we are in binary mode
 
@@ -2529,7 +2530,7 @@ ENDIF
  LDA #HI(CODE2)
  STA P+1
 
-IF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+IF _SOURCE_DISK
 
  LDA $C08B ; RAM card
 
@@ -2539,7 +2540,7 @@ IF _IB_DISK
 
  LDX #7
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  LDX #($C0-$90)
 
@@ -2561,13 +2562,13 @@ IF _IB_DISK
 
  BPL Sept3
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  BNE Sept3
 
 ENDIF
 
-IF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+IF _SOURCE_DISK
 
  LDA $C081              ; ROMs ???
 
@@ -5465,7 +5466,7 @@ IF _IB_DISK
 
  JSR MT19               ; ???
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JSR DASC               ; Call the relevant JMTB subroutine, as this instruction
                         ; will have been modified by the above to point to the
@@ -5612,7 +5613,7 @@ IF _IB_DISK
 
  STA XC                 ; Move the text cursor to column 6
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JSR DOXC               ; Move the text cursor to column 6
 
@@ -6126,7 +6127,7 @@ IF _IB_DISK
  EQUS "JAMESON"         ; The current commander name
  EQUB 13
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  EQUS "jameson"         ; The current commander name
  EQUB 13
@@ -6171,7 +6172,7 @@ IF _IB_DISK
 
  EQUB 0                 ; FIST = Legal status ("fugitive/innocent status"), #43
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  SKIP 53                ; Placeholders for bytes #0 to #52
 
@@ -6226,7 +6227,7 @@ IF _IB_DISK
                         ; with $A9 to make it harder to tamper with the checksum
                         ; byte, #74
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  EQUB 0                 ; Placeholder for the checksum in byte #74
 
@@ -6259,7 +6260,7 @@ IF _IB_DISK
  EQUB $27               ; The third checksum value for the default commander,
                         ; #75
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  EQUB 0                 ; Placeholder for the checksum in byte #75
 
@@ -6290,7 +6291,7 @@ IF _IB_DISK
 
  EQUB $03               ; The checksum value for the default commander, #76
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  EQUB 0                 ; Placeholder for the checksum in byte #76
 
@@ -8328,7 +8329,7 @@ IF _IB_DISK
 
  STA XC                 ; Move the text cursor to column 7
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JSR DOXC               ; Move the text cursor to column 7
 
@@ -8614,7 +8615,7 @@ IF _IB_DISK
 
  RTS                    ; Return from the subroutine
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JMP DOXC               ; Move the text cursor to column 6 and return from the
                         ; subroutine using a tail call
@@ -9449,7 +9450,7 @@ IF _IB_DISK
 
  EQUB 0
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  EQUB %11111111
 
@@ -16045,7 +16046,7 @@ IF _IB_DISK
 
  STA XC                 ; Move the text cursor to column 1
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JSR DOXC               ; Move the text cursor to column 1
 
@@ -20037,7 +20038,7 @@ IF _IB_DISK
 
  STA XC                 ; Move the text cursor to column 1, for the item's name
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JSR DOXC               ; Move the text cursor to column 1, for the item's name
 
@@ -20144,7 +20145,7 @@ IF _IB_DISK
 
  STA XC                 ; Move the text cursor to column 25
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JSR DOXC               ; Move the text cursor to column 25
 
@@ -20284,7 +20285,7 @@ IF _IB_DISK
 
  STA XC                 ; Move the text cursor in XC to column 17
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JSR DOXC               ; Move the text cursor in XC to column 17
 
@@ -21109,7 +21110,7 @@ IF _IB_DISK
 
  STA XC                 ; Move the text cursor to column 12
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JSR DOXC               ; Move the text cursor to column 12
 
@@ -21189,7 +21190,7 @@ IF _IB_DISK
 
  STA XC                 ; Move the text cursor to column 25
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JSR DOXC               ; Move the text cursor to column 25
 
@@ -21242,7 +21243,7 @@ IF _IB_DISK
 
  INC YC                 ; Move the text cursor down one line
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JSR DOXC               ; Move the text cursor to column 2
 
@@ -21698,7 +21699,7 @@ IF _IB_DISK
 
  STA YC                 ; Move the text cursor to row 16
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JSR DOYC               ; Move the text cursor to row 16
 
@@ -21712,7 +21713,7 @@ IF _IB_DISK
 
  STA XC                 ; Move the text cursor to column 12
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JSR DOXC               ; Move the text cursor to column 12
 
@@ -21734,7 +21735,7 @@ IF _IB_DISK
  INC YC                 ; Move the text cursor down a row, and increment the
                         ; counter in YC at the same time
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JSR INCYC              ; Move the text cursor down a row, and increment the
                         ; counter in YC at the same time
@@ -22606,7 +22607,7 @@ IF _IB_DISK
 
  STA XC                 ; Set the X-column in XC to 21
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  JSR DOXC               ; Set the X-column in XC to 21
 
@@ -28889,7 +28890,7 @@ IF _IB_DISK
 
  EQUW $A49E
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  EQUW $8888
 
@@ -30869,7 +30870,7 @@ IF _IB_DISK
 
  BPL nofast+2
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  BPL nojoyst
 
@@ -41535,7 +41536,7 @@ IF _IB_DISK
  TAX
  PLA
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  BIT $C019
  BPL WSCAN
@@ -41631,7 +41632,7 @@ IF _IB_DISK
 
  BMI RR7
 
-ELIF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES OR _SOURCE_DISK_CODE_FILES
+ELIF _SOURCE_DISK
 
  BPL RR7
 

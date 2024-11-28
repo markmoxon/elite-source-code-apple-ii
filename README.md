@@ -465,7 +465,7 @@ f77b2a55    992  f77b2a55    992   Yes   WORDS.bin
 
 ### Differences between the variants
 
-You can see the differences between the variants by searching the source code for `_IB_DISK` (for features in the Ian Bell game disk variant), `_SOURCE_DISK_BUILD` (for features in the source disk build variant), `_SOURCE_DISK_CODE_FILES` (for features in the source disk CODE files variant) or `_SOURCE_DISK_ELT_FILES` (for features in the source disk ELT files variant).
+You can see the differences between the variants by searching the source code for `_IB_DISK` (for features in the Ian Bell game disk variant), `_SOURCE_DISK_BUILD` (for features in the source disk build variant), `_SOURCE_DISK_CODE_FILES` (for features in the source disk CODE files variant) or `_SOURCE_DISK_ELT_FILES` (for features in the source disk ELT files variant). You can also search for `_SOURCE_DISK` for features in all the source disk variants.
 
 Analysis into the differences between the variants is ongoing.
 
