@@ -406,7 +406,7 @@ ENDIF
                         ;
                         ; A value of 0 denotes the leftmost column and 32 the
                         ; rightmost column, but because the top part of the
-                        ; screen (the space view) has a white border that
+                        ; screen (the space view) has a border box that
                         ; clashes with columns 0 and 32, text is only shown
                         ; in columns 1-31
 
@@ -427,7 +427,7 @@ ENDIF
                         ; just before the screen splits
                         ;
                         ; A value of 0 denotes the top row, but because the
-                        ; top part of the screen has a white border that clashes
+                        ; top part of the screen has a border box that clashes
                         ; with row 0, text is always shown at row 1 or greater
 
 .QQ17
@@ -913,10 +913,9 @@ ENDIF
  SKIP 1                 ; The type of the current view:
                         ;
                         ;   0   = Space view
-                        ;   1   = Title screen
+                        ;   1   = Data on System screen (key "7")
                         ;         Get commander name ("@", save/load commander)
                         ;         In-system jump just arrived ("J")
-                        ;         Data on System screen (key "7")
                         ;   2   = Buy Cargo screen (key "2")
                         ;   3   = Mis-jump just arrived (witchspace)
                         ;   4   = Sell Cargo screen (key "3")
@@ -1297,6 +1296,10 @@ ENDIF
 ;
 ; ------------------------------------------------------------------------------
 ;
+;
+; The blocks are pointed to by the lookup table at location UNIV. The first 296
+; bytes of the K% workspace hold ship data on up to 8 ships, with 37 (NI%)
+; bytes per ship.
 ;
 ; See the deep dive on "Ship data blocks" for details on ship data blocks, and
 ; the deep dive on "The local bubble of universe" for details of how Elite
@@ -5962,6 +5965,10 @@ ENDIF
 ;   Category: Text
 ;    Summary: Switch to white text
 ;
+; ------------------------------------------------------------------------------
+;
+; This subroutine has no effect in this version of Elite.
+;
 ; ******************************************************************************
 
 .WHITETEXT
@@ -8316,7 +8323,7 @@ ENDIF
 
 .STATUS
 
- LDA #8                 ; Clear the top part of the screen, draw a white border,
+ LDA #8                 ; Clear the top part of the screen, draw a border box,
  JSR TRADEMODE          ; and set up a printable trading screen with a view type
                         ; in QQ11 of 8 (Status Mode screen)
 
@@ -13151,7 +13158,7 @@ ENDIF
  LDA QQ11               ; Store the current view type in QQ11 on the stack
  PHA
 
- LDA #0                 ; Clear the top part of the screen, draw a white border,
+ LDA #0                 ; Clear the top part of the screen, draw a border box,
  JSR TT66               ; and set the current view type in QQ11 to 0 (the space
                         ; view)
 
@@ -16055,7 +16062,7 @@ ENDIF
  STA INWK+7             ; Set z_hi = 1, the distance at which we show the
                         ; rotating ship
 
- LDA #13                ; Clear the top part of the screen, draw a white border,
+ LDA #13                ; Clear the top part of the screen, draw a border box,
  JSR TT66               ; and set the current view type in QQ11 to 13 (rotating
                         ; ship view)
 
@@ -16788,7 +16795,7 @@ ENDIF
 
 .TRADEMODE
 
- JSR TT66               ; Clear the top part of the screen, draw a white border,
+ JSR TT66               ; Clear the top part of the screen, draw a border box,
                         ; and set the current view type in QQ11 to A
 
  JMP FLKB               ; Call FLKB to flush the keyboard buffer and return from
@@ -17094,7 +17101,7 @@ ENDIF
 
 .TT25
 
- LDA #1                 ; Clear the top part of the screen, draw a white border,
+ LDA #1                 ; Clear the top part of the screen, draw a border box,
  JSR TRADEMODE          ; and set up a printable trading screen with a view type
                         ; in QQ11 of 1
 
@@ -17512,7 +17519,7 @@ ENDIF
 
 .TT22
 
- LDA #64                ; Clear the top part of the screen, draw a white border,
+ LDA #64                ; Clear the top part of the screen, draw a border box,
  JSR TT66               ; and set the current view type in QQ11 to 32 (Long-
                         ; range Chart)
 
@@ -17872,7 +17879,7 @@ ENDIF
 
 .TT219
 
- LDA #2                 ; Clear the top part of the screen, draw a white border,
+ LDA #2                 ; Clear the top part of the screen, draw a border box,
  JSR TRADEMODE          ; and set up a printable trading screen with a view type
                         ; in QQ11 of 2 (Buy Cargo screen)
 
@@ -17918,8 +17925,7 @@ ENDIF
 .TT224
 
  JSR CLYNS              ; Clear the bottom three text rows of the upper screen,
-                        ; and move the text cursor to column 1 on row 21, i.e.
-                        ; the start of the top row of the three bottom rows
+                        ; and move the text cursor to the first cleared row
 
  LDA #204               ; Print recursive token 44 ("QUANTITY OF ")
  JSR TT27
@@ -18236,7 +18242,7 @@ ENDIF
 
 .TT208
 
- LDA #4                 ; Clear the top part of the screen, draw a white border,
+ LDA #4                 ; Clear the top part of the screen, draw a border box,
  JSR TRADEMODE          ; and set up a printable trading screen with a view type
                         ; in QQ11 of 4 (Sell Cargo screen)
 
@@ -18481,7 +18487,7 @@ ENDIF
 
 .TT213
 
- LDA #8                 ; Clear the top part of the screen, draw a white border,
+ LDA #8                 ; Clear the top part of the screen, draw a border box,
  JSR TRADEMODE          ; and set up a printable trading screen with a view type
                         ; in QQ11 of 4 (Inventory screen)
 
@@ -18823,7 +18829,7 @@ ENDIF
 
 .TT23
 
- LDA #128               ; Clear the top part of the screen, draw a white border,
+ LDA #128               ; Clear the top part of the screen, draw a border box,
  JSR TT66               ; and set the current view type in QQ11 to 128 (Short-
                         ; range Chart)
 
@@ -19452,8 +19458,7 @@ ENDIF
 .dockEd
 
  JSR CLYNS              ; Clear the bottom three text rows of the upper screen,
-                        ; and move the text cursor to column 1 on row 21, i.e.
-                        ; the start of the top row of the three bottom rows
+                        ; and move the text cursor to the first cleared row
 
  LDA #15                ; Move the text cursor to column 15
  JSR DOXC
@@ -20308,7 +20313,7 @@ ENDIF
 
 .TT167
 
- LDA #16                ; Clear the top part of the screen, draw a white border,
+ LDA #16                ; Clear the top part of the screen, draw a border box,
  JSR TRADEMODE          ; and set up a printable trading screen with a view type
                         ; in QQ11 of 32 (Market Price screen)
 
@@ -20666,7 +20671,7 @@ ENDIF
 ;JSR CATLOD             ; This instruction is commented out in the original
                         ; source
 
- LDA #3                 ; Clear the top part of the screen, draw a white border,
+ LDA #3                 ; Clear the top part of the screen, draw a border box,
  JSR TT66               ; and set the current view type in QQ11 to 3
 
  JSR LL164              ; Call LL164 to show the hyperspace tunnel and make the
@@ -20747,7 +20752,7 @@ ENDIF
  LDA QQ11               ; If the current view is not a space view, jump to ee5
  BNE ee5                ; to skip the following
 
- JSR TT66               ; Clear the top part of the screen, draw a white border,
+ JSR TT66               ; Clear the top part of the screen, draw a border box,
                         ; and set the current view type in QQ11 to 0 (space
                         ; view)
 
@@ -20800,7 +20805,7 @@ ENDIF
  AND #%00111111         ; one of the charts (64 or 128), return from the
  BNE RTS111             ; subroutine (as RTS111 contains an RTS)
 
- JSR TTX66              ; Otherwise clear the screen and draw a white border
+ JSR TTX66              ; Otherwise clear the screen and draw a border box
 
  LDA QQ11               ; If the current view is one of the charts, jump to
  BNE TT114              ; TT114 (from which we jump to the correct routine to
@@ -21100,7 +21105,7 @@ ENDIF
 
 .EQSHP
 
- LDA #32                ; Clear the top part of the screen, draw a white border,
+ LDA #32                ; Clear the top part of the screen, draw a border box,
  JSR TRADEMODE          ; and set up a printable trading screen with a view type
                         ; in QQ11 of 32 (Equip Ship screen)
 
@@ -21209,8 +21214,7 @@ ENDIF
  BCC EQL1               ; list of equipment available at this station
 
  JSR CLYNS              ; Clear the bottom three text rows of the upper screen,
-                        ; and move the text cursor to column 1 on row 21, i.e.
-                        ; the start of the top row of the three bottom rows
+                        ; and move the text cursor to the first cleared row
 
  LDA #127               ; Print recursive token 127 ("ITEM") followed by a
  JSR prq                ; question mark
@@ -21686,7 +21690,7 @@ ENDIF
  BCC P%+7               ; screen to prevent the view menu from clashing with the
                         ; longer equipment menu available in higher tech systems
 
- LDA #32                ; Clear the top part of the screen, draw a white border,
+ LDA #32                ; Clear the top part of the screen, draw a border box,
  JSR TT66               ; and set the current view type in QQ11 to 32 (Equip
                         ; Ship screen)
 
@@ -21748,8 +21752,7 @@ ENDIF
  BCC qv1                ; view in the menu
 
  JSR CLYNS              ; Clear the bottom three text rows of the upper screen,
-                        ; and move the text cursor to column 1 on row 21, i.e.
-                        ; the start of the top row of the three bottom rows
+                        ; and move the text cursor to the first cleared row
 
 .qv2
 
@@ -21806,8 +21809,7 @@ ENDIF
                         ; system
 
  JMP CLYNS              ; Clear the bottom three text rows of the upper screen,
-                        ; and move the text cursor to column 1 on row 21, i.e.
-                        ; the start of the top row of the three bottom rows
+                        ; and move the text cursor to the first cleared row
 
                         ; Return from the subroutine using a tail call
 
@@ -24430,11 +24432,7 @@ ENDIF
                         ; for our ship. In memory, this is the layout of the
                         ; ship data blocks and ship line heaps:
                         ;
-                        ;   +-----------------------------------+   $1034
-                        ;   |                                   |
-                        ;   | WP workspace                      |
-                        ;   |                                   |
-                        ;   +-----------------------------------+   $0800 = WP
+                        ;   +-----------------------------------+   $0B5F = LS%
                         ;   |                                   |
                         ;   | Current ship line heap            |
                         ;   |                                   |
@@ -24458,7 +24456,7 @@ ENDIF
                         ;   |                                   |
                         ;   | Existing ship data blocks         |
                         ;   |                                   |
-                        ;   +-----------------------------------+   $0400 = K%
+                        ;   +-----------------------------------+   $0800 = K%
                         ;
                         ; So, to work out if we have enough space, we have to
                         ; make sure there is room between the end of our new
@@ -27374,8 +27372,7 @@ ENDIF
 .clynsneed
 
  JSR CLYNS              ; Clear the bottom three text rows of the upper screen,
-                        ; and move the text cursor to column 1 on row 21, i.e.
-                        ; the start of the top row of the three bottom rows
+                        ; and move the text cursor to the first cleared row
 
  JMP me3                ; Jump back into the main spawning loop at me3
 
@@ -28738,7 +28735,7 @@ ENDIF
 ;LDX #24                ; These instructions are commented out in the original
 ;JSR DET1               ; source (they would hide the dashboard)
 
- LDA #0                 ; Clear the top part of the screen, draw a white border,
+ LDA #0                 ; Clear the top part of the screen, draw a border box,
  JSR TT66               ; and set the current view type in QQ11 to 0 ???
 
  JSR nWq                ; Create a cloud of stardust containing the correct
@@ -29285,7 +29282,7 @@ ENDIF
 ;LDA #32                ; These instructions are commented out in the original
 ;JSR DOVDU19            ; source
 
- LDA #13                ; Clear the top part of the screen, draw a white border,
+ LDA #13                ; Clear the top part of the screen, draw a border box,
  JSR TT66               ; and set the current view type in QQ11 to 13 (rotating
                         ; ship view)
 
@@ -31751,8 +31748,7 @@ ENDIF
  BEQ infrontvw          ; instruction
 
  JSR CLYNS              ; Clear the bottom three text rows of the upper screen,
-                        ; and move the text cursor to column 1 on row 21, i.e.
-                        ; the start of the top row of the three bottom rows
+                        ; and move the text cursor to the first cleared row
 
  LDA #25                ; Set A = 25 to use as the text row for the message if
                         ; this is not a space view
@@ -37986,7 +37982,7 @@ ENDMACRO
 
  STX VIEW               ; Set the current space view to X
 
- JSR TT66               ; Clear the top part of the screen, draw a white border,
+ JSR TT66               ; Clear the top part of the screen, draw a border box,
                         ; and set the current view type in QQ11 to 0 (space
                         ; view)
 
@@ -38014,7 +38010,7 @@ ENDMACRO
 
  STX VIEW               ; Change the current space view to X
 
- JSR TT66               ; Clear the top part of the screen, draw a white border,
+ JSR TT66               ; Clear the top part of the screen, draw a border box,
                         ; and set the current view type in QQ11 to 0 (space
                         ; view)
 
@@ -38181,7 +38177,7 @@ ENDMACRO
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Clear the top part of the screen, draw a white border, and set the current
+; Clear the top part of the screen, draw a border box, and set the current
 ; view type in QQ11 to A.
 ;
 ; ------------------------------------------------------------------------------
@@ -38198,18 +38194,18 @@ ENDMACRO
  STA QQ11               ; Set the current view type in QQ11 to A
 
                         ; Fall through into TTX66 to clear the screen and draw a
-                        ; white border
+                        ; border box
 
 ; ******************************************************************************
 ;
 ;       Name: TTX66
 ;       Type: Subroutine
 ;   Category: Drawing the screen
-;    Summary: Clear the top part of the screen and draw a white border
+;    Summary: Clear the top part of the screen and draw a border box
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Clear the top part of the screen (the space view) and draw a white border
+; Clear the top part of the screen (the space view) and draw a border box
 ; along the top and sides.
 ;
 ; ******************************************************************************
@@ -41859,14 +41855,14 @@ ENDIF
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Clear the top part of the screen (the space view) and draw a white border
+; Clear the top part of the screen (the space view) and draw a border box
 ; along the top and sides.
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; Other entry points:
 ;
-;   BOX                 Just draw the white border along the top and sides
+;   BOX                 Just draw the border box along the top and sides
 ;
 ; ******************************************************************************
 
@@ -41941,58 +41937,114 @@ ENDIF
 ;       Name: ZES1k
 ;       Type: Subroutine
 ;   Category: Utility routines
-;    Summary: ???
+;    Summary: Zero-fill the page whose number is in X
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   X                   The page we want to zero-fill
 ;
 ; ******************************************************************************
 
 .ZES1k
 
- LDY #0                 ; Set Y = 0
-
- STY SC                 ; Set the low byte of SC(1 0) to zero
-
-                        ; Fall through into ZES2k to ???
-
+ LDY #0                 ; If we set Y = SC = 0 and fall through into ZESNEW
+ STY SC                 ; below, then we will zero-fill 255 bytes starting from
+                        ; SC - in other words, we will zero-fill the whole of
+                        ; page X
 ; ******************************************************************************
 ;
 ;       Name: ZES2k
 ;       Type: Subroutine
 ;   Category: Utility routines
-;    Summary: ???
+;    Summary: Zero-fill a specific page
+;
+; ------------------------------------------------------------------------------
+;
+; Zero-fill from address (X SC) + Y to (X SC) + 1.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   Y                   The offset from (X SC) where we start zeroing, counting
+;                       down to 1; if Y = 0, then the whole page is reset
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   Z flag              Z flag is set
+;
+;   A                   A is 0
+;
+;   Y                   Y is 0
 ;
 ; ******************************************************************************
 
 .ZES2k
 
- LDA #0                 ; ???
- STX SC+1
+ LDA #0                 ; Load A with the byte we want to fill the memory block
+                        ; with - i.e. zero
+
+ STX SC+1               ; We want to zero-fill page X, so store this in the
+                        ; high byte of SC, so the 16-bit address in SC and
+                        ; SC+1 is now pointing to the SC-th byte of page X
 
 .ZEL1k
 
- STA (SC),Y
- DEY
- BNE ZEL1k
- RTS
+ STA (SC),Y             ; Zero the Y-th byte of the block pointed to by SC,
+                        ; so that's effectively the Y-th byte before SC
+
+ DEY                    ; Decrement the loop counter
+
+ BNE ZEL1k              ; Loop back to zero the next byte
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
 ;       Name: ZESNEW
 ;       Type: Subroutine
 ;   Category: Utility routines
-;    Summary: ???
+;    Summary: Zero-fill memory from SC(1 0) to the end of the page
+;
+; ------------------------------------------------------------------------------
+;
+; Zero-fill from address SC(1 0) + Y to SC(1 0) + $FF.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   Y                   The offset from SC(1 0) where we start zeroing, counting
+;                       up to $FF
+;
+;   SC(1 0)             The starting address of the zero-fill
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   Z flag              Z flag is set
 ;
 ; ******************************************************************************
 
 .ZESNEW
 
- LDA #0
+ LDA #0                 ; Load A with the byte we want to fill the memory block
+                        ; with - i.e. zero
 
 .ZESNEWL
 
- STA (SC),Y
- INY
- BNE ZESNEWL
- RTS
+ STA (SC),Y             ; Zero the Y-th byte of the block pointed to by SC
+
+ INY                    ; Increment the loop counter
+
+ BNE ZESNEWL            ; Loop back to zero the next byte
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -42070,25 +42122,47 @@ ENDIF
 ;       Name: mvblockK
 ;       Type: Subroutine
 ;   Category: Utility routines
-;    Summary: ???
+;    Summary: Copy a specific number of pages in memory
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   V(1 0)              Source address
+;
+;   SC(1 0)             Destination address
+;
+;   X                   Number of pages of memory to copy
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   mvbllop             Only copy Y bytes, rather than a whole page
 ;
 ; ******************************************************************************
 
 .mvblockK
 
- LDY #0
+ LDY #0                 ; Set an index counter in Y
 
 .mvbllop
 
- LDA (V),Y
+ LDA (V),Y              ; Copy the Y-th byte from V(1 0) to SC(1 0)
  STA (SC),Y
- DEY
- BNE mvbllop
- INC V+1
- INC SC+1
- DEX
- BNE mvbllop
- RTS
+
+ DEY                    ; Decrement the index counter
+
+ BNE mvbllop            ; Loop back until we have copied a whole page of bytes
+
+ INC V+1                ; Increment the high bytes of V(1 0) and SC(1 0) to
+ INC SC+1               ; point to the next page in memory
+
+ DEX                    ; Decrement the page counter
+
+ BNE mvbllop            ; Loop back until we have copied X pages of memory
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
