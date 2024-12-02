@@ -6,7 +6,7 @@ This folder contains the annotated source code for the Apple II version of Elite
 
   * [elite-source.asm](elite-source.asm) contains the main source for the game
 
-  * [elite-data.asm](elite-data.asm) contains source for the game data, including the game text and ship blueprints
+  * [elite-data.asm](elite-data.asm) contains source for the game data, including the game text
 
   * [elite-bcfs.asm](elite-bcfs.asm) contains the Big Code File source, which concatenates individually assembled binaries into the final game binary
 
