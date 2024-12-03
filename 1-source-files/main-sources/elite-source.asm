@@ -16161,8 +16161,8 @@ ENDIF
  JSR DETOK              ; to row 10, white, lower case}{white}{all caps}INCOMING
                         ; MESSAGE"
 
- LDY #100               ; Delay for 100 vertical syncs (100/50 = 2 seconds) and
- JMP DELAY              ; return from the subroutine using a tail call
+ LDY #100               ; Wait for 100/50 of a second (2 seconds) and return
+ JMP DELAY              ; from the subroutine using a tail call
 
 ; ******************************************************************************
 ;
@@ -16338,12 +16338,12 @@ ENDIF
 ;       Name: DELAY
 ;       Type: Subroutine
 ;   Category: Utility routines
-;    Summary: Wait for a specified time, in 1/50s of a second
+;    Summary: Wait for a specified time, in ???
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Wait for the number of vertical syncs given in Y, so this effectively waits
-; for Y/50 of a second (as the vertical sync occurs 50 times a second).
+; Wait for the number of ??? given in Y, so this effectively waits
+; for ???.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -21560,8 +21560,8 @@ ENDIF
 
  JSR BOOP               ; Call the BOOP routine to make a low, long beep
 
- LDY #25                ; Delay for 25 vertical syncs (25/50 = 0.5 second) and
- JMP DELAY              ; return from the subroutine using a tail call
+ LDY #25                ; Wait for 25/50 of a second (0.5 second) and return
+ JMP DELAY              ; from the subroutine using a tail call
 
 ; ******************************************************************************
 ;
@@ -31253,7 +31253,7 @@ ENDIF
  TYA                    ; Store Y and A on the stack so we can retrieve them
  PHA                    ; below
 
- LDY #20                ; Wait for 20 vertical syncs (20/50 = 0.4 seconds)
+ LDY #20                ; Wait for 20/50 of a second (0.4 seconds)
  JSR DELAY
 
  PLA                    ; Restore A and Y from the stack
@@ -31657,8 +31657,9 @@ ENDIF
 
 .t
 
- LDY #2                 ; Delay for 2 vertical syncs (2/50 = 0.04 seconds) so we
- JSR DELAY              ; don't take up too much CPU time while looping round
+ LDY #2                 ; Wait for 2/50 of a second (0.04 seconds) to implement
+ JSR DELAY              ; a simple keyboard debounce and prevent multiple key
+                        ; presses being recorded
 
  JSR RDKEY              ; Scan the keyboard for a key press and return the
                         ; ASCII code of the key pressed in X (or 0 for no key
