@@ -20,6 +20,11 @@
 ;
 ; ------------------------------------------------------------------------------
 ;
+; This source file contains the game data for Apple II Elite, which includes the
+; game text and game font.
+;
+; ------------------------------------------------------------------------------
+;
 ; This source file produces the following binary file:
 ;
 ;   * DATA.unprot.bin

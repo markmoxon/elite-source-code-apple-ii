@@ -18,7 +18,7 @@
 ; The deep dive articles referred to in this commentary can be found at
 ; https://elite.bbcelite.com/deep_dives
 ;
-; ******************************************************************************
+; ------------------------------------------------------------------------------
 ;
 ; The following routines from the S.CODES and S.DATAS BBC BASIC source files
 ; are implemented in the elite-checksum.py script. This file is purely for

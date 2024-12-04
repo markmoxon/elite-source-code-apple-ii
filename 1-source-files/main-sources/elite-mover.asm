@@ -20,6 +20,11 @@
 ;
 ; ------------------------------------------------------------------------------
 ;
+; This source file contains code to move binaries in memory during the loading
+; process.
+;
+; ------------------------------------------------------------------------------
+;
 ; This source file produces the following binary file:
 ;
 ;   * MOVER.bin

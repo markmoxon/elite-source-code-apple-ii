@@ -20,6 +20,11 @@
 ;
 ; ------------------------------------------------------------------------------
 ;
+; This source file contains code to produce the Big Code File for Apple II
+; Elite. The Big Code File comprises the game code and the ship blueprints.
+;
+; ------------------------------------------------------------------------------
+;
 ; This source file produces the following binary files:
 ;
 ;   * CODE.unprot.bin

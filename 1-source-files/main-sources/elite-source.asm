@@ -20,6 +20,10 @@
 ;
 ; ------------------------------------------------------------------------------
 ;
+; This source file contains the main game code for Apple II Elite.
+;
+; ------------------------------------------------------------------------------
+;
 ; This source file produces the following binary files:
 ;
 ;   * ELTA.bin
