@@ -2636,7 +2636,17 @@ ENDIF
  LDX #KEY1              ; Set X = KEY1 as the decryption seed (the value used to
                         ; encrypt the code, which is done in elite-checksum.py)
 
+IF _REMOVE_CHECKSUMS
+
+ NOP                    ; If we have disabled checksums, skip the call to DEEORS
+ NOP                    ; and return from the subroutine to skip the second call
+ RTS                    ; below
+
+ELSE
+
  JSR DEEORS             ; Call DEEORS to decrypt between DOENTRY and F%
+
+ENDIF
 
  LDA #LO(QQ18-1)        ; Set FRIN(1 0) = QQ18-1 as the low address of the
  STA FRIN               ; decryption block
@@ -29224,10 +29234,21 @@ ENDIF
  JSR CHECK2             ; Call CHECK2 to calculate the third checksum for the
                         ; last saved commander and return it in A
 
- CMP CHK3               ; If the calculated checksum does not match the value in
- BNE doitagain          ; CHK3, then loop back to repeat the checks - in other
-                        ; words, we enter an infinite loop here, as the checksum
-                        ; routine will keep returning the same incorrect value
+ CMP CHK3               ; Test the calculated checksum against CHK3
+
+IF _REMOVE_CHECKSUMS
+
+ NOP                    ; If we have disabled checksums, then ignore the result
+ NOP                    ; of the comparison and fall through into the next part
+
+ELSE
+
+ BNE doitagain          ; If the calculated checksum does not match CHK3, then
+                        ; loop back to repeat the check - in other words, we
+                        ; enter an infinite loop here, as the checksum routine
+                        ; will keep returning the same incorrect value
+
+ENDIF
 
  RTS                    ; Return from the subroutine
 
