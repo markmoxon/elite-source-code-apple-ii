@@ -1,6 +1,6 @@
 ; ******************************************************************************
 ;
-; APPLE II ELITE README
+; APPLE II ELITE README SOURCE
 ;
 ; Apple II Elite was written by Ian Bell and David Braben and is copyright
 ; D. Braben and I. Bell 1986

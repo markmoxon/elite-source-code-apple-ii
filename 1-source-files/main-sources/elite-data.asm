@@ -1,6 +1,6 @@
 ; ******************************************************************************
 ;
-; APPLE II ELITE DATA FILE SOURCE
+; APPLE II ELITE GAME DATA SOURCE
 ;
 ; Apple II Elite was written by Ian Bell and David Braben and is copyright
 ; D. Braben and I. Bell 1986
@@ -20,8 +20,8 @@
 ;
 ; ------------------------------------------------------------------------------
 ;
-; This source file contains the game data for Apple II Elite, which includes the
-; game text and game font.
+; This source file contains the game data for Apple II Elite, including the game
+; text and ship blueprints.
 ;
 ; ------------------------------------------------------------------------------
 ;

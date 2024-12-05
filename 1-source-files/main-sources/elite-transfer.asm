@@ -1,6 +1,6 @@
 ; ******************************************************************************
 ;
-; APPLE II ELITE TRANSFER SOURCE
+; APPLE II ELITE PDS TRANSFER SOURCE
 ;
 ; Apple II Elite was written by Ian Bell and David Braben and is copyright
 ; D. Braben and I. Bell 1986
@@ -17,6 +17,16 @@
 ;
 ; The deep dive articles referred to in this commentary can be found at
 ; https://elite.bbcelite.com/deep_dives
+;
+; ------------------------------------------------------------------------------
+;
+; This source file produces game binaries that are suitable for transfer to an
+; Apple II that's attached to a BBC Micro. The original S.APMAKES file on the
+; source disk compiles this code and sends it to the Apple using a *APPLE
+; command (this latter utility is not included on the disk).
+;
+; It forms part of the PDS (Programmers' Development System) that was used when
+; developing Apple II Elite on a BBC Micro.
 ;
 ; ------------------------------------------------------------------------------
 ;
