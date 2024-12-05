@@ -236,7 +236,7 @@ ENDIF
 
  NMIV = $03FC           ; The NMI vector that we intercept with our custom NMI
                         ; handler, which just acknowledges NMI interrupts and
-                        ; ignores tham
+                        ; ignores them
 
  QQ18 = $0B60           ; The address of the text token table, as set in
                         ; elite-data.asm
@@ -18160,8 +18160,8 @@ ENDIF
 
  BCC OUT                ; If A < 0, jump to OUT to load the current number and
                         ; return from the subroutine, as the key pressed was
-                        ; RETURN (or some other ncharacter with a value less
-                        ; than ASCII "0")
+                        ; RETURN (or some other character with a value less than
+                        ; ASCII "0")
 
  CMP #10                ; If A >= 10, jump to BAY2 to display the Inventory
  BCS BAY2               ; screen, as the key pressed was a letter or other
@@ -22399,7 +22399,7 @@ ENDIF
                         ; and return from the subroutine using a tail call
 
  DEX                    ; If token = 4, this is control code 4 (commander
- BEQ cmn                ; name), so jump to cmm to print the commander name
+ BEQ cmn                ; name), so jump to cmn to print the commander name
                         ; and return from the subroutine using a tail call
 
  DEX                    ; If token = 5, this is control code 5 (fuel, newline,
@@ -29555,7 +29555,7 @@ ENDIF
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Calculate the third checksum for the last saved commander data
-;             block (Commodore 64 and Apple II versions onlt)
+;             block (Commodore 64 and Apple II versions only)
 ;
 ; ******************************************************************************
 
@@ -32518,7 +32518,7 @@ ENDMACRO
 ;       Type: Variable
 ;   Category: Keyboard
 ;    Summary: An unused key logger buffer that's left over from the 6502 Second
-;             Procsessor version of Elite
+;             Processor version of Elite
 ;
 ; ******************************************************************************
 
