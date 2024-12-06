@@ -8160,6 +8160,7 @@ ENDIF
 ;       Name: MAS2
 ;       Type: Subroutine
 ;   Category: Maths (Geometry)
+;    Summary: Calculate a cap on the maximum distance to the planet or sun
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -30512,7 +30513,11 @@ ENDIF
 ;       Name: backtonormal
 ;       Type: Subroutine
 ;   Category: Utility routines
-;    Summary: Do nothing
+;    Summary: Disable the keyboard, set the SVN flag to 0, and return with A = 0
+; ------------------------------------------------------------------------------
+;
+; This routine is unused in this version of Elite (it is left over from the
+; 6502 Second Processor version).
 ;
 ; ******************************************************************************
 
@@ -30527,7 +30532,12 @@ ENDIF
 ;       Name: CLDELAY
 ;       Type: Subroutine
 ;   Category: Utility routines
-;    Summary: Do nothing
+;    Summary: Delay by iterating through 5 * 256 (1280) empty loops
+;
+; ------------------------------------------------------------------------------
+;
+; This routine is unused in this version of Elite (it is left over from the
+; 6502 Second Processor version).
 ;
 ; ******************************************************************************
 
