@@ -30514,6 +30514,7 @@ ENDIF
 ;       Type: Subroutine
 ;   Category: Utility routines
 ;    Summary: Disable the keyboard, set the SVN flag to 0, and return with A = 0
+;
 ; ------------------------------------------------------------------------------
 ;
 ; This routine is unused in this version of Elite (it is left over from the
