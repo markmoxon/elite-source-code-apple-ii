@@ -40481,6 +40481,19 @@ ENDMACRO
 ;
 ;   Y2                  The screen y-coordinate of the end of the line
 ;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   Y                   Y is preserved
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   LL30                LL30 is a synonym for LOIN and draws a line from
+;                       (X1, Y1) to (X2, Y2)
+;
 ; ******************************************************************************
 
 ;.grubbyline            ; These instructions are commented out in the original
