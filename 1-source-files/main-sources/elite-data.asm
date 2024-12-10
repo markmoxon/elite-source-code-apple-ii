@@ -6053,7 +6053,7 @@ ENDIF
  EQUW SHIP_THARGOID     ; THG  = 29 = Thargoid
  EQUW SHIP_THARGON      ; TGL  = 30 = Thargon
  EQUW SHIP_CONSTRICTOR  ; CON  = 31 = Constrictor
- EQUW SHIP_DODO         ; DOD  = 33 = Dodecahedron ("Dodo") space station
+ EQUW SHIP_DODO         ; DOD  = 32 = Dodecahedron ("Dodo") space station
 
 ; ******************************************************************************
 ;
