@@ -2752,8 +2752,7 @@ ENDIF
 ;       Name: DOENTRY
 ;       Type: Subroutine
 ;   Category: Flight
-;    Summary: Dock at the space station, show the ship hangar and work out any
-;             mission progression
+;    Summary: Dock at the space station and work out any mission progression
 ;  Deep dive: The Constrictor mission
 ;             The Thargoid Plans mission
 ;
@@ -3895,7 +3894,8 @@ ENDIF
 ;JSR stopbd             ; This instruction is commented out in the original
                         ; source
 
- JMP DOENTRY            ; Go to the docking bay (i.e. show the ship hangar)
+ JMP DOENTRY            ; Go to the docking bay (i.e. show the Status Mode
+                        ; screen)
 
 .MA62
 
@@ -10492,7 +10492,7 @@ ENDIF
  STA QQ14               ; fuel, so set the current fuel level in QQ14 to 70, or
                         ; 7.0 light years
 
- JMP GOIN               ; Go to the docking bay (i.e. show the ship hangar
+ JMP GOIN               ; Go to the docking bay (i.e. show the Status Mode
                         ; screen) and return from the subroutine with a tail
                         ; call
 
