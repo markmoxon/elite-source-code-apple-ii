@@ -37552,7 +37552,7 @@ Saving file '3-assembled-output/ELTJ.bin'
      A0DE   68         PLA
      A0DF   91 0A      STA (&0A),Y
      A0E1   4C 30 A1   JMP &A130
-.TT67X
+.TT67K
      A0E4   A9 0C      LDA #&0C
 .CHPR
      A0E6   85 38      STA &38

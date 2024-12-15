@@ -8306,7 +8306,7 @@ ENDIF
  LDA #205               ; Print extended token 205 ("DOCKED") and return from
  JSR DETOK              ; the subroutine using a tail call
 
- JSR TT67X              ; Print a newline
+ JSR TT67K              ; Print a newline
 
  JMP st6+3              ; Jump down to st6+3, to print recursive token 125 and
                         ; continue to the rest of the Status Mode screen
@@ -41722,14 +41722,14 @@ ENDIF
 
 ; ******************************************************************************
 ;
-;       Name: TT67X
+;       Name: TT67K
 ;       Type: Subroutine
 ;   Category: Text
 ;    Summary: Print a newline
 ;
 ; ******************************************************************************
 
-.TT67X
+.TT67K
 
                         ; This does the same as the existing TT67 routine, which
                         ; is also present in this source, so it isn't clear why
@@ -41737,7 +41737,7 @@ ENDIF
                         ;
                         ; In the original source, this version also has the name
                         ; TT67, but because BeebAsm doesn't allow us to redefine
-                        ; labels, this one has been renamed TT67X
+                        ; labels, I have renamed this one to TT67K
 
  LDA #12                ; Set A to a carriage return character
 
