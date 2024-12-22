@@ -32528,7 +32528,7 @@ ENDMACRO
                         ; first row of the dot (i.e. a four-pixel dash)
 
  LDA K4                 ; Set A = y-coordinate of dot + 1 (so this is the second
- CLC                    ; row of the two-pixel-high dot)
+ CLC                    ; row of the two-pixel high dot)
  ADC #1
 
  JSR Shpt               ; Call Shpt to draw a horizontal 4-pixel dash for the
