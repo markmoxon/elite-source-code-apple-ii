@@ -2841,10 +2841,13 @@ ENDIF
 ;LDA CASH+2             ; These instructions are commented out in the original
 ;CMP #$C4               ; source
 ;BCC EN6
+;
 ;LDA TP
 ;AND #$10
 ;BNE EN6
+;
 ;JMP TBRIEF
+;
 ;.EN6
 
  JMP BAY                ; If we get here them we didn't start or any missions,
@@ -4577,13 +4580,17 @@ ENDIF
 
 ;CMP #$F0               ; These instructions are commented out in the original
 ;BCC nokilltr           ; source
+;
 ;LDA #5
 ;JSR SETL1
+;
 ;LDA VIC+$15
 ;AND #$3
 ;STA VIC+$15
+;
 ;LDA #4
 ;JSR SETL1
+;
 ;LSR TRIBBLE+1
 ;ROR TRIBBLE
 ;
@@ -5939,6 +5946,7 @@ ENDIF
 
 ;LDA #32                ; These instructions are commented out in the original
 ;JSR DOVDU19            ; source
+;
 ;LDA #RED
 ;JMP DOCOL
 
@@ -10409,13 +10417,15 @@ ENDIF
 ;LDA TRIBBLE            ; These instructions are commented out in the original
 ;ORA TRIBBLE+1          ; source
 ;BEQ nosurviv           ;
-;JSR DORND              ; They ensure that in games with the Trumble mission,
-;AND #7                 ; at least one Trumble will hitch a ride in the escape
-;ORA #1                 ; pod (so using an escape pod is not a solution to the
-;STA TRIBBLE            ; trouble with Trumbles)
-;LDA #0                 ;
-;STA TRIBBLE+1          ; This version of Elite does not contain the Trumble
-;.nosurviv              ; mission, so the code is disabled
+;                       ; They ensure that in games with the Trumble mission,
+;JSR DORND              ; at least one Trumble will hitch a ride in the escape
+;AND #7                 ; pod (so using an escape pod is not a solution to the
+;ORA #1                 ; trouble with Trumbles)
+;STA TRIBBLE            ;
+;LDA #0                 ; This version of Elite does not contain the Trumble
+;STA TRIBBLE+1          ; mission, so the code is disabled
+;
+;.nosurviv
 
  LDA #70                ; Our replacement ship is delivered with a full tank of
  STA QQ14               ; fuel, so set the current fuel level in QQ14 to 70, or
@@ -14476,17 +14486,25 @@ ENDIF
 ;                       ; source. They contain the original loop version of the
 ;BCC P%+4               ; code that's used in the BBC Micro cassette and disc
 ;ADC T1                 ; versions
+;
 ;ROR A
 ;ROR P
+;
 ;DEX
+;
 ;BNE MUL4
+;
 ;LSR A
 ;ROR P
+;
 ;ORA T
+;
 ;RTS
 ;
 ;.mu10
+;
 ;STA P
+;
 ;RTS
 
                         ; We now repeat the following four instruction block
@@ -15953,17 +15971,24 @@ ENDIF
 ; ******************************************************************************
 
 ;.TBRIEF                ; These instructions are commented out in the original
-;LDA TP                 ; source
-;ORA #$10
+;                       ; source (they are the checks for the Trumble mission,
+;LDA TP                 ; which is not present in the Master version)
+;ORA #%00010000
 ;STA TP
+;
 ;LDA #199
 ;JSR DETOK
+;
 ;JSR YESNO
+;
 ;BCC BAYSTEP
+;
 ;LDY #HI(50000)
 ;LDX #LO(50000)
 ;JSR LCASH
+;
 ;INC TRIBBLE
+;
 ;JMP BAY
 
 ; ******************************************************************************
@@ -18501,7 +18526,8 @@ ENDIF
 .TT214
 
 ;.TT214                 ; These instructions are commented out in the original
-;PHA                    ; source
+;                       ; source
+;PHA
 ;JSR TT162
 ;PLA
 
@@ -19061,6 +19087,7 @@ ENDIF
 
 ;LDA #0                 ; These instructions are commented out in the original
 ;STA dontclip           ; source
+;
 ;LDA #2*Y-1
 ;STA Yx2M1
 
@@ -19615,8 +19642,8 @@ ENDIF
                         ; subroutine using a tail call
 
 ;.hy5                   ; This instruction and the hy5 label are commented out
-;RTS                    ; in the original - they can actually be found at the
-                        ; end of the jmp routine below, so perhaps this is where
+;                       ; in the original - they can actually be found at the
+;RTS                    ; end of the jmp routine below, so perhaps this is where
                         ; they were originally, but the authors realised they
                         ; could save a byte by using a tail call instead of an
                         ; RTS?
@@ -20760,7 +20787,8 @@ ENDIF
                         ; sun
 
 ;JSR CATLOD             ; These instructions are commented out in the original
-;JSR LOMOD              ; source
+;                       ; source
+;JSR LOMOD
 
  LDA QQ11               ; If the current view in QQ11 is not a space view (0) or
  AND #%00111111         ; one of the charts (64 or 128), return from the
@@ -21800,11 +21828,11 @@ ENDIF
 ; ******************************************************************************
 
 ;.ref2                  ; These instructions are commented out in the original
-;LDY #187               ; source, but they would jump to pres in the EQSHP
-;JMP pres               ; routine with Y = 187, which would show the error:
-;Belgium                ; "LASER PRESENT" (this code was part of the refund
-                        ; bug in the disc version of Elite, which is why it is
-                        ; commented out)
+;                       ; source, but they would jump to pres in the EQSHP
+;LDY #187               ; routine with Y = 187, which would show the error:
+;JMP pres               ; "LASER PRESENT" (this code was part of the refund
+;                       ; bug in the disc version of Elite, which is why it is
+;Belgium                ; commented out)
                         ;
                         ; There is also a comment in the original source - the
                         ; solitary word "Belgium"
@@ -24903,9 +24931,12 @@ ENDIF
                         ; from the subroutine using a tail call
 
 ;BCS PL20               ; These instructions are commented out in the original
-;LDA K+1                ; source, as the Apple II version only has circles for
-;BEQ PL25               ; planets, with no meridians or craters
+;                       ; source, as the Apple II version only has circles for
+;LDA K+1                ; planets, with no meridians or craters
+;BEQ PL25
+;
 ;.PL20
+;
 ;RTS
 
 ; ******************************************************************************
@@ -27999,13 +28030,17 @@ ENDIF
  JMP MLOOP              ; Jump down to MLOOP, as we are done spawning ships
 
 ;.fothg                 ; These instructions are commented out in the original
-;LDA K+6                ; source
+;                       ; source
+;LDA K+6
 ;AND #$3E
 ;BNE fothg2
+;
 ;LDA #18
 ;STA INWK+27
+;
 ;LDA #$79
 ;STA INWK+32
+;
 ;LDA #COU
 ;BNE focoug
 
@@ -30089,9 +30124,11 @@ ENDIF
  RTS                    ; Return from the subroutine
 
 ;.feb10                 ; These instructions are commented out in the original
-;LDA DISK               ; source
+;                       ; source
+;LDA DISK
 ;EOR #$FF
 ;STA DISK
+;
 ;JMP SVE
 
 .loading
@@ -31255,13 +31292,17 @@ ENDIF
 .U%
 
 ;LDA #0                 ; These instructions are commented out in the original
-;LDY #$38               ; source
+;                       ; source
+;LDY #$38
 
 .DKL3
 
 ;STA KLO,Y              ; These instructions are commented out in the original
-;DEY                    ; source
+;                       ; source
+;DEY
+;
 ;BNE DKL3
+;
 ;STA KL
 
  RTS                    ; Return from the subroutine
@@ -40414,7 +40455,8 @@ ENDMACRO
 ; ******************************************************************************
 
 ;.grubbyline            ; These instructions are commented out in the original
-;RTS                    ; source
+;                       ; source
+;RTS
 
 .LL30
 
@@ -40434,6 +40476,7 @@ ENDMACRO
 ;LDA Y1                 ; These instructions are commented out in the original
 ;CMP #Y*2               ; source
 ;BCS grubbyline
+;
 ;LDA Y2
 ;CMP #Y*2
 ;BCS grubbyline
