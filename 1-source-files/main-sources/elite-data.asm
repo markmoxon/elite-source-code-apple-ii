@@ -5137,6 +5137,10 @@ ENDMACRO
 ;
 ; See the PDESC routine for details of how extended system descriptions work.
 ;
+; This version of Elite contains an extended system description override for
+; Lave that welcomes us to the seventeenth galaxy. This is never shown in-game,
+; as the galaxy number in RUGAL has to be 16, and this cannot happen.
+;
 ; ******************************************************************************
 
 .RUPLA
@@ -5201,6 +5205,10 @@ ENDMACRO
 ;
 ; See the PDESC routine for details of how extended system descriptions work.
 ;
+; This version of Elite contains an extended system description override for
+; Lave that welcomes us to the seventeenth galaxy. This is never shown in-game,
+; as the galaxy number in RUGAL has to be 16, and this cannot happen.
+;
 ; ******************************************************************************
 
 .RUGAL
@@ -5264,6 +5272,10 @@ ENDMACRO
 ;   [n?]          Random token              n = 91 to 128
 ;   [n]           Recursive token           n = 129 to 215
 ;   <n>           Two-letter token          n = 215 to 255
+;
+; This version of Elite contains an extended system description override for
+; Lave that welcomes us to the seventeenth galaxy. This is never shown in-game,
+; as the galaxy number in RUGAL has to be 16, and this cannot happen.
 ;
 ; ******************************************************************************
 
