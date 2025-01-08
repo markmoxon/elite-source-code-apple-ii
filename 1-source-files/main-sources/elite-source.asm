@@ -7216,7 +7216,7 @@ ENDIF
 ;
 ; Bit 7 in each byte is used to define the colour palette in that byte, so the
 ; pixels are set in bits 0 to 6. The pixels in bits 0 to 6 appear in that order
-; on-screen (so bit 0 is on the left). The comments below show how the two bytes
+; on-screen, so bit 0 is on the left. The comments below show how the two bytes
 ; map into the screen, with seven pixels per byte.
 ;
 ; ******************************************************************************
@@ -40491,40 +40491,63 @@ ENDMACRO
 ;       Name: TWOS
 ;       Type: Variable
 ;   Category: Drawing pixels
-;    Summary: Ready-made single-pixel character row bytes for the space view
+;    Summary: Ready-made bytes for drawing one-pixel dots in the space view
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Ready-made bytes for plotting one-pixel points the space view. See the PIXEL
-; routine for details.
+; This table contains ready-made pixel bytes for drawing a one-pixel dot in the
+; high-resolution screen mode on the Apple II.
+;
+; The pixels in bits 0 to 6 appear in that order on-screen (so bit 0 is on the
+; left). The comments below show how the bits map into the screen, with seven
+; pixels per byte.
+;
+; See the LL9 routine for details.
 ;
 ; ******************************************************************************
 
 .TWOS
 
- EQUD $08040201         ; ???
- EQUW $2010
- EQUB $40
+ EQUB %00000001         ; x000000
+ EQUB %00000010         ; 0x00000
+ EQUB %00000100         ; 00x0000
+ EQUB %00001000         ; 000x000
+ EQUB %00010000         ; 0000x00
+ EQUB %00100000         ; 00000x0
+ EQUB %01000000         ; 000000x
 
 ; ******************************************************************************
 ;
 ;       Name: TWOS2
 ;       Type: Variable
 ;   Category: Drawing pixels
-;    Summary: Ready-made double-pixel character row bytes for the space view
+;    Summary: Ready-made two-bit pixel bytes for plotting colour pixels
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Ready-made bytes for plotting two-pixel points the space view. See the PIXEL
-; routine for details.
+; This table contains ready-made pixel bytes for drawing a one-pixel colour or
+; two-pixel white dot in the high-resolution screen mode on the Apple II.
+;
+; Bit 7 in each byte is set, so when this is used as a mask byte via AND, it
+; retains bit 7 (which sets the colour palette).
+;
+; The pixels in bits 0 to 6 appear in that order on-screen, so bit 0 is on the
+; left. The comments below show how the bits map into the screen, with seven
+; pixels per byte.
+;
+; See the CPIX routine for details.
 ;
 ; ******************************************************************************
 
 .TWOS2
 
- EQUD $988C8683         ; ???
- EQUW $E0B0
- EQUB $C0
+ EQUB %10000011         ; xx00000
+ EQUB %10000110         ; 0xx0000
+ EQUB %10001100         ; 00xx000
+ EQUB %10011000         ; 000xx00
+ EQUB %10110000         ; 0000xx0
+ EQUB %11100000         ; 00000xx
+ EQUB %11000000         ; 000000x
 
 ; ******************************************************************************
 ;

@@ -36813,12 +36813,20 @@ Reload at &9643
 S.ELTJ &9643  &9BE0  &4000  &9643 
 Saving file '3-assembled-output/ELTJ.bin'
 .TWOS
-     9BE0   01 02 04 08
-     9BE4   10 20
+     9BE0   01
+     9BE1   02
+     9BE2   04
+     9BE3   08
+     9BE4   10
+     9BE5   20
      9BE6   40
 .TWOS2
-     9BE7   83 86 8C 98
-     9BEB   B0 E0
+     9BE7   83
+     9BE8   86
+     9BE9   8C
+     9BEA   98
+     9BEB   B0
+     9BEC   E0
      9BED   C0
 .TWFL
      9BEE   83
