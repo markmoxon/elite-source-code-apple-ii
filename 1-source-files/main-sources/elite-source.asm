@@ -6847,7 +6847,14 @@ ENDIF
 ;
 ;   Y1                  The y-coordinate offset
 ;
-;   ZZ                  The distance of the point (further away = smaller point)
+;   ZZ                  The distance of the point, with bigger distances drawing
+;                       smaller points:
+;
+;                         * ZZ < 80           Double-height three-pixel dash
+;
+;                         * 80 <= ZZ <= 127   Single-height three-pixel dash
+;
+;                         * ZZ > 127          Single-height two-pixel dash
 ;
 ; ******************************************************************************
 
@@ -6884,7 +6891,14 @@ ENDIF
 ;   Y1                  The y-coordinate offset (positive means up the screen
 ;                       from the centre, negative means down the screen)
 ;
-;   ZZ                  The distance of the point (further away = smaller point)
+;   ZZ                  The distance of the point, with bigger distances drawing
+;                       smaller points:
+;
+;                         * ZZ < 80           Double-height three-pixel dash
+;
+;                         * 80 <= ZZ <= 127   Single-height three-pixel dash
+;
+;                         * ZZ > 127          Single-height two-pixel dash
 ;
 ; ******************************************************************************
 
@@ -6938,7 +6952,8 @@ ENDIF
 ;       Name: PIXEL
 ;       Type: Subroutine
 ;   Category: Drawing pixels
-;    Summary: Draw a 1-pixel dot, 2-pixel dash or 4-pixel square
+;    Summary: Draw a two-pixel dash, three-pixel dash or double-height
+;             three-pixel dash
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -6953,7 +6968,14 @@ ENDIF
 ;
 ;   A                   The screen y-coordinate of the point to draw
 ;
-;   ZZ                  The distance of the point (further away = smaller point)
+;   ZZ                  The distance of the point, with bigger distances drawing
+;                       smaller points:
+;
+;                         * ZZ < 80           Double-height three-pixel dash
+;
+;                         * 80 <= ZZ <= 127   Single-height three-pixel dash
+;
+;                         * ZZ > 127          Single-height two-pixel dash
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -7019,14 +7041,18 @@ ENDIF
  LDA SCTBX1,X           ; Using the lookup table at SCTBX1, set A to the bit
                         ; number within the pixel byte that corresponds to the
                         ; pixel at the x-coordinate in X (so A is in the range
-                        ; 0 to 6, as bit 7 in the pixel byte is reserved for the
-                        ; colour group)
+                        ; 0 to 6, as bit 7 in the pixel byte is used to set the
+                        ; pixel byte's colour palette)
 
  ASL A                  ; Double the value in A so we can use it as an index
                         ; into the TWOS3 table, as TWOS3 contains two bytes for
                         ; each of the seven different pixel positions (to cater
                         ; for potential overflow of the dash into the next pixel
                         ; byte)
+                        ;
+                        ; At this stage A is an index into the first half of the
+                        ; TWOS3 table, which contains two-pixel bytes (with two
+                        ; bits set)
                         ;
                         ; This also clears the C flag for the addition below, as
                         ; we know A was in the range 0 to 6 before we shifted
@@ -7039,10 +7065,12 @@ ENDIF
  ADC #14                ; works as we know the C flag is clear)
                         ;
                         ; This means that A is now an index into the second half
-                        ; of the TWOS3 table, which contains 3-bit pixel bytes
-                        ; for a bigger dot, rather than the 2-bit pixel bytes in
-                        ; the first half (so smaller distances in ZZ mean we
-                        ; draw bigger dots)
+                        ; of the TWOS3 table, which contains three-pixel bytes
+                        ; (with three bits set), rather than the two-pixel bytes
+                        ; in the first half
+                        ;
+                        ; This means that points at smaller distances in ZZ are
+                        ; drewn with longer dashes
                         ;
                         ; We add 14 because the first half of TWOS3 consists of
                         ; seven two-byte entries, so adding 14 skips to the
@@ -7060,17 +7088,25 @@ ENDIF
  BCS PX4                ; If the C flag is set then the point distance in Y is
                         ; 80 or more, so jump to PX4 to skip the following and
                         ; draw a single-height dash
+                        ;
+                        ; The above logic means we draw the following:
+                        ;
+                        ;   * ZZ < 80           Double-height three-pixel dash
+                        ;
+                        ;   * 80 <= ZZ <= 127   Single-height three-pixel dash
+                        ;
+                        ;   * ZZ > 127          Single-height two-pixel dash
 
-                        ; The point distance in Y is less than 80, so we want to
-                        ; draw a double-height dash, starting with the bottom
-                        ; pixel row of the dash
+                        ; Otherwise the point distance in Y is less than 80, so
+                        ; we want to draw a double-height dash, starting with
+                        ; the bottom pixel row of the dash
 
  LDA TWOS3,X            ; Otherwise fetch the first byte of the pixel dash in
  EOR (SC),Y             ; pixel position X from TWOS3, and EOR it into SC+Y
  STA (SC),Y
 
- LDA TWOS3+1,X          ; Fetch the second byte of the pixel dash from TWOS3
-                        ; in case the dash spills over into the next pixel byte
+ LDA TWOS3+1,X          ; Fetch the second byte of the pixel dash from TWOS3 in
+                        ; case the dash spills over into the next pixel byte
 
  BEQ PX3                ; If it zero then there is nothing to plot in the
                         ; second byte, so jump to PX3 to skip the following
@@ -7106,8 +7142,9 @@ ENDIF
 .PX4
 
                         ; If we get here then we are either drawing the top row
-                        ; of a double-height dash, or (if we jumped here from
-                        ; above) the only row of a single-height dash
+                        ; of a double-height dash (if we fell through from
+                        ; above), or the only row of a single-height dash (if we
+                        ; jumped to here from above)
 
  LDA TWOS3,X            ; Fetch the first byte of the pixel dash in pixel
  EOR (SC),Y             ; position X from TWOS3, and EOR it into SC+Y
@@ -7161,28 +7198,46 @@ ENDIF
 ;       Name: TWOS3
 ;       Type: Variable
 ;   Category: Drawing pixels
-;    Summary: Ready-made two-pixel bytes in white for the high-resolution screen
-;             mode, with an extra byte to cater for overflow to the next byte
+;    Summary: Ready-made two-pixel and three-pixel bytes in white, with an extra
+;             byte to cater for overflow into the next pixel byte
+;
+; ------------------------------------------------------------------------------
+;
+; This table contains ready-made pixel bytes for drawing a two-pixel or
+; three-pixel dash in the high-resolution screen mode on the Apple II.
+;
+; The first half of the table contains two-pixel dashes, with the entry at
+; TWOS3+X containing a two-pixel dash starting at pixel X within the first pixel
+; byte.
+;
+; The second half of the table contains three-pixel dashes, with the entry at
+; TWOS3+14+X containing a three-pixel dash starting at pixel X within the first
+; pixel byte.
+;
+; Bit 7 in each byte is used to define the colour palette in that byte, so the
+; pixels are set in bits 0 to 6. The pixels in bits 0 to 6 appear in that order
+; on-screen (so bit 0 is on the left). The comments below show how the two bytes
+; map into the screen, with seven pixels per byte.
 ;
 ; ******************************************************************************
 
 .TWOS3
 
- EQUW %0000000000000011 ; xx00000 0000000
- EQUW %0000000000000110 ; 0xx0000 0000000
- EQUW %0000000000001100 ; 00xx000 0000000
- EQUW %0000000000011000 ; 000xx00 0000000
- EQUW %0000000000110000 ; 0000xx0 0000000
- EQUW %0000000001100000 ; 00000xx 0000000
- EQUW %0000000101000000 ; 000000x x000000
+ EQUW %0000000000000011     ; xx00000 0000000
+ EQUW %0000000000000110     ; 0xx0000 0000000
+ EQUW %0000000000001100     ; 00xx000 0000000
+ EQUW %0000000000011000     ; 000xx00 0000000
+ EQUW %0000000000110000     ; 0000xx0 0000000
+ EQUW %0000000001100000     ; 00000xx 0000000
+ EQUW %0000000101000000     ; 000000x x000000
 
- EQUW %0000000000000111 ; xxx0000 0000000
- EQUW %0000000000001110 ; 0xxx000 0000000
- EQUW %0000000000011100 ; 00xxx00 0000000
- EQUW %0000000000111000 ; 000xxx0 0000000
- EQUW %0000000001110000 ; 0000xxx 0000000
- EQUW %0000000101100000 ; 00000xx x000000
- EQUW %0000001101000000 ; 000000x xx00000
+ EQUW %0000000000000111     ; xxx0000 0000000
+ EQUW %0000000000001110     ; 0xxx000 0000000
+ EQUW %0000000000011100     ; 00xxx00 0000000
+ EQUW %0000000000111000     ; 000xxx0 0000000
+ EQUW %0000000001110000     ; 0000xxx 0000000
+ EQUW %0000000101100000     ; 00000xx x000000
+ EQUW %0000001101000000     ; 000000x xx00000
 
 ; ******************************************************************************
 ;
@@ -17373,18 +17428,18 @@ ENDIF
  INX                    ; is stored in the range 0-14 but the displayed range
                         ; should be 1-15
 
- CLC                    ; Call pr2 to print the technology level as a 3-digit
- JSR pr2                ; number without a decimal point (by clearing the C
-                        ; flag)
+ CLC                    ; Call pr2 to print the technology level as a
+ JSR pr2                ; three-digit number without a decimal point (by
+                        ; clearing the C flag)
 
  JSR TTX69              ; Print a paragraph break and set Sentence Case
 
  LDA #192               ; Print recursive token 32 ("POPULATION") followed by a
  JSR TT68               ; colon
 
- SEC                    ; Call pr2 to print the population as a 3-digit number
- LDX QQ6                ; with a decimal point (by setting the C flag), so the
- JSR pr2                ; number printed will be population / 10
+ SEC                    ; Call pr2 to print the population as a three-digit
+ LDX QQ6                ; number with a decimal point (by setting the C flag),
+ JSR pr2                ; so the number printed will be population / 10
 
  LDA #198               ; Print recursive token 38 (" BILLION"), followed by a
  JSR TT60               ; paragraph break and Sentence Case
@@ -17752,9 +17807,9 @@ ENDIF
 
  JSR PIXEL              ; Call PIXEL to draw a point at (X, A), with the size of
                         ; the point dependent on the distance specified in ZZ
-                        ; (so a high value of ZZ will produce a 1-pixel point,
-                        ; a medium value will produce a 2-pixel dash, and a
-                        ; small value will produce a 4-pixel square)
+                        ; (so a high value of ZZ will produce a one-pixel point,
+                        ; a medium value will produce a two-pixel dash, and a
+                        ; small value will produce a four-pixel square)
 
  JSR TT20               ; We want to move on to the next system, so call TT20
                         ; to twist the three 16-bit seeds in QQ15
@@ -24116,8 +24171,8 @@ ENDIF
 
  LDX #8                 ; First we need to copy the space station's coordinates
                         ; into K3, so set a counter to copy the first 9 bytes
-                        ; (the 3-byte x, y and z coordinates) from the station's
-                        ; data block at K% + NI% into K3
+                        ; (the three-byte x, y and z coordinates) from the
+                        ; station's data block at K% + NI% into K3
 
 .SPL1
 
@@ -32768,14 +32823,14 @@ ENDMACRO
  BCS nono               ; the bottom of the screen, jump to nono as the ship's
                         ; dot is off the bottom of the space view
 
- JSR Shpt               ; Call Shpt to draw a horizontal 4-pixel dash for the
+ JSR Shpt               ; Call Shpt to draw a horizontal four-pixel dash for the
                         ; first row of the dot (i.e. a four-pixel dash)
 
  LDA K4                 ; Set A = y-coordinate of dot + 1 (so this is the second
  CLC                    ; row of the two-pixel high dot)
  ADC #1
 
- JSR Shpt               ; Call Shpt to draw a horizontal 4-pixel dash for the
+ JSR Shpt               ; Call Shpt to draw a horizontal four-pixel dash for the
                         ; second row of the dot (i.e. a four-pixel dash)
 
  LDA #%00001000         ; Set bit 3 of the ship's byte #31 to record that we
@@ -32798,7 +32853,7 @@ ENDMACRO
 
 .Shpt
 
-                        ; This routine draws a horizontal 4-pixel dash, for
+                        ; This routine draws a horizontal four-pixel dash, for
                         ; either the top or the bottom of the ship's dot
 
  STA XX15+1             ; Store A in both y-coordinates, as this is a horizontal
@@ -40539,7 +40594,7 @@ ENDMACRO
 ;
 ; The text screen has the same kind of interleaved row layout in memory as the
 ; Apple II high-res screen, except screen memory is at $400 rather than $2000.
-; We add 2 to skip past the two-pixel border box.
+; We add 2 to indent the text by two characters.
 ;
 ; ******************************************************************************
 
