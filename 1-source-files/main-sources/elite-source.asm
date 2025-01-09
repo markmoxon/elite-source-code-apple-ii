@@ -186,20 +186,20 @@ ENDIF
 
  f32 = $34              ; ASCII number for key "4" (Right)
 
- BLACK = %00000000      ; Seven black pixels for the high-res screen
+ BLACK = 0              ; Offset into the MASKT table for black
 
- VIOLET = %00000100     ; %10 ???
+ VIOLET = 4             ; Offset into the MASKT table for violet
 
- GREEN = %00001000      ; %01 ???
+ GREEN = 8              ; Offset into the MASKT table for green
 
- WHITE = %00001100      ; %11 ???
+ WHITE = 12             ; Offset into the MASKT table for white
 
- BLUE = %00010000       ; %10 ???
+ BLUE = 16              ; Offset into the MASKT table for blue
 
- RED = %00010100        ; ???
+ RED = 20               ; Offset into the MASKT table for red
 
- FUZZY = %00011000      ; ???, for showing Thargoids on the scanner
-                        ; with a striped design of ???
+ FUZZY = 24             ; Offset into the MASKT table for the colour we use to
+                        ; show Thargoids on the scanner
 
  CYAN = WHITE           ; Ships that are set to a scanner colour of CYAN in the
                         ; scacol table will actually be shown in white
@@ -7005,8 +7005,9 @@ ENDIF
 
  LSR A                  ; Set T3 = A >> 3
  LSR A                  ;        = y div 8
- LSR A                  ;        = character row number
- STA T3
+ LSR A                  ;
+ STA T3                 ; So T3 now contains the number of the character row
+                        ; that will contain the pixel we want to draw
 
  TAY                    ; Set the low byte of SC(1 0) to the Y-th entry from
  LDA SCTBL,Y            ; SCTBL, which contains the low byte of the address of
@@ -7015,9 +7016,9 @@ ENDIF
  LDA SC+1               ; Set A to the pixel y-coordinate, which we stored in
                         ; SC+1 above
 
- AND #%00000111         ; Set T2 to just bits 0-2 of the y-coordinate, which
- STA T2                 ; will be the number of the pixel row we need to draw
-                        ; within the character row
+ AND #7                 ; Set T2 = A mod 8, which is the pixel row within the
+ STA T2                 ; character block at which we want to draw the pixel
+                        ; (as each character block has 8 rows)
 
  ASL A                  ; Set the high byte of SC(1 0) as follows:
  ASL A                  ;
@@ -7070,7 +7071,7 @@ ENDIF
                         ; in the first half
                         ;
                         ; This means that points at smaller distances in ZZ are
-                        ; drewn with longer dashes
+                        ; drawn with longer dashes
                         ;
                         ; We add 14 because the first half of TWOS3 consists of
                         ; seven two-byte entries, so adding 14 skips to the
@@ -7222,6 +7223,9 @@ ENDIF
 ; ******************************************************************************
 
 .TWOS3
+
+      ; Byte #1 Byte #0       Byte #0 Byte #1
+      ; 6543210 6543210       0123456 0123456
 
  EQUW %0000000000000011     ; xx00000 0000000
  EQUW %0000000000000110     ; 0xx0000 0000000
@@ -19194,10 +19198,11 @@ ENDIF
  STA K4                 ; so this sets K4 to the centre 99 +/- 74, to give the
                         ; scaled pixel y-coordinate of this system
 
- LSR A                  ; Set Y = K4 / 8, so Y contains the number of the text
- LSR A                  ; row that contains this system
- LSR A
- TAY
+ LSR A                  ; Set Y = A >> 3
+ LSR A                  ;       = K4 div 8
+ LSR A                  ;
+ TAY                    ; So Y now contains the number of the character row
+                        ; that contains this system
 
                         ; Now to see if there is room for this system's label.
                         ; Ideally we would print the system name on the same
@@ -40502,7 +40507,7 @@ ENDMACRO
 ; left). The comments below show how the bits map into the screen, with seven
 ; pixels per byte.
 ;
-; See the LL9 routine for details.
+; See the LOIN routine for details.
 ;
 ; ******************************************************************************
 
@@ -40997,21 +41002,37 @@ ENDMACRO
                         ; X1 < X2, so we're going from left to right as we go
                         ; from X1 to X2
 
- LDA Y1                 ; ???
- LSR A
- LSR A
- LSR A
- STA T1
- TAY
- LDA SCTBL,Y
- STA SC
- LDA Y1
- AND #7
- STA T2
- ASL A
- ASL A
- ADC SCTBH,Y
- STA SC+1 ;SC = address of leftmost byte in correct row
+ LDA Y1                 ; Set A to the y-coordinate in Y1
+
+ LSR A                  ; Set T1 = A >> 3
+ LSR A                  ;        = y div 8
+ LSR A                  ;
+ STA T1                 ; So T3 now contains the number of the character row
+                        ; that will contain the pixel we want to draw
+
+ TAY                    ; Set the low byte of SC(1 0) to the Y-th entry from
+ LDA SCTBL,Y            ; SCTBL, which contains the low byte of the address of
+ STA SC                 ; the start of character row Y in screen memory
+
+ LDA Y1                 ; Set T2 = Y1 mod 8, which is the pixel row within the
+ AND #7                 ; character block at which we want to draw our pixel (as
+ STA T2                 ; each character block has 8 rows)
+
+ ASL A                  ; Set the high byte of SC(1 0) as follows:
+ ASL A                  ;
+ ADC SCTBH,Y            ;   SC+1 = SCBTH for row Y + pixel row * 4 
+ STA SC+1               ;
+                        ; Because this is the high byte, and because we already
+                        ; set the low byte in SC to the Y-th entry from SCTBL,
+                        ; this is the same as the following:
+                        ;
+                        ;   SC(1 0) = (SCBTH SCTBL) for row Y + pixel row * $400
+                        ;
+                        ; So SC(1 0) contains the address in screen memory of
+                        ; the pixel row containing the pixel we want to draw, as
+                        ; (SCBTH SCTBL) gives us the address of the start of the
+                        ; character row, and each pixel row within the character
+                        ; row is offset by $400 bytes
 
  LDY SCTBX1,X           ; ???
  LDA TWOS,Y
@@ -41214,20 +41235,36 @@ ENDMACRO
 
 .LI15
 
- LSR A
- LSR A
- LSR A
- STA T1
- TAY
- LDA SCTBL,Y
- STA SC
- LDA Y1
- AND #7
- STA T2
- ASL A
- ASL A
- ADC SCTBH,Y
- STA SC+1
+ LSR A                  ; Set T1 = A >> 3
+ LSR A                  ;        = y div 8
+ LSR A                  ;
+ STA T1                 ; So T1 now contains the number of the character row
+                        ; that will contain the pixel we want to draw
+
+ TAY                    ; Set the low byte of SC(1 0) to the Y-th entry from
+ LDA SCTBL,Y            ; SCTBL, which contains the low byte of the address of
+ STA SC                 ; the start of character row Y in screen memory
+
+ LDA Y1                 ; Set T2 = Y1 mod 8, which is the pixel row within the
+ AND #7                 ; character block at which we want to draw our pixel (as
+ STA T2                 ; each character block has 8 rows)
+
+ ASL A                  ; Set the high byte of SC(1 0) as follows:
+ ASL A                  ;
+ ADC SCTBH,Y            ;   SC+1 = SCBTH for row Y + pixel row * 4 
+ STA SC+1               ;
+                        ; Because this is the high byte, and because we already
+                        ; set the low byte in SC to the Y-th entry from SCTBL,
+                        ; this is the same as the following:
+                        ;
+                        ;   SC(1 0) = (SCBTH SCTBL) for row Y + pixel row * $400
+                        ;
+                        ; So SC(1 0) contains the address in screen memory of
+                        ; the pixel row containing the pixel we want to draw, as
+                        ; (SCBTH SCTBL) gives us the address of the start of the
+                        ; character row, and each pixel row within the character
+                        ; row is offset by $400 bytes
+
  LDY SCTBX1,X
  LDA TWOS,Y
  STA R
@@ -41421,56 +41458,126 @@ ENDMACRO
 ;   Category: Drawing lines
 ;    Summary: Draw a horizontal line from (X1, Y1) to (X2, Y1)
 ;
+; ------------------------------------------------------------------------------
+;
+; We do not draw a pixel at the right end of the line.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   COL                 The line colour, as an offset into the MASKT table
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   Y                   Y is preserved
+;
 ; ******************************************************************************
 
 .HLOIN
 
- STY YSAV               ; ???
- LDA X1
- AND #$FE
+ STY YSAV               ; Store Y into YSAV, so we can preserve it across the
+                        ; call to this subroutine
+
+ LDA X1                 ; Round the x-coordinate in X1 down to the nearest even
+ AND #%11111110         ; coordinate
  STA X1
- TAX
- LDA X2
- AND #$FE
- STA X2
- CMP X1
- BEQ HL6
- BCS HL5
- STX X2
- TAX
+
+ TAX                    ; Set X to the rounded x-coordinate in X1
+
+ LDA X2                 ; Round the x-coordinate in X2 down to the nearest even
+ AND #%11111110         ; coordinate, setting A to the rounded coordinate in X2
+ STA X2                 ; in the process
+
+ CMP X1                 ; If X1 = X2 then the start and end points are the same,
+ BEQ HL6                ; so return from the subroutine (as HL6 contains an RTS)
+
+ BCS HL5                ; If X1 < X2, jump to HL5 to skip the following code, as
+                        ; (X1, Y1) is already the left point
+
+ STX X2                 ; Swap the values of X1 and X2 (in X and X2), so we know
+ TAX                    ; that (X1, Y1) is on the left and (X2, Y1) is on the
+                        ; right
+                        ;
+                        ; This does not update X1, but we don't use it in the
+                        ; following (we use X instead)
 
 .HL5
 
- LDA Y1
- LSR A
- LSR A
- LSR A
- TAY
- LDA SCTBL,Y
- STA SC
- LDA Y1
- AND #7
- ASL A
- ASL A
- ADC SCTBH,Y
- STA SC+1
- LDA SCTBX2,X
- AND #1
- ORA COL
- TAY
- LDA MASKT,Y
- STA T1
- LDA MASKT+1,Y
+ LDA Y1                 ; Set A to the y-coordinate in Y1
+
+ LSR A                  ; Set A = A >> 3
+ LSR A                  ;       = y div 8
+ LSR A                  ;
+                        ; So A now contains the number of the character row
+                        ; that will contain our horizontal line
+
+ TAY                    ; Set the low byte of SC(1 0) to the Y-th entry from
+ LDA SCTBL,Y            ; SCTBL, which contains the low byte of the address of
+ STA SC                 ; the start of character row Y in screen memory
+
+ LDA Y1                 ; Set A = Y1 mod 8, which is the pixel row within the
+ AND #7                 ; character block at which we want to draw our line (as
+                        ; each character block has 8 rows)
+
+ ASL A                  ; Set the high byte of SC(1 0) as follows:
+ ASL A                  ;
+ ADC SCTBH,Y            ;   SC+1 = SCBTH for row Y + pixel row * 4 
+ STA SC+1               ;
+                        ; Because this is the high byte, and because we already
+                        ; set the low byte in SC to the Y-th entry from SCTBL,
+                        ; this is the same as the following:
+                        ;
+                        ;   SC(1 0) = (SCBTH SCTBL) for row Y + pixel row * $400
+                        ;
+                        ; So SC(1 0) contains the address in screen memory of
+                        ; the pixel row containing the pixel we want to draw, as
+                        ; (SCBTH SCTBL) gives us the address of the start of the
+                        ; character row, and each pixel row within the character
+                        ; row is offset by $400 bytes
+
+ LDA SCTBX2,X           ; Using the lookup table at SCTBX2, set A to the byte
+                        ; number within the pixel row that contains the pixel we
+                        ; want to draw (as X contains the x-coordinate of the
+                        ; start of the line)
+
+ AND #1                 ; Set Y to the colour in COL, plus 1 if the byte number
+ ORA COL                ; within the pixel row is odd
+ TAY                    ;
+                        ; We can use this to fetch the correct pixel bytes from
+                        ; MASKT that we can poke into screen memory to draw a
+                        ; continuous line of the relevant colour
+                        ;
+                        ; Bytes #0 and #1 of the relevant entry in MASKT contain
+                        ; the bit pattern for when the first byte is placed in
+                        ; an even-numbered pixel byte (counting along the pixel
+                        ; row), while bytes #1 and #2 contain the bit pattern
+                        ; for when the first byte is placed in an odd-numbered
+                        ; pixel byte
+                        ;
+                        ; So Y now points to the correct MASKT entry, because it
+                        ; points to byte #0 in offset COL if the byte number
+                        ; within the pixel row is even, or byte #1 in offset COL
+                        ; if the byte number within the pixel row is odd
+
+ LDA MASKT,Y            ; Set T1 and T2 to the correct pixel bytes for drawing a
+ STA T1                 ; continuous line in colour COL into the pixel byte that
+ LDA MASKT+1,Y          ; contains the pixel we want to draw
  STA T2
 
 .HL1
 
  LDY X2
  LDA SCTBX2-2,Y
+
  LDY SCTBX1,X
+
  SEC
  SBC SCTBX2,X
- STA R ;R = no bytes apart
+ STA R                  ;R = no bytes apart
+
  LDA TWFR,Y
  AND T1
  LDY SCTBX2,X
@@ -41478,7 +41585,7 @@ ENDMACRO
  BEQ HL3
  STA T4
  LDA (SC),Y
- AND #$7F
+ AND #%01111111
  EOR T4
  STA (SC),Y
  INY
@@ -41488,14 +41595,14 @@ ENDMACRO
 .HLL1
 
  LDA (SC),Y
- AND #$7F
+ AND #%01111111
  EOR T2
  STA (SC),Y
  INY
  DEX
  BEQ HL8
  LDA (SC),Y
- AND #$7F
+ AND #%01111111
  EOR T1
  STA (SC),Y
  INY
@@ -41515,23 +41622,24 @@ ENDMACRO
  LDY SCTBX2-2,X
  STA T4
  LDA (SC),Y
- AND #$7F
+ AND #%01111111
  EOR T4
  STA (SC),Y
  BCC HL7
- LDA #$81
+ LDA #%10000001
  AND T1
  INY
  STA T4
  LDA (SC),Y
- AND #$7F
+ AND #%01111111
  EOR T4
  STA (SC),Y
 
 .HL7
 
- LDY YSAV
- RTS
+ LDY YSAV               ; Restore Y from YSAV, so that it's preserved
+
+ RTS                    ; Return from the subroutine
 
 .HL8
 
@@ -41548,19 +41656,51 @@ ENDMACRO
 ;       Name: MASKT
 ;       Type: Variable
 ;   Category: Drawing lines
-;    Summary: ???
+;    Summary: High-resolution pixel bytes for drawing continuous lines of solid
+;             colour
+;
+; ------------------------------------------------------------------------------
+;
+; This table contains four bytes for each colour (the colour variables such as
+; VIOLET and RED are indexes into this table).
+;
+; The first three bytes contain the values we need to store in screen memory to
+; draw a continuous line in the relevant colour; the fourth byte is ignored and
+; is zero. Bytes #0 and #1 contain the bit pattern for when the first byte is
+; placed in an even-numbered pixel byte (counting along the pixel row), while
+; bytes #1 and #2 contain the bit pattern for when the first byte is placed in
+; an odd-numbered pixel byte.
+;
+; The comments show the on-off patterns that the high-resolution mode converts
+; into colours, with bit 7 removed for clarity.
 ;
 ; ******************************************************************************
 
 .MASKT
 
- EQUD 0
- EQUD $552A55
- EQUD $2A552A
- EQUD $7F7F7F
- EQUD $D5AAD5
- EQUD $AAD5AA
- EQUD $AAAAAA
+      ; Byte #2 Byte #1 Byte #0       Byte #0 Byte #1 Byte #2
+      ; 6543210 6543210 6543210       0123456 0123456 0123456
+
+ EQUD %000000000000000000000000     ; Black (00) in colour palette 0
+                                    ; 0000000 0000000 0000000
+
+ EQUD %010101010010101001010101     ; Violet (x0) in colour palette 0
+                                    ; x0x0x0x 0x0x0x0 x0x0x0x
+
+ EQUD %001010100101010100101010     ; Green (0x) in colour palette 0
+                                    ; 0x0x0x0 x0x0x0x 0x0x0x0
+
+ EQUD %011111110111111101111111     ; White (xx) in colour palette 0
+                                    ; xxxxxxx xxxxxxx xxxxxxx
+
+ EQUD %110101011010101011010101     ; Blue (x0) in colour palette 1
+                                    ; x0x0x0x 0x0x0x0 x0x0x0x
+
+ EQUD %101010101101010110101010     ; Red (0x) in colour palette 1
+                                    ; 0x0x0x0 x0x0x0x 0x0x0x0
+
+ EQUD %101010101010101010101010     ; Fuzzy (red/black/blue) in colour palette 1
+                                    ; 0x0x0x0 0x0x0x0 0x0x0x0
 
 ; ******************************************************************************
 ;
@@ -41650,21 +41790,38 @@ ENDMACRO
 
 .CPIX
 
- STA Y1
- LSR A
- LSR A
- LSR A
- STA T1
- TAY
- LDA SCTBL,Y
- STA SC
- LDA Y1
- AND #7
- STA T2
- ASL A
- ASL A
- ADC SCTBH,Y
- STA SC+1
+ STA Y1                 ; Store the y-coordinate in Y1
+
+ LSR A                  ; Set T1 = A >> 3
+ LSR A                  ;        = y div 8
+ LSR A                  ;
+ STA T1                 ; So T1 now contains the number of the character row
+                        ; that will contain the pixel we want to draw
+
+ TAY                    ; Set the low byte of SC(1 0) to the Y-th entry from
+ LDA SCTBL,Y            ; SCTBL, which contains the low byte of the address of
+ STA SC                 ; the start of character row Y in screen memory
+
+ LDA Y1                 ; Set T2 = Y1 mod 8, which is the pixel row within the
+ AND #7                 ; character block at which we want to draw our pixel (as
+ STA T2                 ; each character block has 8 rows)
+
+ ASL A                  ; Set the high byte of SC(1 0) as follows:
+ ASL A                  ;
+ ADC SCTBH,Y            ;   SC+1 = SCBTH for row Y + pixel row * 4 
+ STA SC+1               ;
+                        ; Because this is the high byte, and because we already
+                        ; set the low byte in SC to the Y-th entry from SCTBL,
+                        ; this is the same as the following:
+                        ;
+                        ;   SC(1 0) = (SCBTH SCTBL) for row Y + pixel row * $400
+                        ;
+                        ; So SC(1 0) contains the address in screen memory of
+                        ; the pixel row containing the pixel we want to draw, as
+                        ; (SCBTH SCTBL) gives us the address of the start of the
+                        ; character row, and each pixel row within the character
+                        ; row is offset by $400 bytes
+
  LDY SCTBX1,X
  LDA #0
  CPY #6
@@ -42235,9 +42392,10 @@ ENDIF
 
 .letter2
 
- LDY YC
- LDA SCTBL,Y
- STA SC
+ LDY YC                 ; Set the low byte of SC(1 0) to the YC-th entry from
+ LDA SCTBL,Y            ; SCTBL, which contains the low byte of the address of
+ STA SC                 ; the start of character row YC in screen memory
+
  LDA SCTBH,Y
  STA SC+1
  LDY SCTBX1,X
