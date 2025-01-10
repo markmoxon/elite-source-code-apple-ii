@@ -41214,26 +41214,51 @@ ENDMACRO
 ;    Summary: Draw a line: Line has a steep gradient, step up along y-axis
 ;  Deep dive: Bresenham's line algorithm
 ;
+; ------------------------------------------------------------------------------
+;
+; This routine draws a line from (X1, Y1) to (X2, Y2). It has multiple stages.
+; If we get here, then:
+;
+;   * |delta_y| >= |delta_x|
+;
+;   * The line is closer to being vertical than horizontal
+;
+;   * We are going to step up along the y-axis
+;
+;   * We potentially swap coordinates to make sure Y1 >= Y2
+;
 ; ******************************************************************************
 
 .STPY
 
- LDY Y1
+ LDY Y1                 ; Set A = Y = Y1
  TYA
- LDX X1
- CPY Y2
- BCS LI15
- DEC SWAP
- LDA X2
+
+ LDX X1                 ; Set X = X1
+
+ CPY Y2                 ; If Y1 >= Y2, jump down to LI15, as the coordinates are
+ BCS LI15               ; already in the order that we want
+
+ DEC SWAP               ; Otherwise decrement SWAP from 0 to $FF, to denote that
+                        ; we are swapping the coordinates around
+
+ LDA X2                 ; Swap the values of X1 and X2
  STA X1
  STX X2
- TAX
- LDA Y2
+
+ TAX                    ; Set X = X1
+
+ LDA Y2                 ; Swap the values of Y1 and Y2
  STA Y1
  STY Y2
- TAY
+
+ TAY                    ; Set Y = A = Y1
 
 .LI15
+
+                        ; By this point we know the line is vertical-ish and
+                        ; Y1 >= Y2, so we're going from top to bottom as we go
+                        ; from Y1 to Y2
 
  LSR A                  ; Set T1 = A >> 3
  LSR A                  ;        = y div 8
@@ -41265,38 +41290,74 @@ ENDMACRO
                         ; character row, and each pixel row within the character
                         ; row is offset by $400 bytes
 
- LDY SCTBX1,X
+ LDY SCTBX1,X           ; ???
  LDA TWOS,Y
  STA R
- LDY SCTBX2,X
- LDX P
- BEQ LIfudge
- LDA logL,X
- LDX Q
- SEC
- SBC logL,X
- LDX P
- LDA log,X
+
+ LDY SCTBX2,X           ; ???
+
+                        ; The following section calculates:
+                        ;
+                        ;   P = P / Q
+                        ;     = |delta_x| / |delta_y|
+                        ;
+                        ; using the log tables at logL and log to calculate:
+                        ;
+                        ;   A = log(P) - log(Q)
+                        ;     = log(|delta_x|) - log(|delta_y|)
+                        ;
+                        ; by first subtracting the low bytes of the logarithms
+                        ; from the table at LogL, and then subtracting the high
+                        ; bytes from the table at log, before applying the
+                        ; antilog to get the result of the division and putting
+                        ; it in P
+
+ LDX P                  ; Set X = |delta_x|
+
+ BEQ LIfudge            ; If |delta_x| = 0, jump to LIfudge to return 0 as the
+                        ; result of the division
+
+ LDA logL,X             ; Set A = log(P) - log(Q)
+ LDX Q                  ;       = log(|delta_x|) - log(|delta_y|)
+ SEC                    ;
+ SBC logL,X             ; by first subtracting the low bytes of log(P) - log(Q)
+
+ LDX P                  ; And then subtracting the high bytes of log(P) - log(Q)
+ LDA log,X              ; so now A contains the high byte of log(P) - log(Q)
  LDX Q
  SBC log,X
- BCC P%+6
- LDA #$FF
- BNE LIlog2
- TAX
- LDA alogh,X
+
+ BCC P%+6               ; ???
+
+ LDA #255               ; The division is very close to 1, so set A to the
+ BNE LIlog2             ; closest possible answer to 256, i.e. 255, and jump to
+                        ; LIlog2 to return the result (this BNE is effectively a
+                        ; JMP as A is never zero)
+
+ TAX                    ; Otherwise we set A to the A-th entry from the
+ LDA alogh,X            ; alogh so the result of the division is now in A
 
 .LIlog2
 
- STA P
+ STA P                  ; Store the result of the division in P, so we have:
+                        ;
+                        ;   P = |delta_x| / |delta_y|
 
 .LIfudge
 
- SEC
- LDX Q
- INX
- LDA X2
+ SEC                    ; Set the C flag for the subtraction below
+
+ LDX Q                  ; Set X = Q + 1
+ INX                    ;       = |delta_y| + 1
+                        ;
+                        ; We add 1 so we can skip the first pixel plot if the
+                        ; line is being drawn with swapped coordinates
+
+ LDA X2                 ; Set A = X2 - X1
  SBC X1
- BCC LFT
+
+ BCC LFT                ; If X2 < X1 then jump to LFT, as we need to draw the
+                        ; line to the left and down
 
 ; ******************************************************************************
 ;
