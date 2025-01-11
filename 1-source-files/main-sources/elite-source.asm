@@ -7204,7 +7204,7 @@ ENDIF
 ;
 ; ------------------------------------------------------------------------------
 ;
-; This table contains ready-made pixel bytes for drawing a two-pixel or
+; This table contains ready-made pixel bytes for drawing a white two-pixel or
 ; three-pixel dash in the high-resolution screen mode on the Apple II.
 ;
 ; The first half of the table contains two-pixel dashes, with the entry at
@@ -7216,9 +7216,9 @@ ENDIF
 ; pixel byte.
 ;
 ; Bit 7 in each byte is used to define the colour palette in that byte, so the
-; pixels are set in bits 0 to 6. The pixels in bits 0 to 6 appear in that order
-; on-screen, so bit 0 is on the left. The comments below show how the two bytes
-; map into the screen, with seven pixels per byte.
+; pixels themselves are defined in bits 0 to 6. The pixels in bits 0 to 6 appear
+; in that order on-screen, so bit 0 is on the left. The comments below show how
+; the two bytes map into the screen, with seven pixels per byte.
 ;
 ; ******************************************************************************
 
@@ -40559,14 +40559,20 @@ ENDMACRO
 ;       Name: TWFL
 ;       Type: Variable
 ;   Category: Drawing lines
-;    Summary: Ready-made character rows for the left end of a horizontal line in
-;             the space view
+;    Summary: Ready-made pixel bytes for the left end of a horizontal line
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Ready-made bytes for plotting horizontal line end caps in the space view. This
-; table provides a byte with pixels at the left end, which is used for the right
-; end of the line.
+; Ready-made bytes for plotting horizontal line end caps. This table provides a
+; byte with pixels at the left end, which is used for the right end of the line.
+;
+; The minimum cap size is two pixels, so the first entry in the table contains
+; a two-pixel pattern.
+;
+; Bit 7 in each byte is used to define the colour palette in that byte, so the
+; pixels themselves are defined in bits 0 to 6. The pixels in bits 0 to 6 appear
+; in that order on-screen, so bit 0 is on the left. The comments below show how
+; the two bytes map into the screen, with seven pixels per byte.
 ;
 ; See the HLOIN routine for details.
 ;
@@ -40574,13 +40580,13 @@ ENDMACRO
 
 .TWFL
 
- EQUB $83               ; ???
- EQUB $87
- EQUB $8F
- EQUB $9F
- EQUB $BF
- EQUB $FF
- EQUB $FF
+ EQUB %10000011         ; xx00000
+ EQUB %10000111         ; xxx0000
+ EQUB %10001111         ; xxxx000
+ EQUB %10011111         ; xxxxx00
+ EQUB %10111111         ; xxxxxx0
+ EQUB %11111111         ; xxxxxxx
+ EQUB %11111111         ; xxxxxxx
 
 ; ******************************************************************************
 ;
@@ -40592,9 +40598,13 @@ ENDMACRO
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Ready-made bytes for plotting horizontal line end caps in the space view. This
-; table provides a byte with pixels at the right end, which is used for the left
-; end of the line.
+; Ready-made bytes for plotting horizontal line end caps. This table provides a
+; byte with pixels at the right end, which is used for the left end of the line.
+;
+; Bit 7 in each byte is used to define the colour palette in that byte, so the
+; pixels themselves are defined in bits 0 to 6. The pixels in bits 0 to 6 appear
+; in that order on-screen, so bit 0 is on the left. The comments below show how
+; the two bytes map into the screen, with seven pixels per byte.
 ;
 ; See the HLOIN routine for details.
 ;
@@ -40602,13 +40612,13 @@ ENDMACRO
 
 .TWFR
 
- EQUB $FF               ; ???
- EQUB $FE
- EQUB $FC
- EQUB $F8
- EQUB $F0
- EQUB $E0
- EQUB $C0
+ EQUB %11111111         ; xxxxxxx
+ EQUB %11111110         ; 0xxxxxx
+ EQUB %11111100         ; 00xxxxx
+ EQUB %11111000         ; 000xxxx
+ EQUB %11110000         ; 0000xxx
+ EQUB %11100000         ; 00000xx
+ EQUB %11000000         ; 000000x
 
 ; ******************************************************************************
 ;
@@ -41542,15 +41552,37 @@ ENDMACRO
  STY YSAV               ; Store Y into YSAV, so we can preserve it across the
                         ; call to this subroutine
 
+                        ; We are going to draw the line like this:
+                        ;
+                        ;   * Draw the byte containing the start of the line
+                        ;     (and if it also happens to contain the end of the
+                        ;     line, draw both ends in one byte and terminate)
+                        ;
+                        ;   * Draw any full bytes in the middle of the line
+                        ;
+                        ;   * Draw the byte containing the end of the line, plus
+                        ;     one more pixel (which may spill over into the next
+                        ;     pixel byte)
+                        ;
+                        ; We draw the end cap with an extra pixel to ensure that
+                        ; there is room for a full two-bit colour number in the
+                        ; last byte (i.e. %00 for two black pixels, %11 for two
+                        ; white pixels, %01 or %10 for two coloured pixels)
+                        ;
+                        ; To facilitate this approach, we need to make sure the
+                        ; start and end x-coordinates are both even, so the
+                        ; two-bit colour numbers start on even pixel numbers
+
  LDA X1                 ; Round the x-coordinate in X1 down to the nearest even
- AND #%11111110         ; coordinate
+ AND #%11111110         ; coordinate, so we can draw the line in two-pixel steps
  STA X1
 
  TAX                    ; Set X to the rounded x-coordinate in X1
 
  LDA X2                 ; Round the x-coordinate in X2 down to the nearest even
  AND #%11111110         ; coordinate, setting A to the rounded coordinate in X2
- STA X2                 ; in the process
+ STA X2                 ; in the process, so we can draw the line in two-pixel
+                        ; steps
 
  CMP X1                 ; If X1 = X2 then the start and end points are the same,
  BEQ HL6                ; so return from the subroutine (as HL6 contains an RTS)
@@ -41642,7 +41674,8 @@ ENDMACRO
 
  LDY X2                 ; Using the lookup table at SCTBX2, set A to the byte
  LDA SCTBX2-2,Y         ; number within the pixel row that contains the pixel
-                        ; at X2 - 2, which is just before the end of the line
+                        ; at X2 - 2, so we omit the last pixel (we subtract 2
+                        ; as we draw the end of the line with an extra pixel)
 
  LDY SCTBX1,X           ; Using the lookup table at SCTBX1, set Y to the bit
                         ; number within the pixel byte that corresponds to the
@@ -41660,7 +41693,7 @@ ENDMACRO
 
  LDA TWFR,Y             ; Fetch a ready-made byte with Y pixels filled in at the
                         ; right end of the byte (so the filled pixels start at
-                        ; point X and go all the way to the end of the byte),
+                        ; point Y and go all the way to the end of the byte),
                         ; which is the shape we want for the left end of the
                         ; line
 
@@ -41771,22 +41804,28 @@ ENDMACRO
 
  LDY SCTBX1-2,X         ; Using the lookup table at SCTBX1, set Y to the bit
                         ; number within the pixel byte that corresponds to the
-                        ; pixel at x-coordinate X2 - 2, which is just before the
-                        ; end of the line
+                        ; pixel at x-coordinate X2 - 2, so we omit the last
+                        ; pixel (we subtract 2 as we draw the end of the line
+                        ; with an extra pixel)
 
  CPY #6                 ; If Y < 6 then clear the C flag, so we can use this to
                         ; check whether we need to spill into the next pixel
                         ; byte to draw the end of the line properly
 
  AND TWFL,Y             ; Apply the pixel pattern in A to a ready-made byte with
-                        ; Y pixels filled in at the left end of the byte (so the
-                        ; filled pixels start at the left edge and go up to
-                        ; point Y), which is the shape we want for the right end
-                        ; of the line
+                        ; Y + 1 pixels filled in at the left end of the byte (so
+                        ; the filled pixels start at the left edge and go up to
+                        ; point Y + 1), which is the shape we want for the right
+                        ; end of the line
+                        ;
+                        ; Note that unlike TWFR, the minimum cap size is two
+                        ; pixels, so it can take a full two-bit colour number
+                        ; even if we only really need one pixel in the end cap
 
  LDY SCTBX2-2,X         ; Using the lookup table at SCTBX2, set Y to the byte
                         ; number within the pixel row that contains the pixel
-                        ; at X2 - 2, which is just before the end of the line
+                        ; at X2 - 2, so we omit the last pixel (we subtract 2
+                        ; as we draw the end of the line with an extra pixel)
 
  STA T4                 ; Store the pixel pattern for the right end of the line
                         ; in T4
