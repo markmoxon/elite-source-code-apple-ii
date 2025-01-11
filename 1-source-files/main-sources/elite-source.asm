@@ -7136,7 +7136,7 @@ ENDIF
                         ; is clear, as we passed through the BCS above
                         ;
                         ; So this sets SC(1 0) to the address of the pixel row
-                        ; above the one we jjust drew in, as each pixel row
+                        ; above the one we just drew in, as each pixel row
                         ; within the character row is spaced out by $400 bytes
                         ; in screen memory
 
@@ -24896,13 +24896,13 @@ ENDIF
 ;   X                   The slot number of the ship to lock our missile onto, or
 ;                       $FF to remove missile lock
 ;
-;   Y                   The new colour of the missile indicator: ???
+;   Y                   The new colour of the missile indicator:
 ;
-;                         * $00 = black (no missile)
+;                         * #BLACK = black (no missile)
 ;
 ;                         * #RED = red (armed and locked)
 ;
-;                         * #YELLOW = yellow/white (armed)
+;                         * #YELLOW = yellow (armed)
 ;
 ;                         * #GREEN = green (disarmed)
 ;
@@ -41017,8 +41017,10 @@ ENDMACRO
  LSR A                  ; Set T1 = A >> 3
  LSR A                  ;        = y div 8
  LSR A                  ;
- STA T1                 ; So T3 now contains the number of the character row
+ STA T1                 ; So T1 now contains the number of the character row
                         ; that will contain the pixel we want to draw
+                        ;
+                        ; We will refer to T1 throughout the rest of the routine
 
  TAY                    ; Set the low byte of SC(1 0) to the Y-th entry from
  LDA SCTBL,Y            ; SCTBL, which contains the low byte of the address of
@@ -41027,6 +41029,8 @@ ENDMACRO
  LDA Y1                 ; Set T2 = Y1 mod 8, which is the pixel row within the
  AND #7                 ; character block at which we want to draw our pixel (as
  STA T2                 ; each character block has 8 rows)
+                        ;
+                        ; We will refer to T2 throughout the rest of the routine
 
  ASL A                  ; Set the high byte of SC(1 0) as follows:
  ASL A                  ;
@@ -41044,32 +41048,55 @@ ENDMACRO
                         ; character row, and each pixel row within the character
                         ; row is offset by $400 bytes
 
- LDY SCTBX1,X           ; ???
- LDA TWOS,Y
- STA R
- LDY SCTBX2,X
+ LDY SCTBX1,X           ; Using the lookup table at SCTBX1, set Y to the bit
+                        ; number within the pixel byte that corresponds to the
+                        ; pixel at the x-coordinate in X, i.e. the start of the
+                        ; line (so Y is in the range 0 to 6, as bit 7 in the
+                        ; pixel byte is used to set the pixel byte's colour
+                        ; palette)
 
- LDX Q                  ; ???
- BNE LIlog7
+ LDA TWOS,Y             ; Fetch a one-pixel byte from TWOS where pixel Y is set,
+ STA R                  ; and store it in R
 
- TXA
- BEQ LIlog6
+ LDY SCTBX2,X           ; Using the lookup table at SCTBX2, set Y to the byte
+                        ; number within the pixel row that contains the start of
+                        ; the line
+
+ LDX Q                  ; Set X = |delta_y|
+
+ BNE LIlog7             ; If |delta_y| is non-zero, jump to LIlog7 to skip the
+                        ; following
+
+ TXA                    ; If we get here then |delta_y| = 0, so set A = 0 and
+ BEQ LIlog6             ; jump to LIlog6 to return 0 as the result of the
+                        ; division
 
 .LIlog7
 
- LDA logL,X             ; ???
- LDX P
- SEC
- SBC logL,X
- LDX Q
- LDA log,X
+ LDA logL,X             ; Set A = log(Q) - log(P)
+ LDX P                  ;       = log(|delta_y|) - log(|delta_x|)
+ SEC                    ;
+ SBC logL,X             ; by first subtracting the low bytes of log(Q) - log(P)
+
+ LDX Q                  ; And then subtracting the high bytes of log(Q) - log(P)
+ LDA log,X              ; so now A contains the high byte of log(Q) - log(P)
  LDX P
  SBC log,X
- BCC P%+6
- LDA #$FF
- BNE LIlog6
- TAX
- LDA alogh,X
+
+ BCC P%+6               ; If the subtraction underflowed then skip the next two
+                        ; instructions as log(P) - log(Q) >= 256
+
+                        ; Otherwise the subtraction fitted into one byte and
+                        ; didn't underflow, so log(P) - log(Q) < 256, and we
+                        ; now return a result of 255
+
+ LDA #255               ; The division is very close to 1, so set A to the
+ BNE LIlog6             ; closest possible answer to 256, i.e. 255, and jump to
+                        ; LIlog6 to return the result (this BNE is effectively a
+                        ; JMP as A is never zero)
+
+ TAX                    ; Otherwise we set A to the A-th entry from the antilog
+ LDA alogh,X            ; table so the result of the division is now in A
 
 .LIlog6
 
@@ -41077,14 +41104,16 @@ ENDMACRO
                         ;
                         ;   Q = |delta_y| / |delta_x|
 
- SEC                    ; ???
+ SEC                    ; Set the C flag for the subtraction below
 
- LDX P                  ; Set X = P
-                        ;       = |delta_x|
+ LDX P                  ; Set X = P + 1
+ INX                    ;       = |delta_x| + 1
+                        ;
+                        ; We will use P as the x-axis counter, and we add 1 to
+                        ; ensure we include the pixel at each end
 
- INX                    ; ???
- LDA Y2
- SBC Y1
+ LDA Y2                 ; If Y1 <= Y2, jump to DOWN, as we need to draw the line
+ SBC Y1                 ; to the right and down
  BCS DOWN
 
 ; ******************************************************************************
@@ -41095,59 +41124,147 @@ ENDMACRO
 ;    Summary: Draw a shallow line going right and up or left and down
 ;  Deep dive: Bresenham's line algorithm
 ;
+; ------------------------------------------------------------------------------
+;
+; This routine draws a line from (X1, Y1) to (X2, Y2). It has multiple stages.
+; If we get here, then:
+;
+;   * The line is going right and up (no swap) or left and down (swap)
+;
+;   * X1 < X2 and Y1 > Y2
+;
+;   * Draw from (X1, Y1) at bottom left to (X2, Y2) at top right, omitting the
+;     first pixel
+;
 ; ******************************************************************************
 
- LDA SWAP
- BNE LI6
- DEX
+ LDA SWAP               ; If SWAP > 0 then we swapped the coordinates above, so
+ BNE LI6                ; jump down to LI6 to skip plotting the first pixel
+                        ;
+                        ; This appears to be a bug that omits the last pixel
+                        ; of this type of shallow line, rather than the first
+                        ; pixel, which makes the treatment of this kind of line
+                        ; different to the other kinds of slope (they all have a
+                        ; BEQ instruction at this point, rather than a BNE)
+                        ;
+                        ; The result is a rather messy line join when a shallow
+                        ; line that goes right and up or left and down joins a
+                        ; line with any of the other three types of slope
+                        ;
+                        ; This bug was fixed in the advanced versions of Elite,
+                        ; where the BNE is replaced by a BEQ to bring it in line
+                        ; with the other three slopes
+
+ DEX                    ; Decrement the counter in X because we're about to plot
+                        ; the first pixel
 
 .LIL2
 
- LDA R
- EOR (SC),Y
- STA (SC),Y
+                        ; We now loop along the line from left to right, using X
+                        ; as a decreasing counter, and at each count we plot a
+                        ; single pixel using the pixel mask in R
+
+ LDA R                  ; Fetch the pixel byte from R
+
+ EOR (SC),Y             ; Store R into screen memory at SC(1 0), using EOR
+ STA (SC),Y             ; logic so it merges with whatever is already on-screen
 
 .LI6
 
- ASL R
- BPL LI7
- LDA #1
- STA R
- INY
+ ASL R                  ; Shift the single pixel in R to the left to step along
+                        ; the x-axis, so the next pixel we plot will be at the
+                        ; next x-coordinate along (we shift left because the
+                        ; pixels in the high-resolution screen are the opposite
+                        ; way around than the bits in the pixel byte)
+
+ BPL LI7                ; If the pixel didn't fall out of the left end of the
+                        ; pixel bits in R into the palette bit in bit 7, then
+                        ; jump to LI7
+
+ LDA #%00000001         ; Otherwise we need to move over to the next character
+ STA R                  ; block, so set R = %00000001 to move the pixel to the
+                        ; left end of the next pixel byte
+
+ INY                    ; And increment Y to move on to the next character block
+                        ; along to the right
 
 .LI7
 
- LDA S
+ LDA S                  ; Set S = S + Q to update the slope error
  ADC Q
  STA S
- BCC LIC2
- DEC T2
- BMI LI20
- LDA SC+1
- SBC #4
- STA SC+1
+
+ BCC LIC2               ; If the addition didn't overflow, jump to LIC2
+
+ DEC T2                 ; Otherwise we just overflowed, so decrement the pixel
+                        ; row counter within the character block, which is in
+                        ; T2, as we are moving to a new pixel line
+
+ BMI LI20               ; If T2 is negative then the counter just ran down and
+                        ; we are no longer within the same character block, so
+                        ; jump to LI20 to move to the bottom pixel row in the
+                        ; character row above
+
+                        ; We now need to move up into the pixel row above
+
+ LDA SC+1               ; Subtract 4 from the high byte of SC(1 0), so this does
+ SBC #4                 ; the following:
+ STA SC+1               ;
+                        ;   SC(1 0) = SC(1 0) - $400
+                        ;
+                        ; The SBC works because the C flag is set, as we passed
+                        ; through the BCC above
+                        ;
+                        ; So this sets SC(1 0) to the address of the pixel row
+                        ; above the one we just drew in, as each pixel row
+                        ; within the character row is spaced out by $400 bytes
+                        ; in screen memory
 
 .LIC2
 
- DEX
- BNE LIL2
- LDY YSAV
- RTS
+ DEX                    ; Decrement the counter in X
+
+ BNE LIL2               ; If we haven't yet reached the right end of the line,
+                        ; loop back to LIL2 to plot the next pixel along
+
+ LDY YSAV               ; Restore Y from YSAV, so that it's preserved
+
+ RTS                    ; Return from the subroutine
 
 .LI20
 
- LDA #7
- STA T2
- STX T
- LDX T1
- DEX
+                        ; If we get here then we need to move up into the bottom
+                        ; pixel row in the character block above
+
+ LDA #7                 ; Set the pixel line number within the character row
+ STA T2                 ; (which we store in T2) to 7, which is the bottom pixel
+                        ; row of the character block above
+
+ STX T                  ; Store the current character row number in T, so we can
+                        ; restore it below
+
+ LDX T1                 ; Decrement the number of the character row in T1, as we
+ DEX                    ; are moving up a row
  STX T1
- LDA SCTBL,X
- STA SC
- LDA SCTBH2,X
- LDX T
- STA SC+1
- JMP LIC2
+
+ LDA SCTBL,X            ; Set SC(1 0) to the X-th entry from (SCTBH2 SCTBL), so
+ STA SC                 ; it contains the address of the start of the bottom
+ LDA SCTBH2,X           ; pixel row in character row X in screen memory (so
+                        ; that's the bottom pixel row in the character row we
+                        ; just moved up into)
+                        ;
+                        ; We set the high byte below (though there's no reason
+                        ; why it isn't done here)
+
+ LDX T                  ; Restore the value of X that we stored, so X contains
+                        ; the previous character row number, from before we
+                        ; moved up a row (we need to do this as the following
+                        ; jump returns us to a point where the previous row
+                        ; number is still in X)
+
+ STA SC+1               ; Set the high byte of SC(1 0) as above
+
+ JMP LIC2               ; Jump back to keep drawing the line
 
 ; ******************************************************************************
 ;
@@ -41157,64 +41274,139 @@ ENDMACRO
 ;    Summary: Draw a shallow line going right and down or left and up
 ;  Deep dive: Bresenham's line algorithm
 ;
+; ------------------------------------------------------------------------------
+;
+; This routine draws a line from (X1, Y1) to (X2, Y2). It has multiple stages.
+; If we get here, then:
+;
+;   * The line is going right and down (no swap) or left and up (swap)
+;
+;   * X1 < X2 and Y1 <= Y2
+;
+;   * Draw from (X1, Y1) at top left to (X2, Y2) at bottom right, omitting the
+;     first pixel
+;
 ; ******************************************************************************
 
 .DOWN
 
- LDA T2
- EOR #7
- STA T2
- LDA SWAP
- BEQ LI9
- DEX
+ LDA T2                 ; Set T2 = 7 - T2
+ EOR #7                 ;
+ STA T2                 ; T2 contains the number of the pixel row within the
+                        ; character block, from 0 at the top to 7 at the bottom
+                        ;
+                        ; We're going to be drawing a line that goes downwards,
+                        ; so this calculation enables us to use T2 as a pixel
+                        ; row counter, stepping down one pixel line at a time
+
+ LDA SWAP               ; If SWAP = 0 then we didn't swap the coordinates above,
+ BEQ LI9                ; so jump down to LI9 to skip plotting the first pixel
+
+ DEX                    ; Decrement the counter in X because we're about to plot
+                        ; the first pixel
 
 .LIL3
 
- LDA R
- EOR (SC),Y
- STA (SC),Y
+                        ; We now loop along the line from left to right, using X
+                        ; as a decreasing counter, and at each count we plot a
+                        ; single pixel using the pixel mask in R
+
+ LDA R                  ; Fetch the pixel byte from R
+
+ EOR (SC),Y             ; Store R into screen memory at SC(1 0), using EOR
+ STA (SC),Y             ; logic so it merges with whatever is already on-screen
 
 .LI9
 
- ASL R
- BPL LI10
- LDA #1
- STA R
- INY
+ ASL R                  ; Shift the single pixel in R to the left to step along
+                        ; the x-axis, so the next pixel we plot will be at the
+                        ; next x-coordinate along (we shift left because the
+                        ; pixels in the high-resolution screen are the opposite
+                        ; way around than the bits in the pixel byte)
+
+ BPL LI10               ; If the pixel didn't fall out of the left end of the
+                        ; pixel bits in R into the palette bit in bit 7, then
+                        ; jump to LI10
+
+ LDA #%00000001         ; Otherwise we need to move over to the next character
+ STA R                  ; block, so set R = %00000001 to move the pixel to the
+                        ; left end of the next pixel byte
+
+ INY                    ; And increment Y to move on to the next character block
+                        ; along to the right
 
 .LI10
 
- LDA S
+ LDA S                  ; Set S = S + Q to update the slope error
  ADC Q
  STA S
- BCC LIC3
- DEC T2
- BMI LI21
- LDA SC+1
- ADC #3
- STA SC+1
+
+ BCC LIC3               ; If the addition didn't overflow, jump to LIC3
+
+ DEC T2                 ; Otherwise we just overflowed, so decrement the pixel
+                        ; row counter within the character block, which is in
+                        ; T2, as we are moving to a new pixel line
+
+ BMI LI21               ; If T2 is negative then the counter just ran down and
+                        ; we are no longer within the same character block, so
+                        ; jump to LI21 to move to the top pixel row in the
+                        ; character row below
+
+                        ; We now need to move up into the pixel row below
+
+ LDA SC+1               ; Add 4 to the high byte of SC(1 0), so this does the
+ ADC #3                 ; following:
+ STA SC+1               ;
+                        ;   SC(1 0) = SC(1 0) + $400
+                        ;
+                        ; The ADC adds 4 rather than 3 because the C flag is
+                        ; set, as we passed through the BCC above
+                        ;
+                        ; So this sets SC(1 0) to the address of the pixel row
+                        ; below the one we just drew in, as each pixel row
+                        ; within the character row is spaced out by $400 bytes
+                        ; in screen memory
 
 .LIC3
 
- DEX
- BNE LIL3
- LDY YSAV
- RTS
+ DEX                    ; Decrement the counter in X
+
+ BNE LIL3               ; If we haven't yet reached the right end of the line,
+                        ; loop back to LIL3 to plot the next pixel along
+
+ LDY YSAV               ; Restore Y from YSAV, so that it's preserved
+
+ RTS                    ; Return from the subroutine
 
 .LI21
 
- LDA #7
- STA T2
- STX T
- LDX T1
- INX
+                        ; If we get here then we need to move down into the top
+                        ; pixel row in the character block below
+
+ LDA #7                 ; Set the pixel line number within the character row
+ STA T2                 ; (which we store in T2) to 7, which is the bottom pixel
+                        ; row of the character block above
+
+ STX T                  ; Store the current character row number in T, so we can
+                        ; restore it below
+
+ LDX T1                 ; Increment the number of the character row in T1, as we
+ INX                    ; are moving down a row
  STX T1
- LDA SCTBL,X
- STA SC
- LDA SCTBH,X
- STA SC+1
- LDX T
- JMP LIC3
+
+ LDA SCTBL,X            ; Set SC(1 0) to the X-th entry from (SCTBH SCTBL), so
+ STA SC                 ; it contains the address of the start of the top pixel
+ LDA SCTBH,X            ; row in character row X in screen memory (so that's the
+ STA SC+1               ; top pixel row in the character row we just moved down
+                        ; into)
+
+ LDX T                  ; Restore the value of X that we stored, so X contains
+                        ; the previous character row number, from before we
+                        ; moved down a row (we need to do this as the following
+                        ; jump returns us to a point where the previous row
+                        ; number is still in X)
+
+ JMP LIC3               ; Jump back to keep drawing the line
 
 ; ******************************************************************************
 ;
@@ -41300,11 +41492,19 @@ ENDMACRO
                         ; character row, and each pixel row within the character
                         ; row is offset by $400 bytes
 
- LDY SCTBX1,X           ; ???
- LDA TWOS,Y
- STA R
+ LDY SCTBX1,X           ; Using the lookup table at SCTBX1, set Y to the bit
+                        ; number within the pixel byte that corresponds to the
+                        ; pixel at the x-coordinate in X, i.e. the start of the
+                        ; line (so Y is in the range 0 to 6, as bit 7 in the
+                        ; pixel byte is used to set the pixel byte's colour
+                        ; palette)
 
- LDY SCTBX2,X           ; ???
+ LDA TWOS,Y             ; Fetch a one-pixel byte from TWOS where pixel Y is set,
+ STA R                  ; and store it in R
+
+ LDY SCTBX2,X           ; Using the lookup table at SCTBX2, set Y to the byte
+                        ; number within the pixel row that contains the start of
+                        ; the line
 
                         ; The following section calculates:
                         ;
@@ -41337,7 +41537,12 @@ ENDMACRO
  LDX Q
  SBC log,X
 
- BCC P%+6               ; ???
+ BCC P%+6               ; If the subtraction underflowed then skip the next two
+                        ; instructions as log(P) - log(Q) >= 256
+
+                        ; Otherwise the subtraction fitted into one byte and
+                        ; didn't underflow, so log(P) - log(Q) < 256, and we
+                        ; now return a result of 255
 
  LDA #255               ; The division is very close to 1, so set A to the
  BNE LIlog2             ; closest possible answer to 256, i.e. 255, and jump to
@@ -41377,61 +41582,136 @@ ENDMACRO
 ;    Summary: Draw a steep line going up and left or down and right
 ;  Deep dive: Bresenham's line algorithm
 ;
+; ------------------------------------------------------------------------------
+;
+; This routine draws a line from (X1, Y1) to (X2, Y2). It has multiple stages.
+; If we get here, then:
+;
+;   * The line is going up and left (no swap) or down and right (swap)
+;
+;   * X1 < X2 and Y1 >= Y2
+;
+;   * Draw from (X1, Y1) at top left to (X2, Y2) at bottom right, omitting the
+;     first pixel
+;
 ; ******************************************************************************
 
- CLC
- LDA SWAP
- BEQ LI17
- DEX
+ CLC                    ; Clear the C flag
+
+ LDA SWAP               ; If SWAP = 0 then we didn't swap the coordinates above,
+ BEQ LI17               ; so jump down to LI17 to skip plotting the first pixel
+
+ DEX                    ; Decrement the counter in X because we're about to plot
+                        ; the first pixel
 
 .LIL5
 
- LDA R
- EOR (SC),Y
- STA (SC),Y
+                        ; We now loop along the line from left to right, using X
+                        ; as a decreasing counter, and at each count we plot a
+                        ; single pixel using the pixel mask in R
+
+ LDA R                  ; Fetch the pixel byte from R
+
+ EOR (SC),Y             ; Store R into screen memory at SC(1 0), using EOR
+ STA (SC),Y             ; logic so it merges with whatever is already on-screen
 
 .LI17
 
- DEC T2
- BMI LI22
- LDA SC+1
- SBC #3
- STA SC+1
- CLC
+ DEC T2                 ; Decrement the pixel row counter within the character
+                        ; block, which is in T2
+
+ BMI LI22               ; If T2 is negative then the counter just ran down and
+                        ; we are no longer within the same character block, so
+                        ; jump to LI22 to move to the bottom pixel row in the
+                        ; character row above
+
+                        ; We now need to move up into the pixel row above
+
+ LDA SC+1               ; Subtract 4 from the high byte of SC(1 0), so this does
+ SBC #3                 ; the following:
+ STA SC+1               ;
+                        ;   SC(1 0) = SC(1 0) - $400
+                        ;
+                        ; The SBC works because we cleared the C flag above
+                        ;
+                        ; So this sets SC(1 0) to the address of the pixel row
+                        ; above the one we just drew in, as each pixel row
+                        ; within the character row is spaced out by $400 bytes
+                        ; in screen memory
+
+ CLC                    ; Clear the C flag again, as it will have been set by
+                        ; the subtraction
 
 .LI16
 
- LDA S
+ LDA S                  ; Set S = S + P to update the slope error
  ADC P
  STA S
- BCC LIC5
- ASL R
- BPL LIC5
- LDA #1
- STA R
- INY
+
+ BCC LIC5               ; If the addition didn't overflow, jump to LIC5
+
+ ASL R                  ; Shift the single pixel in R to the left to step along
+                        ; the x-axis, so the next pixel we plot will be at the
+                        ; next x-coordinate along (we shift left because the
+                        ; pixels in the high-resolution screen are the opposite
+                        ; way around than the bits in the pixel byte)
+
+ BPL LIC5               ; If the pixel didn't fall out of the left end of the
+                        ; pixel bits in R into the palette bit in bit 7, then
+                        ; jump to LIC5
+
+ LDA #%00000001         ; Otherwise we need to move over to the next character
+ STA R                  ; block, so set R = %00000001 to move the pixel to the
+                        ; left end of the next pixel byte
+
+ INY                    ; And increment Y to move on to the next character block
+                        ; along to the right
 
 .LIC5
 
- DEX
- BNE LIL5
- LDY YSAV
- RTS
+ DEX                    ; Decrement the counter in X
+
+ BNE LIL5               ; If we haven't yet reached the right end of the line,
+                        ; loop back to LIL5 to plot the next pixel along
+
+ LDY YSAV               ; Restore Y from YSAV, so that it's preserved
+
+ RTS                    ; Return from the subroutine
 
 .LI22
 
- LDA #7
- STA T2
- STX T
- LDX T1
- DEX
+                        ; If we get here then we need to move up into the bottom
+                        ; pixel row in the character block above
+
+ LDA #7                 ; Set the pixel line number within the character row
+ STA T2                 ; (which we store in T2) to 7, which is the bottom pixel
+                        ; row of the character block above
+
+ STX T                  ; Store the current character row number in T, so we can
+                        ; restore it below
+
+ LDX T1                 ; Decrement the number of the character row in T1, as we
+ DEX                    ; are moving up a row
  STX T1
- LDA SCTBL,X
- STA SC
- LDA SCTBH2,X
- LDX T
- STA SC+1
- JMP LI16
+
+ LDA SCTBL,X            ; Set SC(1 0) to the X-th entry from (SCTBH2 SCTBL), so
+ STA SC                 ; it contains the address of the start of the bottom
+ LDA SCTBH2,X           ; pixel row in character row X in screen memory (so
+                        ; that's the bottom pixel row in the character row we
+                        ; just moved up into)
+                        ;
+                        ; We set the high byte below (though there's no reason
+                        ; why it isn't done here)
+
+ LDX T                  ; Restore the value of X that we stored, so X contains
+                        ; the previous character row number, from before we
+                        ; moved up a row (we need to do this as the following
+                        ; jump returns us to a point where the previous row
+                        ; number is still in X)
+
+ STA SC+1               ; Set the high byte of SC(1 0) as above
+
+ JMP LI16               ; Jump back to keep drawing the line
 
 ; ******************************************************************************
 ;
@@ -41443,6 +41723,18 @@ ENDMACRO
 ;
 ; ------------------------------------------------------------------------------
 ;
+; This routine draws a line from (X1, Y1) to (X2, Y2). It has multiple stages.
+; If we get here, then:
+;
+;   * The line is going up and right (no swap) or down and left (swap)
+;
+;   * X1 >= X2 and Y1 >= Y2
+;
+;   * Draw from (X1, Y1) at bottom left to (X2, Y2) at top right, omitting the
+;     first pixel
+;
+; ------------------------------------------------------------------------------
+;
 ; Other entry points:
 ;
 ;   HL6                 Contains an RTS
@@ -41451,62 +41743,122 @@ ENDMACRO
 
 .LFT
 
- LDA SWAP
- BEQ LI18
- DEX
+ LDA SWAP               ; If SWAP = 0 then we didn't swap the coordinates above,
+ BEQ LI18               ; so jump down to LI18 to skip plotting the first pixel
+
+ DEX                    ; Decrement the counter in X because we're about to plot
+                        ; the first pixel
 
 .LIL6
 
- LDA R
- EOR (SC),Y
- STA (SC),Y
+ LDA R                  ; Fetch the pixel byte from R
+
+ EOR (SC),Y             ; Store R into screen memory at SC(1 0), using EOR
+ STA (SC),Y             ; logic so it merges with whatever is already on-screen
 
 .LI18
 
- DEC T2
- BMI LI23
- LDA SC+1
- SBC #3
- STA SC+1
- CLC
+ DEC T2                 ; Decrement the pixel row counter within the character
+                        ; block, which is in T2
+
+ BMI LI23               ; If T2 is negative then the counter just ran down and
+                        ; we are no longer within the same character block, so
+                        ; jump to LI23 to move to the bottom pixel row in the
+                        ; character row above
+
+                        ; We now need to move up into the pixel row above
+
+ LDA SC+1               ; Subtract 4 from the high byte of SC(1 0), so this does
+ SBC #3                 ; the following:
+ STA SC+1               ;
+                        ;   SC(1 0) = SC(1 0) - $400
+                        ;
+                        ; The SBC works because we cleared the C flag above
+                        ;
+                        ; So this sets SC(1 0) to the address of the pixel row
+                        ; above the one we just drew in, as each pixel row
+                        ; within the character row is spaced out by $400 bytes
+                        ; in screen memory
+
+ CLC                    ; Clear the C flag again, as it will have been set by
+                        ; the subtraction
 
 .LI19
 
- LDA S
+ LDA S                  ; Set S = S + P to update the slope error
  ADC P
  STA S
- BCC LIC6
- LSR R
- BCC LIC6
- LDA #64
- STA R
- DEY
- CLC
+
+ BCC LIC6               ; If the addition didn't overflow, jump to LIC6
+
+ LSR R                  ; Shift the single pixel in R to the right to step along
+                        ; the x-axis, so the next pixel we plot will be at the
+                        ; previous x-coordinate to the left (we shift right
+                        ; because the pixels in the high-resolution screen are
+                        ; the opposite way around than the bits in the pixel
+                        ; byte)
+
+ BCC LIC6               ; If the pixel didn't fall out of the right end of the
+                        ; pixel bits in R into the C flag, then jump to LIC6
+
+ LDA #%01000000         ; Otherwise we need to move left to the next character
+ STA R                  ; block, so set R = %01000000 to move the pixel to the
+                        ; right end of the next pixel byte, skipping bit 7 as
+                        ; that's reserved for the colour palette bit
+
+ DEY                    ; And decrement Y to move on to the next character block
+                        ; along to the left
+
+ CLC                    ; Clear the C flag so it doesn't affect the additions
+                        ; if we loop back
 
 .LIC6
 
- DEX
- BNE LIL6
- LDY YSAV
+ DEX                    ; Decrement the counter in X
+
+ BNE LIL6               ; If we haven't yet reached the left end of the line,
+                        ; loop back to LIL6 to plot the next pixel along
+
+ LDY YSAV               ; Restore Y from YSAV, so that it's preserved
 
 .HL6
 
- RTS
+ RTS                    ; Return from the subroutine
 
 .LI23
 
- LDA #7
- STA T2
- STX T
- LDX T1
- DEX
+                        ; If we get here then we need to move up into the bottom
+                        ; pixel row in the character block above
+
+ LDA #7                 ; Set the pixel line number within the character row
+ STA T2                 ; (which we store in T2) to 7, which is the bottom pixel
+                        ; row of the character block above
+
+ STX T                  ; Store the current character row number in T, so we can
+                        ; restore it below
+
+ LDX T1                 ; Decrement the number of the character row in T1, as we
+ DEX                    ; are moving up a row
  STX T1
- LDA SCTBL,X
- STA SC
- LDA SCTBH2,X
- LDX T
- STA SC+1
- JMP LI19
+
+ LDA SCTBL,X            ; Set SC(1 0) to the X-th entry from (SCTBH2 SCTBL), so
+ STA SC                 ; it contains the address of the start of the bottom
+ LDA SCTBH2,X           ; pixel row in character row X in screen memory (so
+                        ; that's the bottom pixel row in the character row we
+                        ; just moved up into)
+                        ;
+                        ; We set the high byte below (though there's no reason
+                        ; why it isn't done here)
+
+ LDX T                  ; Restore the value of X that we stored, so X contains
+                        ; the previous character row number, from before we
+                        ; moved up a row (we need to do this as the following
+                        ; jump returns us to a point where the previous row
+                        ; number is still in X)
+
+ STA SC+1               ; Set the high byte of SC(1 0) as above
+
+ JMP LI19               ; Jump back to keep drawing the line
 
 ; ******************************************************************************
 ;
@@ -42022,18 +42374,38 @@ ENDMACRO
 
 .VLO2
 
- LDA #7
- STA T2
- STX T
- LDX T1
- DEX
+                        ; If we get here then we need to move up into the bottom
+                        ; pixel row in the character block above
+
+ LDA #7                 ; Set the pixel line number within the character row
+ STA T2                 ; (which we store in T2) to 7, which is the bottom pixel
+                        ; row of the character block above
+
+ STX T                  ; Store the current character row number in T, so we can
+                        ; restore it below
+
+ LDX T1                 ; Decrement the number of the character row in T1, as we
+ DEX                    ; are moving up a row
  STX T1
- LDA SCTBL,X
- STA SC
- LDA SCTBH2,X
- LDX T
- STA SC+1
- JMP VLO3
+
+ LDA SCTBL,X            ; Set SC(1 0) to the X-th entry from (SCTBH2 SCTBL), so
+ STA SC                 ; it contains the address of the start of the bottom
+ LDA SCTBH2,X           ; pixel row in character row X in screen memory (so
+                        ; that's the bottom pixel row in the character row we
+                        ; just moved up into)
+                        ;
+                        ; We set the high byte below (though there's no reason
+                        ; why it isn't done here)
+
+ LDX T                  ; Restore the value of X that we stored, so X contains
+                        ; the previous character row number, from before we
+                        ; moved up a row (we need to do this as the following
+                        ; jump returns us to a point where the previous row
+                        ; number is still in X)
+
+ STA SC+1               ; Set the high byte of SC(1 0) as above
+
+ JMP VLO3               ; Jump back to keep drawing the line
 
 ; ******************************************************************************
 ;
@@ -42078,7 +42450,11 @@ ENDMACRO
                         ; character row, and each pixel row within the character
                         ; row is offset by $400 bytes
 
- LDY SCTBX1,X
+ LDY SCTBX1,X           ; Using the lookup table at SCTBX1, set Y to the bit
+                        ; number within the pixel byte that corresponds to the
+                        ; pixel we want to draw (as X contains the x-coordinate
+                        ; of the pixel)
+
  LDA #0
  CPY #6
  BNE P%+4
@@ -42108,7 +42484,7 @@ ENDMACRO
 
 .CPR1
 
- RTS
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
