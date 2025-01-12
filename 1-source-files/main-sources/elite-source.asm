@@ -60,15 +60,15 @@
 
 IF _IB_DISK
 
- STORE = $0200          ; The address where the dashboard image is loaded ???
+ STORE = $0200          ; The address where the dashboard image is loaded
 
- CODE2 = $2000          ; The address where the dashboard image is run ???
+ CODE2 = $2000          ; The address where the dashboard image is stored
 
 ELIF _SOURCE_DISK
 
- STORE = $D000          ; The address where the dashboard image is loaded ???
+ STORE = $D000          ; The address where the dashboard image is loaded
 
- CODE2 = $9000          ; The address where the dashboard image is run ???
+ CODE2 = $9000          ; The address where the dashboard image is stored
 
 ENDIF
 
@@ -291,17 +291,7 @@ ENDIF
 
  R% = $BFFF             ; The address of the last byte of game code
 
- comsiz  =  110         ; Commander file size (1-252 bytes)
- comfil  =  TAP%-20     ; Commander file (must not exceed 252 bytes)
- comfil2 =  comfil+comsiz-4
- buffer  =  $0800       ; K%, 256 byte sector buffer
- buffr2  =  $0800+256   ; K%+256, 342 6 bit 'nibble' buffer
- fretrk  =  buffer+$30  ; last allocated track
- dirtrk  =  buffer+$31  ; direction of track allocation (+1 or -1)
- tracks  =  buffer+$34  ; number of tracks per disc
- bitmap  =  buffer+$38  ; bit map of free sectors in track 0
-
-                        ; Disc Controller Addresses
+                        ; Disk controller addresses ???
 
  phsoff  =  $C080       ; stepper motor phase 0 off
  mtroff  =  $C088       ; turn motor off
@@ -313,7 +303,18 @@ ENDIF
  Q7L     =  $C08E       ; prepare latch for input
  Q7H     =  $C08F       ; prepare latch for output
 
- track   =  buffr2+350  ; ???
+                        ; Disk controller variables ???
+
+ comsiz  =  110         ; Commander file size (1-252 bytes)
+ comfil  =  TAP%-20     ; Commander file (must not exceed 252 bytes)
+ comfil2 =  comfil+comsiz-4
+ buffer  =  $0800       ; K%, 256 byte sector buffer
+ buffr2  =  $0800+256   ; K%+256, 342 6 bit 'nibble' buffer
+ fretrk  =  buffer+$30  ; last allocated track
+ dirtrk  =  buffer+$31  ; direction of track allocation (+1 or -1)
+ tracks  =  buffer+$34  ; number of tracks per disc
+ bitmap  =  buffer+$38  ; bit map of free sectors in track 0
+ track   =  buffr2+350
  sector  =  track+1
  curtrk  =  sector+1
  tsltrk  =  curtrk+1
@@ -616,16 +617,22 @@ ENDIF
 
 .ztemp0
 
- SKIP 0                 ; ???
+ SKIP 0                 ; Temporary storage used by the disk routines
+                        ;
+                        ; This variable shares its address with the coordinate
+                        ; variables, which are unused during disk access
 
 .X1
 
  SKIP 1                 ; Temporary storage, typically used for x-coordinates in
-                        ; line-drawing routines
+                        ; the line-drawing routines
 
 .ztemp1
 
- SKIP 0                 ; ???
+ SKIP 0                 ; Temporary storage used by the disk routines
+                        ;
+                        ; This variable shares its address with the coordinate
+                        ; variables, which are unused during disk access
 
 .Y1
 
@@ -634,16 +641,22 @@ ENDIF
 
 .ztemp2
 
- SKIP 0                 ; ???
+ SKIP 0                 ; Temporary storage used by the disk routines
+                        ;
+                        ; This variable shares its address with the coordinate
+                        ; variables, which are unused during disk access
 
 .X2
 
  SKIP 1                 ; Temporary storage, typically used for x-coordinates in
-                        ; line-drawing routines
+                        ; the line-drawing routines
 
 .ztemp3
 
- SKIP 0                 ; ???
+ SKIP 0                 ; Temporary storage used by the disk routines
+                        ;
+                        ; This variable shares its address with the coordinate
+                        ; variables, which are unused during disk access
 
 .Y2
 
@@ -1106,7 +1119,12 @@ ENDIF
 
 .text
 
- SKIP 1                 ; ???
+ SKIP 1                 ; A flag to record the type of screen mode that's
+                        ; currently being used:
+                        ;
+                        ;   * Bit 7 clear = high-resolution screen mode
+                        ;
+                        ;   * Bit 7 set = text screen mode
 
 .messXC
 
@@ -2312,24 +2330,24 @@ NEXT
 
 .COMC
 
- SKIP 1                 ; The colour of the dot on the compass
+ SKIP 1                 ; The shape (i.e. thickness) of the dot on the compass
                         ;
-                        ;   * $F0 = the object in the compass is in front of us,
-                        ;     so the dot is yellow/white ???
                         ;
-                        ;   * $FF = the object in the compass is behind us, so
-                        ;     the dot is green/cyan ???
+                        ;   * 0 = do not draw a dot on the compass
+                        ;
+                        ;   * $30 = the object in the compass is in front of us,
+                        ;     so the dot is two pixels high and white
+                        ;
+                        ;   * $60 = the object in the compass is behind us, so
+                        ;     the dot is one pixel high and white
 
 .dials
 
- EQUD 0                 ; These bytes appear to be unused
- EQUD 0
- EQUD 0
- EQUW 0
+ SKIP 14                ; ???
 
 .mscol
 
- EQUD 0                 ; This byte appears to be unused
+ SKIP 4                 ; ???
 
 .DFLAG
 
@@ -2525,7 +2543,7 @@ IF _SOURCE_DISK
 
 ENDIF
 
- LDA #LO(STORE)
+ LDA #LO(STORE)         ; ???
  STA SC
  LDA #HI(STORE)
  STA SC+1
@@ -6596,8 +6614,6 @@ ENDIF
 ;    Summary: Table of pointers to the local universe's ship data blocks
 ;  Deep dive: The local bubble of universe
 ;             Ship data blocks
-;
-; ------------------------------------------------------------------------------
 ;
 ; ******************************************************************************
 
@@ -16482,9 +16498,10 @@ ENDIF
 
 .PAUSE2
 
- JSR RDKEY              ; Scan the keyboard for a key press and return the
-                        ; ASCII code of the key pressed in X (or 0 for no key
+ JSR RDKEY              ; Scan the keyboard for a key press and return the ASCII
+                        ; code of the key pressed in A and X (or 0 for no key
                         ; press)
+ 
 
  BNE PAUSE2             ; If a key was already being held down when we entered
                         ; this routine, keep looping back up to PAUSE2, until
@@ -16494,6 +16511,7 @@ ENDIF
                         ; start scanning the keyboard again, returning the
                         ; ASCII code of the key pressed in X (or 0 for no key
                         ; press)
+ 
 
  BEQ PAUSE2             ; Keep looping up to PAUSE2 until a key is pressed
 
@@ -20999,21 +21017,24 @@ ENDIF
 
 .ee5
 
- JSR RDKEY              ; ???
- CMP #9
- BNE nopatg
+ JSR RDKEY              ; Scan the keyboard for a key press and return the ASCII
+                        ; code of the key pressed in A and X (or 0 for no key
+                        ; press)
+
+ CMP #9                 ; If TAB is not being pressed, jump to nopatg to skip
+ BNE nopatg             ; the following
 
  LDA PATG               ; If the game is configured to show the author's names
                         ; on the start-up screen, then PATG will contain $FF,
                         ; otherwise it will be 0
 
- BMI ptg                ; We only get here if we are holding down ???
-                        ; and author names are configured, which is what we have
-                        ; to do in order to trigger a manual mis-jump, so jump
-                        ; to ptg to do a mis-jump (ptg not only mis-jumps, but
-                        ; updates the competition flags, so Acornsoft could tell
-                        ; from the competition code whether this feature had
-                        ; been used)
+ BMI ptg                ; We only get here if we are holding down TAB, so this
+                        ; checks to see whether author names are configured, and
+                        ; if they are, then we have what we need to trigger a
+                        ; manual mis-jump, so jump to ptg to do a mis-jump (ptg
+                        ; not only mis-jumps, but updates the competition flags,
+                        ; so Firebird could tell from the competition code
+                        ; whether this feature had been used)
 
 .nopatg
 
@@ -24261,17 +24282,23 @@ ENDIF
                         ;
                         ;   COMY = 148 - X - (1 - 0) = 147 - X
 
- LDA #$60               ; Set A to yellow, the colour for when the planet or
-                        ; station in the compass is in front of us ???
+ LDA #$60               ; Set A to $60, the value we pass to PIXEL for drawing a
+                        ; one-pixel high dot, for when the planet or station in
+                        ; the compass is in front of us (this is the opposite
+                        ; way around to the other versions, which have a larger
+                        ; compass dot when the item is in front)
 
  LDX XX15+2             ; If the z-coordinate of the XX15 vector is positive,
  BPL P%+3               ; skip the following instruction
 
  LSR A                  ; The z-coordinate of XX15 is negative, so the planet or
-                        ; station is behind us and the compass dot should be in
-                        ; green, so set A accordingly ???
+                        ; station is behind us and the compass dot should be a
+                        ; double-height dash, so set A to $30 for the call to
+                        ; PIXEL below (this is the opposite way around to the
+                        ; other versions, which have a smaller compass dot when
+                        ; the item is behind)
 
- STA COMC               ; Store the compass colour in COMC
+ STA COMC               ; Store the compass shape in COMC
 
                         ; Fall through into DOT to draw the dot on the compass
 
@@ -24290,27 +24317,43 @@ ENDIF
 ;
 ;   COMY                The screen pixel y-coordinate of the dash
 ;
-;   COMC                The colour and thickness of the dash: ???
+;   COMC                The thickness of the dash (this is the opposite way
+;                       around to the other versions, which have a larger
+;                       compass dot when the item is in front):
 ;
-;                         * $F0 = a double-height dash in yellow/white, for when
-;                           the object in the compass is in front of us
-;
-;                         * $FF = a single-height dash in green/cyan, for when
-;                           the object in the compass is behind us
+;                         * 0 = do not draw a dot on the compass
+;                       
+;                         * $30 = a double-height dash in white, for when the
+;                           object in the compass is behind us
+;                       
+;                         * $60 = a single-height dash in white, for when the
+;                           object in the compass is in front of us
 ;
 ; ******************************************************************************
 
 .DOT
 
- LDA COMC               ; ???
- BEQ COR1
- STA ZZ
+ LDA COMC               ; If COMC = 0 then jump to COR1 to return from the
+ BEQ COR1               ; subroutine without drawing a dot, as COR1 contains
+                        ; an RTS
+
+ STA ZZ                 ; Set ZZ = A, so ZZ is $30 or $60, which can be passed
+                        ; to the PIXEL routine as a "distance" so the first
+                        ; value of $30 draws a large ("close") dot for when the
+                        ; compass item is behind, while the second value of $60
+                        ; draws a small ("faraway") dot for when it is in front
+                        ;
+                        ; This is the opposite way around to the other versions,
+                        ; which have a larger compass dot when the item is in
+                        ; front
 
  LDA COMY               ; Set A = COMY, the y-coordinate of the dash
 
  LDX COMX               ; Set X = COMX, the x-coordinate of the dash
 
- JMP PIXEL              ; ???
+ JMP PIXEL              ; Call the PIXEL routine to draw a large or small white
+                        ; dot on the compass, returning from the subroutine
+                        ; using a tail call
 
 ; ******************************************************************************
 ;
@@ -29686,8 +29729,9 @@ ENDIF
 
  JSR LL9                ; Call LL9 to display the ship
 
- JSR RDKEY              ; Scan the keyboard for a key press and return the
-                        ; key in X (or 0 for no key press)
+ JSR RDKEY              ; Scan the keyboard for a key press and return the ASCII
+                        ; code of the key pressed in A and X (or 0 for no key
+                        ; press)
                         ;
                         ; This also clears the C flag if no keys are being
                         ; pressed
@@ -29705,7 +29749,9 @@ ENDIF
 
  BMI TL3
 
- BCC TLL2               ; ???
+ BCC TLL2               ; If no key is being pressed then the C flag will be
+                        ; clear from the call to RDKEY, so loop back up to
+                        ; move/rotate the ship and check again for a key press
 
  RTS                    ; Return from the subroutine
 
@@ -31544,11 +31590,8 @@ ENDIF
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Returns:
-;
-;   A                   A is set to 0
-;
-;   Y                   Y is set to 0
+; This routine is not used in this version of Elite. It is left over from the
+; BBC Micro version.
 ;
 ; ******************************************************************************
 
@@ -31595,8 +31638,9 @@ ENDIF
 
 .DOKEY
 
- JSR RDKEY              ; Scan the keyboard for a key press and return the
-                        ; ASCII code of the key pressed in X
+ JSR RDKEY              ; Scan the keyboard for a key press and return the ASCII
+                        ; code of the key pressed in A and X (or 0 for no key
+                        ; press)
 
  LDA auto               ; If auto is 0, then the docking computer is not
  BEQ DK15               ; currently activated, so jump to DK15 to skip the
@@ -31837,8 +31881,8 @@ ENDIF
  JSR WSCAN              ; Call WSCAN to wait for the vertical sync, so the whole
                         ; screen gets drawn
 
- JSR RDKEY              ; Scan the keyboard for a key press and return the
-                        ; ASCII code of the key pressed in X (or 0 for no key
+ JSR RDKEY              ; Scan the keyboard for a key press and return the ASCII
+                        ; code of the key pressed in A and X (or 0 for no key
                         ; press)
 
  CPX #'Q'               ; If "Q" is not being pressed, skip to DK6
@@ -31938,8 +31982,8 @@ ENDIF
                         ; presses being recorded
 
  JSR RDKEY              ; Scan the keyboard for a key press and return the
-                        ; ASCII code of the key pressed in X (or 0 for no key
-                        ; press)
+                        ; ASCII code of the key pressed in A and X (or 0 for no
+                        ; key press)
 
  BNE t                  ; If a key was already being held down when we entered
                         ; this routine, keep looping back up to t, until the
@@ -38786,16 +38830,21 @@ ENDMACRO
 
 .SOHISS2
 
- LDA $C030
- JSR DORND
+ LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
+                        ; out) by reaading the SPEAKER soft switch
+
+ JSR DORND              ; ???
  DEX
  NOP
  NOP
  BNE P%-3
  DEY
  BNE SOHISS2
- LDA $C030
- RTS
+
+ LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
+                        ; out) by reaading the SPEAKER soft switch
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -38828,8 +38877,10 @@ ENDMACRO
 
 .BEEPL4
 
- LDA $C030
- INC T3
+ LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
+                        ; out) by reaading the SPEAKER soft switch
+
+ INC T3                 ; ???
  LDX T3
  DEX
  NOP
@@ -38841,8 +38892,11 @@ ENDMACRO
  BNE P%-2
  DEY
  BNE BEEPL4
- LDA $C030
- RTS
+
+ LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
+                        ; out) by reaading the SPEAKER soft switch
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -38874,17 +38928,21 @@ ENDMACRO
 
 .BEEPL1
 
- LDA $C030
- LDX T3
+ LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
+                        ; out) by reaading the SPEAKER soft switch
+
+ LDX T3                 ; ???
  DEX
  BNE P%-1
  DEY
  BNE BEEPL1
- LDA $C030
+
+ LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
+                        ; out) by reaading the SPEAKER soft switch
 
 .SOUR
 
- RTS
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -38903,16 +38961,21 @@ ENDMACRO
 
 .BEEPL2
 
- LDA $C030
- DEC T3
+ LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
+                        ; out) by reaading the SPEAKER soft switch
+
+ DEC T3                 ; ???
  LDX T3
  DEX
  NOP
  BNE P%-2
  DEY
  BNE BEEPL2
- LDA $C030
- RTS
+
+ LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
+                        ; out) by reaading the SPEAKER soft switch
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -38936,16 +38999,21 @@ ENDMACRO
 
 .BEEPL3
 
- LDA $C030
- INC T3
+ LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
+                        ; out) by reaading the SPEAKER soft switch
+
+ INC T3                 ; ???
  INC T3
  LDX T3
  DEX
  BNE P%-1
  DEY
  BNE BEEPL3
- LDA $C030
- RTS
+
+ LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
+                        ; out) by reaading the SPEAKER soft switch
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -38978,8 +39046,10 @@ ENDMACRO
 
 .SOHISS4
 
- LDA $C030
- JSR DORND
+ LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
+                        ; out) by reaading the SPEAKER soft switch
+
+ JSR DORND              ; ???
  AND #31
  ORA #$E0
  TAX
@@ -38988,8 +39058,11 @@ ENDMACRO
  BNE P%-2
  DEY
  BNE SOHISS4
- LDA $C030
- RTS
+
+ LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
+                        ; out) by reaading the SPEAKER soft switch
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -39004,11 +39077,13 @@ ENDMACRO
 
  BIT DNOIZ              ; ???
  BMI SOUR2
- LDA $C030
+
+ LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
+                        ; out) by reaading the SPEAKER soft switch
 
 .SOUR2
 
- RTS
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;

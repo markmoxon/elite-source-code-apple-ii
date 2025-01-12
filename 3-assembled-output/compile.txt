@@ -24461,12 +24461,9 @@ WP workspace from &400 to &715 inclusive
 .COMC
      4543
 .dials
-     4544   00 00 00 00
-     4548   00 00 00 00
-     454C   00 00 00 00
-     4550   00 00
+     4544
 .mscol
-     4552   00 00 00 00
+     4552
 .DFLAG
      4556
 .DNOIZ
