@@ -2401,7 +2401,7 @@ NEXT
                         ; This needs to be turned on for manual mis-jumps to be
                         ; possible. To do a manual mis-jump, first toggle the
                         ; author display by pausing the game and pressing "X",
-                        ; and during the next hyperspace, hold down ??? to
+                        ; and during the next hyperspace, hold down TAB to
                         ; force a mis-jump. See routine ee5 for the "AND PATG"
                         ; instruction that implements this logic
 
@@ -6176,41 +6176,33 @@ ENDIF
 
 IF _IB_DISK
 
-                        ; The following is workspace noise ???
-
- EQUB 0                 ; TP = Mission status, #0
-
- EQUB 20                ; QQ0 = Current system X-coordinate (Lave), #1
- EQUB 173               ; QQ1 = Current system Y-coordinate (Lave), #2
-
- EQUW $5A4A             ; ??? Workspace noise
- EQUD $B7530248
-
- EQUD $E8030000         ; CASH = Amount of cash (100 Cr), #3-6
-
- EQUB 70                ; QQ14 = Fuel level, #7
-
- EQUB 0                 ; COK = Competition flags, #8
-
- EQUB 0                 ; GCNT = Galaxy number, 0-7, #9
-
- EQUB POW               ; LASER = Front laser, #10
-
- EQUB 0                 ; LASER+1 = Rear laser, #11
-
- EQUB 0                 ; LASER+2 = Left laser, #12
-
- EQUB 0                 ; LASER+3 = Right laser, #13
-
- EQUW 0                 ; ??? Workspace noise
-
- EQUB 22                ; CRGO = Cargo capacity, #14
-
- SKIP 28                ; Placeholders for bytes #15 to #41
-
- EQUB 3                 ; NOMSL = Number of missiles, #42
-
- EQUB 0                 ; FIST = Legal status ("fugitive/innocent status"), #43
+ EQUB $00, $14          ; Placeholders for bytes #0 to #52
+ EQUB $AD, $4A          ;
+ EQUB $5A, $48          ; This contains random workspace noise left over from
+ EQUB $02, $53          ; the BBC Micro assembly process
+ EQUB $B7, $00
+ EQUB $00, $03
+ EQUB $E8, $46
+ EQUB $00, $00
+ EQUB $0F, $00
+ EQUB $00, $00
+ EQUB $00, $00
+ EQUB $16, $00
+ EQUB $00, $00
+ EQUB $00, $00
+ EQUB $00, $00
+ EQUB $00, $00
+ EQUB $00, $00
+ EQUB $00, $00
+ EQUB $00, $00
+ EQUB $00, $00
+ EQUB $00, $00
+ EQUB $00, $00
+ EQUB $00, $00
+ EQUB $00, $00
+ EQUB $00, $00
+ EQUB $00, $03
+ EQUB $00
 
 ELIF _SOURCE_DISK
 

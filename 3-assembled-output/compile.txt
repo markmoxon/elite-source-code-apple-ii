@@ -25615,9 +25615,16 @@ WP workspace from &400 to &715 inclusive
      4D8D   00
      4D8E   14
      4D8F   AD
-     4D90   4A 5A
-     4D92   48 02 53 B7
-     4D96   00 00 03 E8
+     4D90   4A
+     4D91   5A
+     4D92   48
+     4D93   02
+     4D94   53
+     4D95   B7
+     4D96   00
+     4D97   00
+     4D98   03
+     4D99   E8
      4D9A   46
      4D9B   00
      4D9C   00
@@ -25625,9 +25632,37 @@ WP workspace from &400 to &715 inclusive
      4D9E   00
      4D9F   00
      4DA0   00
-     4DA1   00 00
+     4DA1   00
+     4DA2   00
      4DA3   16
-     4DA4
+     4DA4   00
+     4DA5   00
+     4DA6   00
+     4DA7   00
+     4DA8   00
+     4DA9   00
+     4DAA   00
+     4DAB   00
+     4DAC   00
+     4DAD   00
+     4DAE   00
+     4DAF   00
+     4DB0   00
+     4DB1   00
+     4DB2   00
+     4DB3   00
+     4DB4   00
+     4DB5   00
+     4DB6   00
+     4DB7   00
+     4DB8   00
+     4DB9   00
+     4DBA   00
+     4DBB   00
+     4DBC   00
+     4DBD   00
+     4DBE   00
+     4DBF   00
      4DC0   03
      4DC1   00
      4DC2   10
