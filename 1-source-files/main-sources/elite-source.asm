@@ -2294,7 +2294,8 @@ NEXT
 ;       Name: wtable
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: 6-bit to 7-bit nibble conversion table (part of DOS 3.3, where it
+;             is called NIBL)
 ;
 ; ******************************************************************************
 
@@ -2543,56 +2544,67 @@ IF _SOURCE_DISK
 
 ENDIF
 
- LDA #LO(STORE)         ; ???
- STA SC
- LDA #HI(STORE)
- STA SC+1
- LDA #LO(CODE2)
- STA P
- LDA #HI(CODE2)
- STA P+1
+ LDA #LO(STORE)         ; Set SC(1 0) = STORE
+ STA SC                 ;
+ LDA #HI(STORE)         ; So SC(1 0) contains the address where the dashboard
+ STA SC+1               ; image was loaded
 
-IF _SOURCE_DISK
-
- LDA $C08B ; RAM card
-
-ENDIF
+ LDA #LO(CODE2)         ; Set P(1 0) = CODE2
+ STA P                  ;
+ LDA #HI(CODE2)         ; So P(1 0) contains the address where we want to store
+ STA P+1                ; the dashboard image in screen memory
 
 IF _IB_DISK
 
- LDX #7
+ LDX #7                 ; Set X = 7 so we copy eight pages of memory from
+                        ; SC(1 0) to P(1 0) in the following loop
 
 ELIF _SOURCE_DISK
 
- LDX #($C0-$90)
+ LDA $C08B              ; Set RAM bank 1 to read RAM and write RAM by reading
+                        ; the RDWRBSR1 soft switch, with bit 3 set (bank 1),
+                        ; bit 1 set (read RAM) and bit 0 set (write RAM)
+
+ LDX #($C0-$90)         ; This sets X = 48 so we copy 48 pages from SC(1 0) to
+                        ; P(1 0) in the following loop
+                        ;
+                        ; This would appear to copy the whole game into memory
+                        ; at $9000, presumably as part of the development
+                        ; process
 
 ENDIF
 
- LDY #0
+ LDY #0                 ; Set Y = 0 to use as a byte counter
 
 .Sept3
 
- LDA (SC),Y
- STA (P),Y
- INY
- BNE Sept3
- INC SC+1
- INC P+1
- DEX
+ LDA (SC),Y             ; Copy the Y-th byte of SC(1 0) to the Y-th byte of
+ STA (P),Y              ; P(1 0)
+
+ INY                    ; Increment the byte counter
+
+ BNE Sept3              ; Loop back until we have copied a whole page of bytes
+
+ INC SC+1               ; Increment the high bytes of SC(1 0) and P(1 0) so they
+ INC P+1                ; point to the next page in memory
+
+ DEX                    ; Decrement the page counter
 
 IF _IB_DISK
 
- BPL Sept3
+ BPL Sept3              ; Loop back until we have copied X + 1 pages
 
 ELIF _SOURCE_DISK
 
- BNE Sept3
+ BNE Sept3              ; Loop back until we have copied X pages
 
 ENDIF
 
 IF _SOURCE_DISK
 
- LDA $C081              ; ROMs ???
+ LDA $C081              ; Set ROM bank 2 to read ROM and write RAM by reading
+                        ; the WRITEBSR2 soft switch, with bit 3 clear (bank 2),
+                        ; bit 1 clear (read ROM) and bit 0 set (write RAM)
 
 ENDIF
 
@@ -2603,10 +2615,12 @@ ENDIF
 
 IF _IB_DISK
 
- LDA #$30               ; ???
- STA $8342
- NOP
- NOP
+ LDA #$30               ; This modifies the RDKEY routine so the BPL at nokeys2
+ STA nokeys2+4          ; jumps to nofast+2 rather than nojoyst (though this has
+ NOP                    ; no effect as the binary has already been modified,
+ NOP                    ; perhaps because the version on Ian Bell's site is a
+                        ; hacked version that may have been extracted from
+                        ; memory)
 
 ENDIF
 
@@ -6622,26 +6636,48 @@ ENDIF
 ;       Name: NLI4
 ;       Type: Subroutine
 ;   Category: Drawing lines
-;    Summary: ???
+;    Summary: Draw a line of dashes underneath a title on the text screen
 ;
 ; ******************************************************************************
 
 .NLI4
 
- LDX #39                ; ???
+ LDX #39                ; We want to draw a line of dashes underneath the text
+                        ; title, so set a column counter in X to work from the
+                        ; right side of the screen to the left, from column 39
+                        ; to 0, so we can draw the line one character at a time
 
 .NLL1
 
- LDA $480,X
- CMP #160
- BEQ NLI5
- LDA #$AD
- STA $500,X
+ LDA $480,X             ; We only want to draw a dashes underneath characters in
+                        ; the title, so set A to the character in column X of
+                        ; the page title
+                        ;
+                        ; The title is in row 1 of the screen (the second row),
+                        ; which lives at memory location $480 in screen memory,
+                        ; so this fetches the character at column X on row 1
+
+ CMP #160               ; When we clear the text screen in the TTX66K routine,
+ BEQ NLI5               ; we do this by filling it with character 160, so this
+                        ; jumps to NLI5 to skip the following if the character
+                        ; we just fetched is blank
+
+ LDA #'-'+128           ; If we get here then there is a character in the title
+ STA $500,X             ; in column X, so draw a dash in the same column in the
+                        ; row below (which is row 2, at memory location $500 in
+                        ; screen memory)
+                        ;
+                        ; We add 128 to the ASCII code for a dash to set bit 7,
+                        ; so the character is displayed in normal video (white
+                        ; characters on a black background)
 
 .NLI5
 
- DEX
- BPL NLL1
+ DEX                    ; Decrement the column counter in X to move left to the
+                        ; next text column
+
+ BPL NLL1               ; Loop back until we have reached 
+
  RTS
 
 ; ******************************************************************************
@@ -6655,7 +6691,9 @@ ENDIF
 
 .FLKB
 
- BIT $C010              ; ???
+ BIT $C010              ; Clear the keyboard strobe by reading the KBDSTRB soft
+                        ; switch, which tells the system to drop any current key
+                        ; press data and start waiting for the next key press
 
  RTS                    ; Return from the subroutine
 
@@ -6697,8 +6735,9 @@ ENDIF
 
 .NLIN4
 
- LDA text               ; ???
- BMI NLI4
+ LDA text               ; If bit 7 of text is set then the current screen mode
+ BMI NLI4               ; is the text mode, so jump to NLI4 to draw a line of
+                        ; dashes underneath the title using text characters
 
  LDA #19                ; Jump to NLIN2 to draw a horizontal line at pixel row
  BNE NLIN2              ; 19, returning from the subroutine with using a tail
@@ -20894,8 +20933,8 @@ ENDIF
 ; galactic chart is in-between systems. It is a scary place...
 ;
 ; There is a 0.78% chance that this routine is called from TT18 instead of doing
-; a normal hyperspace, or we can manually trigger a mis-jump by holding down
-; CTRL after first enabling the "author display" configuration option ("X") when
+; a normal hyperspace, or we can manually trigger a mis-jump by holding down TAB
+; after first enabling the "author display" configuration option ("X") when
 ; paused.
 ;
 ; ------------------------------------------------------------------------------
@@ -31174,7 +31213,7 @@ ENDIF
 
 IF _IB_DISK
 
- BPL nofast+2
+ BPL nofast+2           ; The destination for thie instruction is modified by S%
 
 ELIF _SOURCE_DISK
 
@@ -38823,7 +38862,7 @@ ENDMACRO
 .SOHISS2
 
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
-                        ; out) by reaading the SPEAKER soft switch
+                        ; out) by reading the SPEAKER soft switch
 
  JSR DORND              ; ???
  DEX
@@ -38834,7 +38873,7 @@ ENDMACRO
  BNE SOHISS2
 
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
-                        ; out) by reaading the SPEAKER soft switch
+                        ; out) by reading the SPEAKER soft switch
 
  RTS                    ; Return from the subroutine
 
@@ -38870,7 +38909,7 @@ ENDMACRO
 .BEEPL4
 
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
-                        ; out) by reaading the SPEAKER soft switch
+                        ; out) by reading the SPEAKER soft switch
 
  INC T3                 ; ???
  LDX T3
@@ -38886,7 +38925,7 @@ ENDMACRO
  BNE BEEPL4
 
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
-                        ; out) by reaading the SPEAKER soft switch
+                        ; out) by reading the SPEAKER soft switch
 
  RTS                    ; Return from the subroutine
 
@@ -38921,7 +38960,7 @@ ENDMACRO
 .BEEPL1
 
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
-                        ; out) by reaading the SPEAKER soft switch
+                        ; out) by reading the SPEAKER soft switch
 
  LDX T3                 ; ???
  DEX
@@ -38930,7 +38969,7 @@ ENDMACRO
  BNE BEEPL1
 
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
-                        ; out) by reaading the SPEAKER soft switch
+                        ; out) by reading the SPEAKER soft switch
 
 .SOUR
 
@@ -38954,7 +38993,7 @@ ENDMACRO
 .BEEPL2
 
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
-                        ; out) by reaading the SPEAKER soft switch
+                        ; out) by reading the SPEAKER soft switch
 
  DEC T3                 ; ???
  LDX T3
@@ -38965,7 +39004,7 @@ ENDMACRO
  BNE BEEPL2
 
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
-                        ; out) by reaading the SPEAKER soft switch
+                        ; out) by reading the SPEAKER soft switch
 
  RTS                    ; Return from the subroutine
 
@@ -38992,7 +39031,7 @@ ENDMACRO
 .BEEPL3
 
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
-                        ; out) by reaading the SPEAKER soft switch
+                        ; out) by reading the SPEAKER soft switch
 
  INC T3                 ; ???
  INC T3
@@ -39003,7 +39042,7 @@ ENDMACRO
  BNE BEEPL3
 
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
-                        ; out) by reaading the SPEAKER soft switch
+                        ; out) by reading the SPEAKER soft switch
 
  RTS                    ; Return from the subroutine
 
@@ -39039,7 +39078,7 @@ ENDMACRO
 .SOHISS4
 
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
-                        ; out) by reaading the SPEAKER soft switch
+                        ; out) by reading the SPEAKER soft switch
 
  JSR DORND              ; ???
  AND #31
@@ -39052,7 +39091,7 @@ ENDMACRO
  BNE SOHISS4
 
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
-                        ; out) by reaading the SPEAKER soft switch
+                        ; out) by reading the SPEAKER soft switch
 
  RTS                    ; Return from the subroutine
 
@@ -39071,7 +39110,7 @@ ENDMACRO
  BMI SOUR2
 
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
-                        ; out) by reaading the SPEAKER soft switch
+                        ; out) by reading the SPEAKER soft switch
 
 .SOUR2
 
