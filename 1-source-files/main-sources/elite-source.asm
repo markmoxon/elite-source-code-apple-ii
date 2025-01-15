@@ -949,13 +949,13 @@ ENDIF
  SKIP 1                 ; The type of the current view:
                         ;
                         ;   0   = Space view
+                        ;         Death screen
                         ;   1   = Data on System screen (key "7")
                         ;         Get commander name ("@", save/load commander)
                         ;         In-system jump just arrived ("J")
                         ;   2   = Buy Cargo screen (key "2")
                         ;   3   = Mis-jump just arrived (witchspace)
                         ;   4   = Sell Cargo screen (key "3")
-                        ;   6   = Death screen
                         ;   8   = Status Mode screen (key "9")
                         ;         Inventory screen (key "0")
                         ;   13  = Rotating ship view (title or mission screen)
@@ -8608,9 +8608,9 @@ ENDIF
 
 .STATUS
 
- LDA #8                 ; Clear the top part of the screen, draw a border box,
- JSR TRADEMODE          ; and set up a printable trading screen with a view type
-                        ; in QQ11 of 8 (Status Mode screen)
+ LDA #8                 ; Clear the top part of the screen and set up a trading
+ JSR TRADEMODE          ; screen with a view type in QQ11 of 8 (Status Mode
+                        ; screen)
 
  JSR TT111              ; Select the system closest to galactic coordinates
                         ; (QQ9, QQ10)
@@ -16445,10 +16445,7 @@ ENDIF
  INC INWK+7             ; Increment z_hi, to keep the ship at the same distance
                         ; as we just incremented z_lo past 255
 
- JSR PAS1               ; Call PAS1 to display the rotating ship at space
-                        ; coordinates (0, 112, 256) and scan the keyboard,
-                        ; returning the ASCII code of the key in X (or 0 for no
-                        ; key press)
+ JSR PAS1               ; Call PAS1 to ???
 
  LDA #10                ; Set A = 10 so the call to BRP prints extended token 10
                         ; (the briefing for mission 1 where we find out all
@@ -17102,10 +17099,6 @@ ENDIF
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Clear the top part of the screen.
-;
-; ------------------------------------------------------------------------------
-;
 ; Arguments:
 ;
 ;   A                   The type of the new current view (see QQ11 for a list of
@@ -17115,8 +17108,8 @@ ENDIF
 
 .TRADEMODE
 
- JSR TT66               ; Clear the top part of the screen, draw a border box,
-                        ; and set the current view type in QQ11 to A
+ JSR TT66               ; Clear the screen and set the current view type in
+                        ; QQ11 to A
 
  JMP FLKB               ; Call FLKB to flush the keyboard buffer and return from
                         ; the subroutine using a tail call
@@ -17421,9 +17414,8 @@ ENDIF
 
 .TT25
 
- LDA #1                 ; Clear the top part of the screen, draw a border box,
- JSR TRADEMODE          ; and set up a printable trading screen with a view type
-                        ; in QQ11 of 1
+ LDA #1                 ; Clear the screen and set up a trading screen with a
+ JSR TRADEMODE          ; view type in QQ11 of 1
 
  LDA #9                 ; Move the text cursor to column 9
  JSR DOXC
@@ -18200,9 +18192,8 @@ ENDIF
 
 .TT219
 
- LDA #2                 ; Clear the top part of the screen, draw a border box,
- JSR TRADEMODE          ; and set up a printable trading screen with a view type
-                        ; in QQ11 of 2 (Buy Cargo screen)
+ LDA #2                 ; Clear the screen and set up a trading screen with a
+ JSR TRADEMODE          ; view type in QQ11 of 2 (Buy Cargo screen)
 
  JSR TT163              ; Print the column headers for the prices table
 
@@ -18562,9 +18553,8 @@ ENDIF
 
 .TT208
 
- LDA #4                 ; Clear the top part of the screen, draw a border box,
- JSR TRADEMODE          ; and set up a printable trading screen with a view type
-                        ; in QQ11 of 4 (Sell Cargo screen)
+ LDA #4                 ; Clear the screen and set up a trading screen with a
+ JSR TRADEMODE          ; view type in QQ11 of 4 (Sell Cargo screen)
 
  LDA #10                ; Move the text cursor to column 10
  JSR DOXC
@@ -18807,9 +18797,8 @@ ENDIF
 
 .TT213
 
- LDA #8                 ; Clear the top part of the screen, draw a border box,
- JSR TRADEMODE          ; and set up a printable trading screen with a view type
-                        ; in QQ11 of 4 (Inventory screen)
+ LDA #8                 ; Clear the screen and set up a trading screen with a 
+ JSR TRADEMODE          ; view type in QQ11 of 4 (Inventory screen)
 
  LDA #11                ; Move the text cursor to column 11 to print the screen
  JSR DOXC               ; title
@@ -20636,9 +20625,8 @@ ENDIF
 
 .TT167
 
- LDA #16                ; Clear the top part of the screen, draw a border box,
- JSR TRADEMODE          ; and set up a printable trading screen with a view type
-                        ; in QQ11 of 32 (Market Price screen)
+ LDA #16                ; Clear the screen and set up a trading screen with a
+ JSR TRADEMODE          ; view type in QQ11 of 32 (Market Price screen)
 
  LDA #5                 ; Move the text cursor to column 5
  STA XC
@@ -21431,9 +21419,8 @@ ENDIF
 
 .EQSHP
 
- LDA #32                ; Clear the top part of the screen, draw a border box,
- JSR TRADEMODE          ; and set up a printable trading screen with a view type
-                        ; in QQ11 of 32 (Equip Ship screen)
+ LDA #32                ; Clear the screen and set up a trading screen with a
+ JSR TRADEMODE          ; view type in QQ11 of 32 (Equip Ship screen)
 
  LDA #12                ; Sety A = 12 to denote column 12
 
@@ -22016,9 +22003,8 @@ ENDIF
  BCC P%+7               ; screen to prevent the view menu from clashing with the
                         ; longer equipment menu available in higher tech systems
 
- LDA #32                ; Clear the top part of the screen, draw a border box,
- JSR TT66               ; and set the current view type in QQ11 to 32 (Equip
-                        ; Ship screen)
+ LDA #32                ; Clear the screen and set the current view type in QQ11
+ JSR TT66               ; to 32 (Equip Ship screen)
 
  LDA #16                ; Set A = 16 to denote row 16
 
@@ -29092,7 +29078,8 @@ ENDIF
 ;JSR DET1               ; source (they would hide the dashboard)
 
  LDA #0                 ; Clear the top part of the screen, draw a border box,
- JSR TT66               ; and set the current view type in QQ11 to 0 ???
+ JSR TT66               ; and set the current view type in QQ11 to 0, so from
+                        ; here on we are using a space view
 
  JSR nWq                ; Create a cloud of stardust containing the correct
                         ; number of dust particles (i.e. NOSTM of them)
@@ -30888,7 +30875,7 @@ ENDIF
 ;       Name: ERTAB
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: A lookup table for disk error messages
 ;
 ; ******************************************************************************
 
@@ -38618,8 +38605,11 @@ ENDMACRO
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Clear the top part of the screen, draw a border box, and set the current
-; view type in QQ11 to A.
+; If this is a high-resolution graphics view, clear the top part of the screen,
+; draw a border box, and set the current view type in QQ11 to A.
+;
+; If this is a text view, clear the screen and set the current view type in QQ11
+; to A.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -38642,12 +38632,15 @@ ENDMACRO
 ;       Name: TTX66
 ;       Type: Subroutine
 ;   Category: Drawing the screen
-;    Summary: Clear the top part of the screen and draw a border box
+;    Summary: Clear the top part of the screen, draw a border box if required
+;             and configure the specified view
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Clear the top part of the screen (the space view) and draw a border box
-; along the top and sides.
+; If this is a high-resolution graphics view, clear the top part of the screen
+; and draw a border box.
+;
+; If this is a text view, clear the screen.
 ;
 ; ******************************************************************************
 
@@ -38671,8 +38664,11 @@ ENDMACRO
 
  JSR TTX66K             ; ???
 
- LDA text               ; ???
- BMI P%+5
+ LDA text               ; If bit 7 of text is set then the current screen mode
+ BMI P%+5               ; is the text mode, so skip the following instruction to
+                        ; avoid resetting the LSO block (as the sun is still on
+                        ; the high-resolution screen, we're just not displaying
+                        ; it at the moment)
 
  JSR FLFLLS             ; Call FLFLLS to reset the LSO block
 
@@ -40785,10 +40781,20 @@ ENDMACRO
 ;
 ; The entire structure above contains comsiz (110) bytes.
 ;
-; This routine encrypts the commander file by setting the random number seeds to
-; specific values, based on the third checksum byte at CHK3. The seed values get
-; which get stored in the four bytes at comfil and are saved with the file, so
-; they can be used by the UNMUTILATE routine to reverse the encryption.
+; This routine encrypts the commander file by first calculating a set of four
+; random number seeds, using a set of bitwise operations that start with the
+; third checksum byte at CHK3. These seed values get stored in the four bytes at
+; comfil and are saved with the file, so they can be used by the UNMUTILATE
+; routine to reverse the encryption.
+;
+; The encryption process simply takes the repeatable sequence of random numbers
+; that are generated from these four seeds, and EOR's the bytes in the commander
+; file with the numbers in the sequence. Because this is a simple EOR with a
+; number sequence that can be reproduced from the four seeds, the decryption
+; process just repeats the encryption process, generating the same sequence of
+; random numbers from the seeds in the commander file, and EOR'ing them with the
+; bytes in the encrypted file to produce the decrypted bytes (which works
+; because a EOR b EOR b = a).
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -43525,56 +43531,94 @@ ENDIF
 ;       Name: TTX66K
 ;       Type: Subroutine
 ;   Category: Drawing the screen
-;    Summary: Clear the top part of the screen and ???
+;    Summary: Clear the whole screen or just the space view (as appropriate),
+;             and draw a border box if required
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Clear the top part of the screen (the space view) and draw a border box
-; along the top and sides.
+; If this is a high-resolution graphics view, clear the top part of the screen
+; and draw a border box.
+;
+; If this is a text view, clear the screen.
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; Other entry points:
 ;
-;   BOX                 Just draw the border box along the top and sides
+;   BOX                 Just draw the border box along the top of the screen
+;                       (the sides are retained from the loading screen, along
+;                       with the dashboard)
 ;
 ; ******************************************************************************
 
 .TTX66K
 
- LDA QQ11               ; ???
- BEQ wantgrap
- CMP #13
- BEQ wantgrap
- AND #$C0
- BNE wantgrap
- JSR cleartext
+ LDA QQ11               ; If this is the space view, jump to wantgrap to set up
+ BEQ wantgrap           ; the high-resolution graphics screen
+
+ CMP #13                ; If QQ11 = 13 then this is either the title screen or
+ BEQ wantgrap           ; the rotating ship screen in the mission 1 briefing, so
+                        ; jump to wantgrap to set up the high-resolution
+                        ; graphics screen
+
+ AND #%11000000         ; If either bit 6 or 7 of the view type is set - so
+ BNE wantgrap           ; this is either the Short-range or Long-range Chart -
+                        ; then jump to wantgrap to set up the high-resolution
+                        ; graphics screen
+
+ JSR cleartext          ; This is a text view, so clear screen memory for the
+                        ; text screen mode
 
  JMP TEXT               ; Switch to the text screen mode, returning from the
                         ; subroutine using a tail call
 
 .cleartext
 
- LDY #0
- LDX #4
- STY SC
- STX SC+1
- LDA #160
+ LDY #0                 ; Set Y = 0 to use as a byte counter when clearing
+                        ; screen memory for the text mode
+
+ LDX #4                 ; Set X = 4 to use as a page counter when clearing the
+                        ; four pages of screen memory from $0400 to $0800
+
+ STY SC                 ; Set SC(1 0) = $0400, which is the address of screen
+ STX SC+1               ; memory for bank 1 of the text screen mode
+
+ LDA #160               ; Set A to 160, which is the ASCII for a space character
+                        ; with bit 7 set, which is a space character in normal
+                        ; video
+                        ;
+                        ; We set bit 7 so it will show as a black block on
+                        ; screen when we fill the text mode's screen memory with
+                        ; this value, as opposed to a white block if it were in
+                        ; inverse video
 
 .cleartextl
 
- STA (SC),Y
- INY
- BNE cleartextl
- INC SC+1
- DEX
- BNE cleartextl
- RTS
+ STA (SC),Y             ; Blank the Y-th byte of screen memory at SC(1 0)
+
+ INY                    ; Increment the byte counter
+
+ BNE cleartextl         ; Loop back until we have cleared a whole page of text
+                        ; mode screen memory
+
+ INC SC+1               ; Increment the high byte of SC(1 0) so it points to
+                        ; the next page in screen memory
+
+ DEX                    ; Decrement the page counter
+
+ BNE cleartextl         ; Loop back until we have cleared four pages of memory
+
+ RTS                    ; Return from the subroutine
 
 .wantgrap
 
- JSR cleargrap
- JSR BOX
+ JSR cleargrap          ; This is a high-resolution graphics view, so clear
+                        ; screen memory for the top part of the graphics screen
+                        ; mode (the space view)
+
+ JSR BOX                ; Call BOX to draw a border box along the top edge of
+                        ; the space view (the sides are retained from the
+                        ; loading screen, along with the dashboard)
 
  JSR HGR                ; Switch to the high-resolution graphics screen mode
 
@@ -43582,36 +43626,60 @@ ENDIF
 
 .BOX
 
- LDX #0
+ LDX #0                 ; Set X1 = 0
  STX X1
- STX Y1
- DEX
+
+ STX Y1                 ; Set Y1 = 0
+
+ DEX                    ; Set X2 = 255
  STX X2
 
  LDA #BLUE              ; Switch to colour blue
  STA COL
 
- JSR HLOIN
+ JSR HLOIN              ; Draw a horizontal line from (X1, Y1) to (X2, Y1) in
+                        ; blue, which will draw a line along the top edge of the
+                        ; screen from (0, 0) to (255, 0)
 
- LDA #$AA
- STA SCBASE+1
- LDA #$AA
- STA SCBASE+37
- RTS
+ LDA #%10101010         ; Draw the top-left corner of the box as a continuous
+ STA SCBASE+1           ; line of blue
+
+ LDA #%10101010         ; Draw the top-right corner of the box as a continuous
+ STA SCBASE+37          ; line of blue
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: cleargrap
+;       Type: Subroutine
+;   Category: Drawing the screen
+;    Summary: Clear screen memory for the top part of the graphics screen mode
+;             (the space view), drawing blue borders along the sides as we do so
+;
+; ******************************************************************************
 
 .cleargrap
 
- LDY #16
+ LDY #16                ; Set a counter in Y to clear the 17 character rows of
+                        ; the space view
 
 .cleargl
 
- JSR clearrow
- DEY
- BPL cleargl
- INY
- STY XC
+ JSR clearrow           ; Clear character row Y in screen memory, drawing blue
+                        ; borders along the left and right edges as we do so
+
+ DEY                    ; Decrement the row counter
+
+ BPL cleargl            ; Loop back until we have cleared all 17 character rows
+
+ INY                    ; Y is decremented to 255 by the loop, so this sets Y to
+                        ; zero
+
+ STY XC                 ; Move the text cursor to column 0 on row 0
  STY YC
- RTS
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -43856,13 +43924,13 @@ ENDIF
 
 .CLYNS
 
- LDA #0
+ LDA #0                 ; ???
  STA DLY
  STA de
 
 .CLYNS2
 
- JSR CLYS1 ; @@
+ JSR CLYS1
  LDA #$FF
  STA DTW2
  LDA #128
@@ -43892,44 +43960,114 @@ ENDIF
  STY YC
  LDA #1
  STA XC
- JSR clearrow
+
+ JSR clearrow           ; Clear character row Y in screen memory, drawing blue
+                        ; borders along the left and right edges as we do so
+
  INY
+
+; ******************************************************************************
+;
+;       Name: clearrow
+;       Type: Subroutine
+;   Category: Drawing the screen
+;    Summary: Clear a character row of screen memory, drawing blue borders along
+;             the left and right edges as we do so
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   Y                   The character row number
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   Y                   Y is preserved
+;
+; ******************************************************************************
 
 .clearrow
 
- LDA #8
+ LDA #8                 ; Set T2 = 8 to act as a pixel row counter
  STA T2
- LDX SCTBL,Y
- STX SC
- LDX SCTBH,Y
- TYA
- PHA
+
+ LDX SCTBL,Y            ; Set the low byte of SC(1 0) to the Y-th entry from
+ STX SC                 ; SCTBL, which contains the low byte of the address of
+                        ; the start of character row Y in screen memory
+
+ LDX SCTBH,Y            ; Set X to the Y-th entry from SCTBH, which contains
+                        ; the high byte of the address of the start of character
+                        ; row Y in screen memory
+
+ TYA                    ; Store the number of the character row we are clearing
+ PHA                    ; on the stack, so we can retrieve it below
 
 .cleargl2
 
- STX SC+1
- LDA #$A0
- LDY #37
+ STX SC+1               ; Set the high byte of SC(1 0) to X, so it contains the
+                        ; address of the start of the pixel row we want to clear
+
+ LDA #%10100000         ; Set A to the pixel byte for the right end of the pixel
+                        ; row, containing a blue border in the second-to-last
+                        ; pixel (bit 7 is set to choose colour palette 1)
+
+ LDY #37                ; We now clear the pixel row, starting from the right
+                        ; end of the line, so set a pixel byte counter in Y to
+                        ; count down from byte #37 to byte #1
 
 .cleargl3
 
- STA (SC),Y
- LDA #0
- DEY
- BNE cleargl3
- LDA #$C0
- STA (SC),Y
- INY
- ASL A
- STA (SC),Y
- INX
- INX
- INX
- INX
- DEC T2
- BNE cleargl2
- PLA
- TAY
+ STA (SC),Y             ; Set the Y-th pixel byte of the row to the pixel byte
+                        ; in A
+
+ LDA #0                 ; Set A = 0 so the last byte contains the border, but
+                        ; the rest of them are blank
+
+ DEY                    ; Decrement the byte counter
+
+ BNE cleargl3           ; Loop back until we have drawn bytes #37 to #1, leaving
+                        ; Y = 0
+
+ LDA #%11000000         ; Set A to the pixel byte for the left end of the pixel
+                        ; row, containing a blue border in the seventh pixel
+                        ; (bit 7 is set to choose colour palette 1)
+
+ STA (SC),Y             ; Draw the pixel byte for the left end of the pixel row
+                        ; in the first byte of the row at SC(1 0)
+
+ INY                    ; Increment Y to point to the second pixel byte in the
+                        ; row
+
+ ASL A                  ; Set A = %10000000, which is a pixel byte in colour
+                        ; palette 1 with no pixels set
+
+ STA (SC),Y             ; Draw this as the second pixel byte in the row to set
+                        ; the colour palette for the second pixel to palette 1,
+                        ; so the left edge is drawn correctly in blue
+
+ INX                    ; Set X = X + 4, so the high byte of SC(1 0) gets
+ INX                    ; increased by 4 when we loop back, which means we do
+ INX                    ; the following:
+ INX                    ;
+                        ;   SC(1 0) = SC(1 0) + $400
+                        ;
+                        ; So this sets SC(1 0) to the address of the pixel row
+                        ; below the one we just drew in, as each pixel row
+                        ; within the character row is spaced out by $400 bytes
+                        ; in screen memory
+
+ DEC T2                 ; Decrement the pixel row counter in T2
+
+ BNE cleargl2           ; Loop back until we have cleared all eight pixel rows
+                        ; in the character row
+
+ PLA                    ; Restore the number of the character row into Y, so we
+ TAY                    ; can return it unchanged
+
+                        ; Fall through into SCAN to return from the subroutine,
+                        ; as it starts with an RTS
 
 ; ******************************************************************************
 ;
