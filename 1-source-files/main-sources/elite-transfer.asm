@@ -105,10 +105,18 @@
 
 .ENTRY
 
- LDA $C054
- LDA $C052
- LDA $C057
- LDA $C050 ;HGR
+ LDA $C054              ; Select page 1 display (i.e. main screen memory) by
+                        ; reading the PAGE20FF soft switch
+
+ LDA $C052              ; Configure graphics on the whole screen by reading the
+                        ; MIXEDOFF soft switch
+
+ LDA $C057              ; Select high-resolution graphics by reading the HIRESON
+                        ; soft switch
+
+ LDA $C050              ; Select the graphics mode by eading the TEXTOFF soft
+                        ; switch
+
  LDA ZP1
  PHA
  LDA ZP1+1
@@ -117,7 +125,7 @@
  PHA
  LDA ZP2+1
  PHA
- LDA $C08B ; page in RAM card
+ LDA $C08B ; page in RAM card, see S% in main binary
  LDA #LO(CODE2)
  STA ZP1
  LDA #HI(CODE2)
