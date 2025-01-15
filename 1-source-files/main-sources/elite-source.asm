@@ -249,6 +249,24 @@ ENDIF
                         ; handler, which just acknowledges NMI interrupts and
                         ; ignores them
 
+ LS% = $0B5F            ; The start of the descending ship line heap
+
+ TAP% = LS% - 111       ; The staging area where we copy files after loading and
+                        ; before saving
+
+ comsiz = 110           ; The size of the commander file structure that is saved
+                        ; to disk (must be no more than 252 bytes so the file
+                        ; fits into a 256-byte sector, along with the four seeds
+                        ; used to encrypt and decrypt the file)
+
+ comfil = TAP%-20       ; The address of the commander file structure that is
+                        ; encrypted by MUTLIATE and decrypted by UNMUTILATE
+
+ comfil2 = comfil + comsiz - 4  ; The address of the four seeds that are used to
+                                ; encrypt and decrypt the commander file, which
+                                ; are at the end of the commander file structure
+                                ; that is saved to disk
+
  QQ18 = $0B60           ; The address of the text token table, as set in
                         ; elite-data.asm
 
@@ -266,12 +284,6 @@ ENDIF
 
  RUTOK = TKN1 + $B52    ; The address of the extended system description token
                         ; table, as set in elite-data.asm
-
- LS% = $0B5F            ; The start of the descending ship line heap
-
- TAP% = LS% - 111       ; The staging area where we copy files after loading and
-                        ; before saving (though this isn't actually used in this
-                        ; version, and is left-over Commodore 64 code)
 
  FONT = $1D00           ; The address of the game's text font
 
@@ -291,7 +303,7 @@ ENDIF
 
  R% = $BFFF             ; The address of the last byte of game code
 
-                        ; Disk controller addresses ???
+                        ; Disk controller I/O addresses ???
 
  phsoff  =  $C080       ; stepper motor phase 0 off
  mtroff  =  $C088       ; turn motor off
@@ -303,18 +315,17 @@ ENDIF
  Q7L     =  $C08E       ; prepare latch for input
  Q7H     =  $C08F       ; prepare latch for output
 
-                        ; Disk controller variables ???
+                        ; Disk controller buffers ???
 
- comsiz  =  110         ; Commander file size (1-252 bytes)
- comfil  =  TAP%-20     ; Commander file (must not exceed 252 bytes)
- comfil2 =  comfil+comsiz-4
  buffer  =  $0800       ; K%, 256 byte sector buffer
- buffr2  =  $0800+256   ; K%+256, 342 6 bit 'nibble' buffer
  fretrk  =  buffer+$30  ; last allocated track
  dirtrk  =  buffer+$31  ; direction of track allocation (+1 or -1)
  tracks  =  buffer+$34  ; number of tracks per disc
  bitmap  =  buffer+$38  ; bit map of free sectors in track 0
- track   =  buffr2+350
+
+ buffr2  =  $0800+256   ; K%+256, 342 6 bit 'nibble' buffer
+
+ track   =  buffr2+350  ; Disk routine variables $0A5E to $0A6C
  sector  =  track+1
  curtrk  =  sector+1
  tsltrk  =  curtrk+1
@@ -29958,35 +29969,49 @@ ENDIF
 ;       Name: COPYNAME
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Copy the last saved commander's name from ??? to ???
+;    Summary: Copy the last saved commander's name from INWK+5 to comnam and pad
+;             out the rest of comnam with spaces, so we can use it as a filename
 ;
 ; ******************************************************************************
 
 .COPYNAME
 
- LDX #0                 ; ???
+ LDX #0                 ; Set X = 0 to use as a character index for copying the
+                        ; commander name from INWK+5 to comnam
 
 .COPYL1
 
- LDA INWK+5,X
- CMP #13
- BEQ COPYL2
- STA comnam,X
- INX
- CPX #7
- BCC COPYL1
+ LDA INWK+5,X           ; Set A to the X-th character of the name at INWK+5
+
+ CMP #13                ; If A = 13 then we have reached the end of the name, so
+ BEQ COPYL2             ; jump to COPYL2 to pad out the rest of comnam with
+                        ; spaces
+
+ STA comnam,X           ; Otherwise this is a character from the commander name,
+                        ; so store it in the X-th character of comnam
+
+ INX                    ; Increment X to move on to the next character
+
+ CPX #7                 ; Loop back to copy the next character until we have
+ BCC COPYL1             ; copied up to seven characters (the maximum size of the
+                        ; commander name)
 
 .COPYL2
 
- LDA #$20
+ LDA #' '               ; We now want to pad out the rest of comnam with spaces,
+                        ; so set A to the ASCII value for the space character
 
 .COPYL3
 
- STA comnam,X
- INX
- CPX #30
- BCC COPYL3
- RTS
+ STA comnam,X           ; Store a space at the X-th character of comnam
+
+ INX                    ; Increment X to move on to the next character
+
+ CPX #30                ; Loop back until we have written spaces to all
+ BCC COPYL3             ; remaining characters in the 30-character string at
+                        ; comnam
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -30584,7 +30609,9 @@ ENDIF
  EOR #$A9               ; Store the checksum EOR $A9 in CHK2, the penultimate
  STA CHK2               ; byte of the last saved commander block
 
- JSR COPYNAME           ; ???
+ JSR COPYNAME           ; Copy the last saved commander's name from INWK+5 to
+                        ; comnam and pad out the rest of comnam with spaces, so
+                        ; we can use it as the filename to write in wfile
 
                         ; We now copy the current commander data block into the
                         ; TAP% staging area
@@ -30602,8 +30629,13 @@ ENDIF
  BPL copyme2            ; Loop back until we have copied all the bytes in the
                         ; commander data block
 
- JSR wfile              ; ???
- BCS diskerror
+ JSR wfile              ; Write the commander file in the buffer at comfil
+                        ; (which contains the TAP% buffer) to a DOS disk
+
+ BCS diskerror          ; If the C flag is set then there was a disk error, so
+                        ; jump to diskerror to print the disk error (whose
+                        ; number is now in A), make a beep and wait for a key
+                        ; press
 
  JSR DFAULT             ; Call DFAULT to reset the current commander data block
                         ; to the last saved commander
@@ -30618,38 +30650,64 @@ ENDIF
 
  RTS                    ; Return from the subroutine
 
-                        ; Fall through into diskerror to show the disk error
-
 ; ******************************************************************************
 ;
 ;       Name: diskerror
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: Print a disk error, make a beep and wait for a key press
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   A                   The error to display:
+;
+;                         * 1 = Disk write protected
+;
+;                         * 2 = Disk full
+;
+;                         * 3 = Catalog full
+;
+;                         * 4 = Disk I/O error
+;
+;                         * 5 = File not found
 ;
 ; ******************************************************************************
 
 .diskerror
 
- ASL A                  ; ???
- TAX
- LDA ERTAB-2,X
- STA XX15
- LDA ERTAB-1,X
+ ASL A                  ; Set X to the error number in A, shifted left by one
+ TAX                    ; place to double it, so X can be used as an index into
+                        ; the ERTAB table, which contains two-byte addresses
+                        ; that point to the relevant error messages
+
+ LDA ERTAB-2,X          ; Set XX15(1 0) to the address of the error message, so
+ STA XX15               ; that error number 1 points to the address in the first
+ LDA ERTAB-1,X          ; entry at ERTAB
  STA XX15+1
- LDY #0
+
+ LDY #0                 ; Set Y to a character counter for printing the error
+                        ; message one character at a time, starting at character
+                        ; zero
 
 .dskerllp
 
- LDA (XX15),Y
- BEQ dskerllp2
- JSR TT26
- INY
- BNE dskerllp
+ LDA (XX15),Y           ; Set A to the Y-th character from the error message
+
+ BEQ dskerllp2          ; If A = 0 then we have reached the end of the
+                        ; null-terminated string, so jump to dskerllp2 to stop
+                        ; printing characters
+
+ JSR TT26               ; Print the character in A
+
+ INY                    ; Increment the character counter
+
+ BNE dskerllp           ; Loop back to print the next character
 
 .dskerllp2
 
- JSR BOOP
+ JSR BOOP               ; Make a long, low beep
 
  JSR t                  ; Scan the keyboard until a key is pressed, returning
                         ; the ASCII code in A and X
@@ -30704,10 +30762,18 @@ ENDIF
 
 .LOD
 
- JSR COPYNAME           ; ???
- JSR rfile
- BCS diskerror
- JSR UNMUTILATE
+ JSR COPYNAME           ; Copy the last saved commander's name from INWK+5 to
+                        ; comnam and pad out the rest of comnam with spaces, so
+                        ; we can use it as the filename to read in rfile
+
+ JSR rfile              ; Load the commander file into the buffer at comfil
+
+ BCS diskerror          ; If the C flag is set then there was a disk error, so
+                        ; jump to diskerror to print the disk error (whose
+                        ; number is now in A), make a beep and wait for a key
+                        ; press
+
+ JSR UNMUTILATE         ; Decrypt the newly loaded file in the buffer at comfil
 
  LDA TAP%               ; If the first byte of the loaded file has bit 7 set,
  BMI ELT2F              ; jump to ELT2F, as this is an invalid commander file
@@ -30752,7 +30818,7 @@ ENDIF
 ;       Name: DERR1
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: The error message for when a disk is write protected
 ;
 ; ******************************************************************************
 
@@ -30766,7 +30832,7 @@ ENDIF
 ;       Name: DERR2
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: The error message for when a disk is full
 ;
 ; ******************************************************************************
 
@@ -30780,7 +30846,7 @@ ENDIF
 ;       Name: DERR3
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: The error message for when a disk catalog is full
 ;
 ; ******************************************************************************
 
@@ -30794,7 +30860,7 @@ ENDIF
 ;       Name: DERR4
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: The error message for when there is a disk I/O error
 ;
 ; ******************************************************************************
 
@@ -30808,7 +30874,7 @@ ENDIF
 ;       Name: DERR5
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: The error message for when a file is not found
 ;
 ; ******************************************************************************
 
@@ -39434,15 +39500,13 @@ ENDMACRO
 ;       Name: comnam
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: Storage for the commander filename, padded out with spaces to a
+;             fixed size of 30 characters, for the rfile and wfile routines
 ;
 ; ******************************************************************************
 
-; DOS_RW1
-
 .comnam
 
- \ (must be 30 characters long - pad with spaces)
  EQUS "COMMANDER                     "
 
 ; ******************************************************************************
@@ -39495,13 +39559,14 @@ ENDMACRO
 ;       Name: wfile
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Write a commander file from buffer to a DOS disk
+;    Summary: Write a commander file from the buffer to a DOS disk
 ;
 ; ******************************************************************************
 
 .wfile
 
- JSR MUTILATE           ; ???
+ JSR MUTILATE           ; Encrypt the commander file in the buffer at comfil
+
  TSX
  STX stkptr
  JSR findf
@@ -40697,69 +40762,141 @@ ENDMACRO
 ;       Name: MUTILATE
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: Encrypt the commander file in the buffer at comfil
+;
+; ------------------------------------------------------------------------------
+;
+; At this point, the commander file is set up in memory like this (as defined in
+; the configuration variables comsiz, comfil and comfil2):
+;
+; .comfil
+;
+;  20 bytes
+;
+; .TAP%
+;
+;  77 bytes containing the full commander file from byte #0 to byte #76
+;
+;  9 bytes
+;
+; .comfil2
+;
+;  4 bytes
+;
+; The entire structure above contains comsiz (110) bytes.
+;
+; This routine encrypts the commander file by setting the random number seeds to
+; specific values, based on the third checksum byte at CHK3. The seed values get
+; which get stored in the four bytes at comfil and are saved with the file, so
+; they can be used by the UNMUTILATE routine to reverse the encryption.
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; Other entry points:
 ;
-;   MUTIL3              ???
+;   MUTIL3              Decrypt the commander file
 ;
 ; ******************************************************************************
 
 .MUTILATE
 
- LDA CHK3
- EOR RAND
+ LDA CHK3               ; Set A to the third checksum byte at CHK3 for this
+                        ; commander file
+
+                        ; We now use this value to change the four random number
+                        ; seeds in RAND to RAND+3 into four different values
+                        ; that we can use to encrypt the file
+
+ EOR RAND               ; EOR it into the first random number seed in RAND
  STA RAND
- STA comfil2
- EOR #$A5
- ORA #17
+
+ STA comfil2            ; Store the seed value in comfil2, so it gets saved as
+                        ; part of the commander file
+
+ EOR #$A5               ; EOR and OR the result into the second random number
+ ORA #17                ; seed in RAND+1
  EOR RAND+1
  STA RAND+1
- STA comfil2+1
- EOR RAND+2
- EOR #$F8
+
+ STA comfil2+1          ; Store the seed value in comfil2+1, so it gets saved as
+                        ; part of the commander file
+
+ EOR RAND+2             ; EOR the result into the third random number seed in
+ EOR #$F8               ; RAND+2
  STA RAND+2
- STA comfil2+2
- EOR RAND+3
- EOR #$12
+
+ STA comfil2+2          ; Store the seed value in comfil2+2, so it gets saved as
+                        ; part of the commander file
+
+ EOR RAND+3             ; EOR the result into the fourth random number seed in
+ EOR #$12               ; RAND+3
  STA RAND+3
- STA comfil2+3
+
+ STA comfil2+3          ; Store the seed value in comfil2+3, so it gets saved as
+                        ; part of the commander file
+
+                        ; We now have four random seeds that are partially based
+                        ; on the third checksum and partially based on the
+                        ; previous value of the four random seeds, so we now use
+                        ; these seeds to encrypt the file
+                        ;
+                        ; The encryption process uses a simple EOR with the next
+                        ; random number from the repeatable sequence produced by
+                        ; the four seeds we stored at comfil2, so repeating the
+                        ; encryption process with the same four seeds will
+                        ; decrypt the file
 
 .MUTIL3
 
- LDY #comsiz-5
+ LDY #comsiz-5          ; Set Y to a byte counter so we can work our way
+                        ; backwards through the whole commander file structure,
+                        ; omitting the four bytes at comfil2 at the end
 
 .MUTIL1
 
- JSR DORND2
- EOR comfil,Y
- STA comfil,Y
- DEY
- BPL MUTIL1
- RTS
+ JSR DORND2             ; Set A and X to random numbers, making sure the C flag
+                        ; doesn't affect the outcome
+
+ EOR comfil,Y           ; EOR the Y-th byte in the commander file with the next
+ STA comfil,Y           ; random number in the sequence generated by the four
+                        ; seeds stored at comfil2
+
+ DEY                    ; Decrement the byte counter
+
+ BPL MUTIL1             ; Loop back until we have processed the whole commander
+                        ; file structure
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
 ;       Name: UNMUTILATE
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: Decrypt the commander file in the buffer at comfil
 ;
 ; ******************************************************************************
 
 .UNMUTILATE
 
- LDY #3
+ LDY #3                 ; To decrypt the commander file, we need to set the four
+                        ; random number seeds at RAND to RAND+3 to the four
+                        ; bytes at comfil2 in the encrypted commander file, so
+                        ; set a byte counter in Y to copy four bytes
 
 .MUTIL2
 
- LDA comfil2,Y
- STA RAND,Y
- DEY
- BPL MUTIL2
- BMI MUTIL3
+ LDA comfil2,Y          ; Copy the Y-th seed from the commander file to the Y-th
+ STA RAND,Y             ; random number seed at RAND
+
+ DEY                    ; Decrement the byte counter
+
+ BPL MUTIL2             ; Loop back until we have copied all four bytes
+
+ BMI MUTIL3             ; Jump to MUTIL3 to apply the decryption process to the
+                        ; commander file, which is simply a repeat of the
+                        ; encryption process with the same seeds (this BMI is
+                        ; effectively a JMP as we just passed through a BPL)
 
 ; ******************************************************************************
 ;
