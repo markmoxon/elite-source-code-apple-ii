@@ -23706,9 +23706,13 @@ ENDIF
  STA RAND+1
  STX RAND+3
 
- AND #%00001100         ; Set the colour to this random number, reduced to be in
- ORA #%00010000         ; the range %00010000 to %00011100, i.e. 32, 40, 48, 56
- STA COL                ; ???
+ AND #%00001100         ; Set the colour randomly to one of the four colours
+ ORA #16                ; 16, 20, 24 or 28, i.e. BLUE, RED, FUZZY or 28
+ STA COL                ;
+                        ; A value of 28 will draw an explosion dot in a totally
+                        ; random colour pattern, as the pixel byte will be taken
+                        ; from MASKT+28, which contains code (specifically, the
+                        ; start of the VLOIN routine)
 
  LDA K3+1               ; Set (A R) = (y_hi y_lo)
  STA R                  ;           = y
@@ -23746,7 +23750,8 @@ ENDIF
 
  LDA Y1                 ; Set A = our random y-coordinate within the cloud
 
- JSR CPIX               ; Draw a point at screen coordinate (X, A) ???
+ JSR CPIX               ; Draw a single pixel at screen coordinate (X, A) in the
+                        ; colour in COL
 
 .EX4
 
@@ -42923,60 +42928,145 @@ ENDMACRO
 ;   Category: Drawing lines
 ;    Summary: Draw a vertical line from (X1, Y1) to (X1, Y2)
 ;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   R                   The line colour, as an offset into the MASKT table
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   Y                   Y is preserved
+;
 ; ******************************************************************************
 
 .VLOIN
 
- STY YSAV               ; ???
- LDA Y1
- CMP Y2
- BCS VLO1
- LDY Y2
- STA Y2
+ STY YSAV               ; Store Y into YSAV, so we can preserve it across the
+                        ; call to this subroutine
+
+ LDA Y1                 ; Set A to the y-coordinate of the start of the line
+
+ CMP Y2                 ; If Y1 >= Y2 then jump to VLO1 as the coordinates are
+ BCS VLO1               ; already the correct way around
+
+ LDY Y2                 ; Otherwise swap Y1 and Y2 around so that Y1 >= Y2
+ STA Y2                 ; (with Y1 in A)
  TYA
 
 .VLO1
 
- LDX X1
- JSR CPIX
- LDA Y1
- SEC
- SBC Y2
- BEQ VLO5
- TAX
- INX
- JMP VLO4
+                        ; We now want to draw a line from (X1, A) to (X1, Y2),
+                        ; which goes up the screen from bottom to top
+
+ LDX X1                 ; Draw a single pixel at screen coordinate (X1, A), at
+ JSR CPIX               ; the start of the line
+                        ;
+                        ; This also sets the following:
+                        ;
+                        ;   * T2 = the number of the pixel row within the
+                        ;          character block that contains the pixel,
+                        ;          which we use in the loop below to draw the
+                        ;          line
+                        ;
+                        ;   * R = the pixel byte for drawing the pixel
+                        ;
+                        ;   * Y = the byte offset within the pixel row of the
+                        ;         byte that contains the pixel
+
+ LDA Y1                 ; Set A = Y1 - Y2
+ SEC                    ;
+ SBC Y2                 ; So A contains the height of the vertical line in
+                        ; pixels
+
+ BEQ VLO5               ; If the start and end points are at the same height,
+                        ; jump to VLO5 to return from the subroutine, as we
+                        ; already drew a one-pixel vertical line
+
+ TAX                    ; Set X to the height of the line, plus 1, so we can use
+ INX                    ; this as a pixel counter in the loop below (the extra 1
+                        ; is to take account of the pixel we just drew)
+
+ JMP VLO4               ; Jump into the following loop at VLO4 to draw the rest
+                        ; of the line
 
 .VLOL1
 
- LDA R
- EOR (SC),Y
- STA (SC),Y
- LDA T3
- BEQ VLO4
- INY
- EOR (SC),Y
- STA (SC),Y
- DEY
+ LDA R                  ; Set A to the pixel byte that was returned by the CPIX
+                        ; routine when we drew the first pixel in the vertical
+                        ; line, which is the same pixel byte that we need for
+                        ; every pixel in the line (as it is a vertical line)
+
+ EOR (SC),Y             ; Draw the pixel pattern in A into the Y-th pixel byte
+ STA (SC),Y             ; on the correct pixel row, using EOR logic to merge the
+                        ; pattern with whatever is already on-screen
+
+ LDA T3                 ; Set A to the pattern for the next byte along, which
+                        ; was returned by the CPIX
+
+ BEQ VLO4               ; If T3 is zero then there is no need to write to the
+                        ; next byte along, so jump to VLO4 to move on to drawing
+                        ; the rest of the line
+
+ INY                    ; Increment Y to move to the next pixel byte to the
+                        ; right
+
+ EOR (SC),Y             ; Draw the pixel pattern in A into the Y-th pixel byte
+ STA (SC),Y             ; on the correct pixel row, using EOR logic to merge the
+                        ; pattern with whatever is already on-screen
+
+ DEY                    ; Decrement Y to move back to the previous pixel byte,
+                        ; so we keep drawing our line in the correct position
 
 .VLO4
 
- DEC T2
- BMI VLO2
- LDA SC+1
- SEC
- SBC #4
- STA SC+1
+                        ; This is where we join the loop from above, at which
+                        ; point we have the following variables set:
+                        ;
+                        ;   * T2 = the pixel row of the start of the line
+                        ;
+                        ;   * X = the height of the line we want to draw + 1
+                        ;
+                        ;   * Y = the byte offset within the pixel row of the
+                        ;         line
+                        ;
+                        ; The height in X has an extra one added to it because
+                        ; we are about to decrement it (so that extra one is
+                        ; effectively counting the single pixel we already drew
+                        ; before jumping here)
+
+ DEC T2                 ; Decrement the pixel row number in T2 to move to the
+                        ; pixel row above
+
+ BMI VLO2               ; If T2 is negative then the we are no longer within the
+                        ; same character block, so jump to VLO2 to move to the
+                        ; bottom pixel row in the character row above
+
+                        ; We now need to move up into the pixel row above
+
+ LDA SC+1               ; Subtract 4 from the high byte of SC(1 0), so this does
+ SEC                    ; the following:
+ SBC #4                 ;
+ STA SC+1               ;   SC(1 0) = SC(1 0) - $400
+                        ;
+                        ; So this sets SC(1 0) to the address of the pixel row
+                        ; above the one we just drew in, as each pixel row
+                        ; within the character row is spaced out by $400 bytes
+                        ; in screen memory
 
 .VLO3
 
- DEX
- BNE VLOL1
+ DEX                    ; Decrement the pixel counter in X
+
+ BNE VLOL1              ; Loop back until we have drawn X - 1 pixels
 
 .VLO5
 
- LDY YSAV
- RTS
+ LDY YSAV               ; Restore Y from YSAV, so that it's preserved
+
+ RTS                    ; Return from the subroutine
 
 .VLO2
 
@@ -43037,6 +43127,11 @@ ENDMACRO
 ;   Y                   The byte offset within the pixel row of the byte that
 ;                       contains the pixel
 ;
+;   T2                  The number of the pixel row within the character block
+;                       that contains the pixel
+;
+;   R                   The pixel byte for drawing the pixel
+;
 ; ******************************************************************************
 
 .CPIX
@@ -43053,9 +43148,12 @@ ENDMACRO
  LDA SCTBL,Y            ; SCTBL, which contains the low byte of the address of
  STA SC                 ; the start of character row Y in screen memory
 
- LDA Y1                 ; Set T2 = Y1 mod 8, which is the pixel row within the
+ LDA Y1                 ; Set A = Y1 mod 8, which is the pixel row within the
  AND #7                 ; character block at which we want to draw our pixel (as
- STA T2                 ; each character block has 8 rows)
+                        ; each character block has 8 rows)
+
+ STA T2                 ; Store the pixel row number in T2, so we can return it
+                        ; from the subroutine
 
  ASL A                  ; Set the high byte of SC(1 0) as follows:
  ASL A                  ;
@@ -43122,10 +43220,12 @@ ENDMACRO
  AND T3                 ; in the next pixel byte along, by combining the colour
  STA T3                 ; mask from MASKT+1 with the pixel mask in T3
 
- LDA MASKT,Y            ; Set R to the correct pixel byte for drawing our pixel
+ LDA MASKT,Y            ; Set A to the correct pixel byte for drawing our pixel
  AND R                  ; in the first pixel byte, by combining the colour mask
- STA R                  ; from MASKT with the pixel mask in A (the byte is also
-                        ; stored in R, but this isn't used anywhere)
+                        ; from MASKT with the pixel mask in A
+
+ STA R                  ; Store the pixel byte for drawing our pixel in R, so it
+                        ; can be returned by the subroutine
 
                         ; So A contains the pattern for the byte at the pixel
                         ; coordinates, and T3 contains the pattern for the next
@@ -43153,8 +43253,7 @@ ENDMACRO
                         ; pattern with whatever is already on-screen
 
  DEY                    ; Decrement Y to move back to the previous pixel byte,
-                        ; so we can return this value (though this doesn't seem
-                        ; to be used anywhere)
+                        ; so we can return this value from the subroutine
 
 .CPR1
 
