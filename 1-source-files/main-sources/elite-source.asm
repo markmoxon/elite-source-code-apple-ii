@@ -953,6 +953,7 @@ ENDIF
                         ;   1   = Data on System screen (key "7")
                         ;         Get commander name ("@", save/load commander)
                         ;         In-system jump just arrived ("J")
+                        ;         Mission 1 briefing screen
                         ;   2   = Buy Cargo screen (key "2")
                         ;   3   = Mis-jump just arrived (witchspace)
                         ;   4   = Sell Cargo screen (key "3")
@@ -985,13 +986,9 @@ ENDIF
 
 .DL
 
- SKIP 1                 ; Vertical sync flag
-                        ;
-                        ; DL gets set to 30 every time we reach vertical sync on
-                        ; the video system, which happens 50 times a second
-                        ; (50Hz). The WSCAN routine uses this to pause until the
-                        ; vertical sync, by setting DL to 0 and then monitoring
-                        ; its value until it changes to 30
+ SKIP 1                 ; This byte is unused in this version of Elite (it is
+                        ; used to store the vertical sync flag in the BBC Micro
+                        ; versions)
 
 .TYPE
 
@@ -16336,11 +16333,13 @@ ENDIF
 ;   * Show the Constrictor rolling and pitching in the middle of the screen
 ;   * Do this for 64 loop iterations
 ;   * Move the ship away from us and up until it's near the top of the screen
+;   * Clear the screen and switch to the text screen mode
 ;   * Show the mission 1 briefing in extended token 10
 ;
 ; The mission briefing ends with a "{display ship, wait for key press}" token,
-; which calls the PAUSE routine. This continues to display the rotating ship,
-; waiting until a key is pressed, and then removes the ship from the screen.
+; which calls the PAUSE routine. This waits until a key is pressed, but as we
+; have switched to the text screen mode by this point, there is no ship to keep
+; displaying (unlike in the other versions of Elite).
 ;
 ; ******************************************************************************
 
@@ -16445,7 +16444,8 @@ ENDIF
  INC INWK+7             ; Increment z_hi, to keep the ship at the same distance
                         ; as we just incremented z_lo past 255
 
- JSR PAS1               ; Call PAS1 to ???
+ JSR PAS1               ; Change to the text view for the Constrictor mission
+                        ; briefing
 
  LDA #10                ; Set A = 10 so the call to BRP prints extended token 10
                         ; (the briefing for mission 1 where we find out all
@@ -16481,26 +16481,29 @@ ENDIF
 ;       Type: Subroutine
 ;   Category: Missions
 ;    Summary: Wait until a key is pressed for the Constrictor mission briefing
+;             and then clear the text view to show the briefing text
 ;
 ; ******************************************************************************
 
 .PAUSE
 
- JSR PAUSE2             ; ???
+ JSR PAUSE2             ; Call PAUSE2 to wait until a key is pressed, ignoring
+                        ; any existing key press
 
 ; ******************************************************************************
 ;
 ;       Name: PAS1
 ;       Type: Subroutine
 ;   Category: Missions
-;    Summary: Scan the keyboard for the Constrictor mission briefing
+;    Summary: Change to the text view for the Constrictor mission briefing
 ;
 ; ******************************************************************************
 
 .PAS1
 
- LDA #1                 ; ???
- JMP TT66
+ LDA #1                 ; Jump to TT66 to clear the screen and set the current
+ JMP TT66               ; view type to 1, for the mission briefing screen, and
+                        ; return from the subroutine using a tail call
 
 ; ******************************************************************************
 ;
@@ -16651,12 +16654,19 @@ ENDIF
 ;       Name: DELAY
 ;       Type: Subroutine
 ;   Category: Utility routines
-;    Summary: Wait for a specified time, in ???
+;    Summary: Wait for a specified time, in either 1/60s of a second or
+;             iterations of a fixed-length loop, depending on the variant
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Wait for the number of ??? given in Y, so this effectively waits
-; for ???.
+; Wait for the number of vertical syncs given in Y, so this effectively waits
+; for Y/60 of a second (as the vertical sync occurs 60 times a second).
+;
+; That said, the WSCAN routine in the released version of Apple II Elite uses a
+; fixed-length loop to wait for the vertical sync to have passed, rather than
+; actually waiting for the vertical sync. The source disk on Ian Bell's site
+; does wait for the vertical sync, so this behaviour was changed at some stage
+; during development.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -16782,6 +16792,20 @@ ENDIF
 ; the Apple II and BBC Master versions, and allows coordinates to be scaled
 ; correctly on different platforms.
 ;
+; In the Apple version, the scaling routines scale screen coordinates in the
+; system charts by 3/4 in each direction. This enables the charts to fit into
+; the smaller screen size  when compared to the BBC Micro versions, while still
+; leaving the dashboard on-screen (the Commodore 64 version also has a smaller
+; screen, but it removes the dashboard from the screen to make more room).
+;
+; The scaling routines do the following:
+;
+;   * SCALEX scales an x-coordinate to 32 + 0.75 * x
+;
+;   * SCALEY scales a y-coordinate to 0.375 * y
+;
+;   * SCALEY2 scales a y-coordinate to 0.75 * y
+;
 ; ******************************************************************************
 
 .SCALEY
@@ -16807,18 +16831,41 @@ ENDIF
 ;
 ; The original source contains the comment "SCALE Scans by 3/4 to fit in".
 ;
+; In the Apple version, the scaling routines scale screen coordinates in the
+; system charts by 3/4 in each direction. This enables the charts to fit into
+; the smaller screen size  when compared to the BBC Micro versions, while still
+; leaving the dashboard on-screen (the Commodore 64 version also has a smaller
+; screen, but it removes the dashboard from the screen to make more room).
+;
+; The scaling routines do the following:
+;
+;   * SCALEX scales an x-coordinate to 32 + 0.75 * x
+;
+;   * SCALEY scales a y-coordinate to 0.375 * y
+;
+;   * SCALEY2 scales a y-coordinate to 0.75 * y
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              The C flag is cleared
+;
 ; ******************************************************************************
 
 .SCALEY2
 
  STA T3                 ; Set A = (A / 4) - A
  LSR A                  ;       = -0.75 * A
- LSR A
- SEC
- SBC T3
+ LSR A                  ;
+ SEC                    ; This also clears the C flag, as the subtraction will
+ SBC T3                 ; underflow
 
  EOR #$FF               ; Negate A, so A = 0.75 * A
- ADC #1
+ ADC #1                 ;
+                        ; The addition works because we cleared the C flag
+                        ; above, and the ADC also clears the C flag, as the
+                        ; addition will never overflow
 
  RTS                    ; Return from the subroutine
 
@@ -16836,12 +16883,30 @@ ENDIF
 ; the Apple II and BBC Master versions, and allows coordinates to be scaled
 ; correctly on different platforms.
 ;
+; In the Apple version, the scaling routines scale screen coordinates in the
+; system charts by 3/4 in each direction. This enables the charts to fit into
+; the smaller screen size  when compared to the BBC Micro versions, while still
+; leaving the dashboard on-screen (the Commodore 64 version also has a smaller
+; screen, but it removes the dashboard from the screen to make more room).
+;
+; The scaling routines do the following:
+;
+;   * SCALEX scales an x-coordinate to 32 + 0.75 * x
+;
+;   * SCALEY scales a y-coordinate to 0.375 * y
+;
+;   * SCALEY2 scales a y-coordinate to 0.75 * y
+;
 ; ******************************************************************************
 
 .SCALEX
 
- JSR SCALEY2            ; ???
- ADC #32
+ JSR SCALEY2            ; Set A = 0.75 * A
+
+ ADC #32                ; Set A = A + 32
+                        ;       = 32 + 0.75 * A
+                        ;
+                        ; The addition works because SCALEY2 clears the C flag
 
  RTS                    ; Return from the subroutine
 
@@ -17870,9 +17935,15 @@ ENDIF
 
  STX XSAV               ; Store the counter in XSAV
 
- LDA QQ15+3             ; ???
- JSR SCALEX
- TAX
+ LDA QQ15+3             ; Fetch the s1_hi seed into A, which gives us the
+                        ; galactic x-coordinate of this system
+
+ JSR SCALEX             ; Call SCALEX to reduce the size of the chart to
+                        ; three-quarters of the original size, so it can fit
+                        ; into the Apple's screen mode, which is smaller than
+                        ; the original BBC Micro screen
+
+ TAX                    ; Copy the scaled x-coordinate into X
 
  LDA #$FF               ; ???
  STA ZZ
@@ -17880,7 +17951,16 @@ ENDIF
  LDA QQ15+1             ; Fetch the s0_hi seed into A, which gives us the
                         ; galactic y-coordinate of this system
 
- JSR SCALEY             ; Scale the y-coordinate ???
+ JSR SCALEY             ; We halve the y-coordinate because the galaxy in
+                        ; in Elite is rectangular rather than square, and is
+                        ; twice as wide (x-axis) as it is high (y-axis), so the
+                        ; chart is 256 pixels wide and 128 high
+                        ;
+                        ; The call to SCALEY halves the y-coordinate, and then
+                        ; reduces the result to three-quarters of the original
+                        ; value, so we can fit the chart into the Apple's screen
+                        ; mode, which is smaller than the original BBC Micro
+                        ; screen
 
  CLC                    ; Add GCYT to the scaled y-coordinate in A (so the top
  ADC #GCYT              ; of the chart is on pixel row GCYT)
@@ -17901,13 +17981,21 @@ ENDIF
  BNE TT83               ; If X > 0 then we haven't done all 256 systems yet, so
                         ; loop back up to TT83
 
- LDA QQ9                ; Set QQ19 to the selected system's x-coordinate, scaled
- JSR SCALEX             ; accordingly ???
- STA QQ19
+ LDA QQ9                ; Set QQ19 to the selected system's x-coordinate
+ JSR SCALEX             ;
+ STA QQ19               ; The call to SCALEX reduces the size of the chart to
+                        ; three-quarters of the original size, so it can fit
+                        ; into the Apple's screen mode, which is smaller than
+                        ; the original BBC Micro screen
 
- LDA QQ10               ; Set QQ19+1 to the selected system's y-coordinate,
- JSR SCALEY             ; scaled accordingly ???
- STA QQ19+1
+ LDA QQ10               ; Set QQ19+1 to the selected system's y-coordinate
+ JSR SCALEY             ;
+ STA QQ19+1             ;
+                        ; The call to SCALEY halves the value in A (as the chart
+                        ; is half as tall as it is wide), and then it reduces
+                        ; the result to three-quarters of the original value, so
+                        ; we can fit the chart into the Apple's screen mode,
+                        ; which is smaller than the original BBC Micro screen
 
  LDA #4                 ; Set QQ19+2 to size 4 for the crosshairs size
  STA QQ19+2
@@ -18075,9 +18163,13 @@ ENDIF
  JSR TT15               ; Draw the set of crosshairs defined in QQ19, at the
                         ; exact coordinates as this is the Short-range Chart
 
- LDA QQ14               ; Set K to the scaled fuel level from QQ14, so this can
- JSR SCALEY2            ; act as the circle's radius (70 being a full tank)
- STA K
+ LDA QQ14               ; Set K to the fuel level from QQ14, so this can act as
+ JSR SCALEY2            ; the circle's radius (70 being a full tank)
+ STA K                  ;
+                        ; The call to SCALEY2 reduces the size of the chart to
+                        ; three-quarters of the original size, so it can fit
+                        ; into the Apple's screen mode, which is smaller than
+                        ; the original BBC Micro screen
 
  JMP TT128              ; Jump to TT128 to draw a circle with the centre at the
                         ; same coordinates as the crosshairs, (QQ19, QQ19+1),
@@ -18093,18 +18185,31 @@ ENDIF
                         ; Otherwise this is the Long-range Chart, so we draw the
                         ; crosshairs and circle for that view instead
 
- LDA QQ14               ; Set K to the scaled fuel level from QQ14 divided by 4,
- LSR A                  ; so this can act as the circle's radius (70 being a
- JSR SCALEY             ; full tank, which divides down to a radius of 17)
- STA K
+ LDA QQ14               ; Set K to the fuel level from QQ14 divided by 4, so
+ LSR A                  ; this can act as the circle's radius (70 being a full
+ JSR SCALEY             ; tank, which divides down to a radius of 17)
+ STA K                  ;
+                        ; The call to SCALEY halves the value in A (to give a
+                        ; total division by 4), and then it reduces the result
+                        ; to three-quarters of the original value, so we can fit
+                        ; the chart into the Apple's screen mode, which is
+                        ; smaller than the original BBC Micro screen
 
- LDA QQ0                ; Set QQ19 to the scaled x-coordinate of the current
- JSR SCALEX             ; system, which will be the centre of the circle and
- STA QQ19               ; crosshairs we draw
+ LDA QQ0                ; Set QQ19 to the x-coordinate of the current system,
+ JSR SCALEX             ; which will be the centre of the circle and crosshairs
+ STA QQ19               ; we draw
+                        ;
+                        ; The call to SCALEX reduces the size of the chart to
+                        ; three-quarters of the original size, so it can fit
+                        ; into the Apple's screen mode, which is smaller than
+                        ; the original BBC Micro screen
 
- LDA QQ1                ; Set QQ19+1 to the scled y-coordinate of the current
- JSR SCALEY             ; system, which will again be the centre of the circle
- STA QQ19+1             ; and crosshairs we draw
+ LDA QQ1                ; Set QQ19+1 to the y-coordinate of the current system,
+ JSR SCALEY             ; which will again be the centre of the circle and
+ STA QQ19+1             ; crosshairs we draw
+                        ;
+                        ; Again, the call to SCALEY halves and scales the value
+                        ; in A (see the comment above)
 
  LDA #7                 ; Set QQ19+2 = 7, the size of the crosshairs on the
  STA QQ19+2             ; Long-range Chart
@@ -18974,13 +19079,20 @@ ENDIF
 
  BMI TT105              ; If this is the Short-range Chart screen, jump to TT105
 
- LDA QQ9                ; Store the scaled crosshairs x-coordinate in QQ19
- JSR SCALEX
- STA QQ19
+ LDA QQ9                ; Store the crosshairs x-coordinate in QQ19
+ JSR SCALEX             ;
+ STA QQ19               ; The call to SCALEX reduces the size of the chart to
+                        ; three-quarters of the original size, so it can fit
+                        ; into the Apple's screen mode, which is smaller than
+                        ; the original BBC Micro screen
 
- LDA QQ10               ; Store the scaled crosshairs y-coordinate and in QQ19
- JSR SCALEY
- STA QQ19+1
+ LDA QQ10               ; Store the crosshairs y-coordinate in QQ19
+ JSR SCALEY             ;
+ STA QQ19+1             ; The call to SCALEY halves the value in A (as the chart
+                        ; is half as tall as it is wide), and then it reduces
+                        ; the result to three-quarters of the original value, so
+                        ; we can fit the chart into the Apple's screen mode,
+                        ; which is smaller than the original BBC Micro screen
 
  LDA #4                 ; Set QQ19+2 to 4 denote crosshairs of size 4
  STA QQ19+2
@@ -19094,9 +19206,17 @@ ENDIF
  ASL A                  ; Set QQ19 = 105 + A * 4
  ASL A                  ;
  CLC                    ; 105 is the x-coordinate of the centre of the chart,
- ADC #105*4/3           ; so this sets QQ19 to the scaled screen pixel
- JSR SCALEY2            ; x-coordinate ???
- STA QQ19
+ ADC #105*4/3           ; so this sets QQ19 to the screen pixel x-coordinate
+ JSR SCALEY2            ;
+ STA QQ19               ;
+                        ; The call to SCALEY2 reduces the size of the chart to
+                        ; three-quarters of the original size, so it can fit
+                        ; into the Apple's screen mode, which is smaller than
+                        ; the original BBC Micro screen
+                        ;
+                        ; The 105 is multiplied by 4/3 to counteract the scaling
+                        ; by 3/4 in SCALEY2, so the 105 part is not scaled, only
+                        ; the x-delta element is
 
  LDA QQ10               ; Set A = QQ10 - QQ1, the vertical distance between the
  SEC                    ; crosshairs (QQ10) and the current system (QQ1)
@@ -19115,8 +19235,13 @@ ENDIF
  ASL A                  ; Set QQ19+1 = 99 + A * 2
  CLC                    ;
  ADC #99                ; 90 is the y-coordinate of the centre of the chart,
- JSR SCALEY2            ; so this sets QQ19+1 to the scaled screen pixel
- STA QQ19+1             ; x-coordinate of the crosshairs
+ JSR SCALEY2            ; so this sets QQ19+1 to the screen pixel x-coordinate
+ STA QQ19+1             ; of the crosshairs
+                        ;
+                        ; The call to SCALEY2 reduces the size of the chart to
+                        ; three-quarters of the original size, so it can fit
+                        ; into the Apple's screen mode, which is smaller than
+                        ; the original BBC Micro screen
 
  LDA #8                 ; Set QQ19+2 to 8 denote crosshairs of size 8
  STA QQ19+2
@@ -19247,8 +19372,17 @@ ENDIF
  ASL A                  ; Set XX12 = 105 + x-delta * 4
  ASL A                  ;
  ADC #105*4/3           ; 105 is the x-coordinate of the centre of the chart,
- JSR SCALEY2            ; so this sets XX12 to the centre 104 +/- 76, to give
- STA XX12               ; the scaled pixel x-coordinate of this system
+ JSR SCALEY2            ; so this sets XX12 to the centre 104 +/- 76, the pixel
+ STA XX12               ; x-coordinate of this system
+                        ;
+                        ; The call to SCALEY2 reduces the size of the chart to
+                        ; three-quarters of the original size, so it can fit
+                        ; into the Apple's screen mode, which is smaller than
+                        ; the original BBC Micro screen
+                        ;
+                        ; The 105 is multiplied by 4/3 to counteract the scaling
+                        ; by 3/4 in SCALEY2, so the 105 part is not scaled, only
+                        ; the x-delta element is
 
  LSR A                  ; Move the text cursor to column x-delta / 2 + 1
  LSR A                  ; which will be in the range 1-10
@@ -19270,6 +19404,11 @@ ENDIF
  JSR SCALEY2            ; 99 is the y-coordinate of the centre of the chart,
  STA K4                 ; so this sets K4 to the centre 99 +/- 74, to give the
                         ; scaled pixel y-coordinate of this system
+                        ;
+                        ; The call to SCALEY2 reduces the size of the chart to
+                        ; three-quarters of the original size, so it can fit
+                        ; into the Apple's screen mode, which is smaller than
+                        ; the original BBC Micro screen
 
  LSR A                  ; Set Y = A >> 3
  LSR A                  ;       = K4 div 8
@@ -19877,16 +20016,20 @@ ENDIF
  LDA #7                 ; Move the text cursor to column 7
  STA XC
 
- LDA #22                ; Set A = 22 to use as the text row for views other
-                        ; than the space view
+ LDA #22                ; Set A = 22 to use as the text row for views that use
+                        ; the text screen mode, such as the trading screens
 
- LDY text               ; ???
- BMI P%+4
- LDA #16
+ LDY text               ; If bit 7 of text is set then the current screen mode
+ BMI P%+4               ; is the text mode, so skip the following instruction
+                        ; to leave A = 22
+
+ LDA #16                ; Set A = 16 to use as the text row for views that use
+                        ; the high-resolution screen mode, such as the space
+                        ; view
 
  STA YC                 ; Move the text cursor to row 16 (in the space view) or
                         ; 22 (otherwise), which is in the middle of the bottom
-                        ; text row)
+                        ; text row
 
  LDA #0                 ; Set QQ17 = 0 to switch to ALL CAPS
  STA QQ17
@@ -21009,7 +21152,14 @@ ELIF _SOURCE_DISK_CODE_FILES
 
  LDA #3                 ; Fetch the number of Thargoid ships from MANY+THG, and
  CMP MANY+THG           ; if it is greater than 3, loop back to MJP1 to spawn
- BCC MJP1               ; another one ???
+ BCC MJP1               ; another one
+                        ;
+                        ; As we have only spawned one Thargoid by this point,
+                        ; this effectively limits the number of Thargoids in
+                        ; witchspace to just one, so perhaps this is the remains
+                        ; of a test that was reverted for the released game,
+                        ; as all the other variants spawn three Thargoids in
+                        ; witchspace
 
 ENDIF
 
@@ -23258,8 +23408,8 @@ ENDIF
 
 .SWAPPZERO
 
- LDX #K3+1              ; This routine starts copying zero page from $0015 and
-                        ; up, using X as an index ???
+ LDX #K3+1              ; This routine starts copying zero page from the byte
+                        ; after K3 and up, using X as an index
 
 .SWPZL
 
@@ -23556,9 +23706,9 @@ ENDIF
  STA RAND+1
  STX RAND+3
 
- AND #$0C               ; ???
- ORA #$10
- STA COL
+ AND #%00001100         ; Set the colour to this random number, reduced to be in
+ ORA #%00010000         ; the range %00010000 to %00011100, i.e. 32, 40, 48, 56
+ STA COL                ; ???
 
  LDA K3+1               ; Set (A R) = (y_hi y_lo)
  STA R                  ;           = y
@@ -28697,13 +28847,20 @@ ENDIF
 
 .LABEL_3
 
- LDA KL                 ; ???
+ LDA KL                 ; If "H" was not pressed, skip the following instruction
  CMP #'H'
  BNE P%+5
- JMP hyp
- CMP #'G'
+
+ JMP hyp                ; Jump to hyp to do a hyperspace jump (if we are in
+                        ; space), returning from the subroutine using a tail
+                        ; call
+
+ CMP #'G'               ; If "G" was not pressed, skip the following instruction
  BNE P%+5
- JMP hyp
+
+ JMP hyp                ; Jump to hyp to do a galactic hyperspace jump (if we
+                        ; are in space), returning from the subroutine using a
+                        ; tail call
 
 .NWDAV5
 
@@ -29228,11 +29385,14 @@ ENDIF
 
 IF _IB_DISK
 
- EQUW $A49E
+ EQUW $A49E             ; This variable is set by routine BEGIN to the address
+                        ; of the Coriolis space station's ship blueprint (the
+                        ; initial address in this instruction is overwritten)
 
 ELIF _SOURCE_DISK
 
- EQUW $8888
+ EQUW $8888             ; This variable is set by routine BEGIN to the address
+                        ; of the Coriolis space station's ship blueprint
 
 ENDIF
 
@@ -30875,17 +31035,21 @@ ENDIF
 ;       Name: ERTAB
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: A lookup table for disk error messages
+;    Summary: A lookup table for the five disk error messages
 ;
 ; ******************************************************************************
 
 .ERTAB
 
- EQUW DERR1
- EQUW DERR2
- EQUW DERR3
- EQUW DERR4
- EQUW DERR5
+ EQUW DERR1             ; Error 1: Disk write protected
+
+ EQUW DERR2             ; Error 2: Disk full
+
+ EQUW DERR3             ; Error 3: Datalog full
+
+ EQUW DERR4             ; Error 4: Disk I/O error
+
+ EQUW DERR5             ; Error 5: File not found
 
 ; ******************************************************************************
 ;
@@ -38662,13 +38826,14 @@ ENDMACRO
 
  STA YC                 ; Move the text cursor to row 1
 
- JSR TTX66K             ; ???
+ JSR TTX66K             ; Clear the whole screen or just the space view (as
+                        ; appropriate), and draw a border box if required
 
  LDA text               ; If bit 7 of text is set then the current screen mode
  BMI P%+5               ; is the text mode, so skip the following instruction to
-                        ; avoid resetting the LSO block (as the sun is still on
-                        ; the high-resolution screen, we're just not displaying
-                        ; it at the moment)
+                        ; avoid resetting the LSO block, as the sun is not being
+                        ; displayed on-screen so resetting the sun line heap is
+                        ; not necessary
 
  JSR FLFLLS             ; Call FLFLLS to reset the LSO block
 
@@ -43171,7 +43336,16 @@ ENDMACRO
 ;       Name: WSCAN
 ;       Type: Subroutine
 ;   Category: Drawing the screen
-;    Summary: Wait for the vertical sync
+;    Summary: Wait for the vertical sync (or pause for 15 * 256 loop iterations)
+;
+; ------------------------------------------------------------------------------
+;
+; In the version of Apple II Elite on the source disk on Ian Bell's site, this
+; routine waits for the vertical sync by checking the state of the VERTBLANK
+; soft switch.
+;
+; In the released version of the game, this routine instead implements a
+; fixed-length pause of 15 * 256 iterations of an empty loop.
 ;
 ; ******************************************************************************
 
@@ -43179,21 +43353,31 @@ ENDMACRO
 
 IF _IB_DISK
 
- PHA
+ PHA                    ; Store the A, X and Y registers on the stack
  TXA
  PHA
  TYA
  PHA
- LDY #$0F
- LDX #0
 
-.LA087
+ LDY #15                ; Set an outer loop counter in Y, so we do a total of 15
+                        ; outer loops to give a delay of 15 * 256 iterations
 
- DEX
- BNE LA087
- DEY
- BNE LA087
- PLA
+ LDX #0                 ; Set an inner loop counter in X to do 256 iterations of
+                        ; each inner loop
+
+.WSCL1
+
+ DEX                    ; Decrement the inner loop counter
+
+ BNE WSCL1              ; Loop back until we have done 256 iterations around the
+                        ; inner loop
+
+ DEY                    ; Decrement the outer loop counter
+
+ BNE WSCL1              ; Loop back until we have done Y iterations around the
+                        ; outer loop, to give Y * 256 iterations in all
+
+ PLA                    ; Retrieve the A, X and Y registers from the stack
  TAY
  PLA
  TAX
@@ -43201,17 +43385,17 @@ IF _IB_DISK
 
 ELIF _SOURCE_DISK
 
- BIT $C019
- BPL WSCAN
+ BIT $C019              ; Wait until bit 7 of the VERTBLANK soft switch is set,
+ BPL WSCAN              ; which occurs when the vertical retrace is on
 
 .WSCL1
 
- BIT $C019
- BMI WSCL1
+ BIT $C019              ; Wait until bit 7 of the VERTBLANK soft switch is
+ BMI WSCL1              ; clear, which occurs when the vertical retrace is off
 
 ENDIF
 
- RTS
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -43379,7 +43563,7 @@ ENDIF
 
 .CHPR
 
- STA K3
+ STA K3                 ; ???
  STY YSAV2
  STX XSAV2
  LDY QQ17
@@ -43457,7 +43641,8 @@ ENDIF
 .letter
 
  \plot character A at X,YC*8
- LDY #HI(FONT)-1
+
+ LDY #HI(FONT)-1        ; ???
  ASL A
  ASL A
  BCC P%+4

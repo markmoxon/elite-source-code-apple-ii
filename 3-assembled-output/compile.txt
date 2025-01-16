@@ -37586,7 +37586,7 @@ Saving file '3-assembled-output/ELTJ.bin'
      A082   48         PHA
      A083   A0 0F      LDY #&0F
      A085   A2 00      LDX #&00
-.LA087
+.WSCL1
      A087   CA         DEX
      A088   D0 FD      BNE &A087
      A08A   88         DEY
