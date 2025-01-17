@@ -24488,7 +24488,7 @@ WP workspace from &400 to &715 inclusive
      4560
 .MULIE
      4561
-.L4562
+.fireButtonMask
      4562   0B
 .TGINT
      4563   44 41 58 ...

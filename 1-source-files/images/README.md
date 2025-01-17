@@ -2,7 +2,7 @@
 
 This folder contains the image binaries from the original game disk for the Apple II version of Elite on Ian Bell's personal website.
 
-* [A.SCREEN.bin](A.SCREEN.bin) is the loading screen image, with the dashboard at the bottom
+* [ib-disk/A.SCREEN.bin](ib-disk/A.SCREEN.bin) is the loading screen image, with the dashboard at the bottom
 
 ---
 
