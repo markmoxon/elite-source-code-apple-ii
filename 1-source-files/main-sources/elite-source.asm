@@ -1951,7 +1951,9 @@ ENDIF
 
 .dialc
 
- SKIP 14                ; ???
+ SKIP 14                ; Storage for the current colour of each of the
+                        ; indicators on the dashboard, so we can check whether
+                        ; an indicator's colour has changed when updating it
 
 .QQ24
 
@@ -2352,7 +2354,9 @@ NEXT
 
 .dials
 
- SKIP 14                ; ???
+ SKIP 14                ; Storage for the current value of each of the
+                        ; indicators on the dashboard, so we can check whether
+                        ; an indicator's value has changed when updating it
 
 .mscol
 
@@ -2511,9 +2515,15 @@ ENDIF
 
 IF _IB_DISK
 
-.L4562
+.fireButtonMask
 
- EQUB $0B               ; ??? Related to joystick fire button in TITLE
+ EQUB %00001011         ; This value is applied to the joystick fire button soft
+                        ; switches in the TITLE routine, where it disables the
+                        ; ability to configure joysticks by pressing a fire
+                        ; button
+                        ;
+                        ; This value is never changed, so this is a rather odd
+                        ; bit of code
 
 ENDIF
 
@@ -10327,12 +10337,15 @@ ENDIF
 
 .DIALS
 
- LDY #0                 ; ???
+ LDY #0                 ; Set Y = 0 to use as an index into the dial tables as
+                        ; we work our way through the various indicators
 
- LDA #210
- STA K
+ LDA #210               ; Set K = 210 to use as the pixel x-coordinate of the
+ STA K                  ; left end of the indicators in the right half of the
+                        ; dashboard, which we draw first
 
- LDX #RED
+ LDX #RED               ; Set X to the colour we should show for dangerous
+                        ; values (i.e. red)
 
  LDA MCNT               ; A will be non-zero for 8 out of every 16 main loop
  AND #%00001000         ; counts, when bit 4 is set, so this is what we use to
@@ -10342,12 +10355,17 @@ ENDIF
 
  BEQ P%+4               ; If A is zero, skip the next instruction
 
- LDX #WHITE             ; ???
+ LDX #WHITE             ; If we get here then flashing colours are configured
+                        ; and it is the right time to flash the danger colour,
+                        ; so set X to white
 
- STX K+2
+ STX K+2                ; Set K+2 to the colour to use for dangerous values
 
- LDA DELTA
- JSR DIS2
+ LDA DELTA              ; Fetch our ship's speed into A, in the range 0-40
+
+ JSR DIS2               ; Call DIS2 with Y = 0 to draw the speed indicator using
+                        ; a range of 0-31, and increment Y to 1 to point to the
+                        ; next indicator (the roll indicator)
 
 ; ******************************************************************************
 ;
@@ -10359,16 +10377,29 @@ ENDIF
 ;
 ; ******************************************************************************
 
- LDA #WHITE             ; ???
- STA COL
- LDA ALP1
- LSR A
- BIT ALP2+1
- JSR DIS5
- LDA BET1
- ASL A
- BIT BET2
- JSR DIS5
+ LDA #WHITE             ; Set COL to white to use as the colour for the pitch
+ STA COL                ; and roll indicators
+
+ LDA ALP1               ; Fetch the roll angle alpha as a value between 0 and
+ LSR A                  ; 31, and divide by 2 to get a value of 0 to 15
+
+ BIT ALP2+1             ; Set the N flag according to the opposite sign of the
+                        ; roll angle, which is stored in ALP2+1
+
+ JSR DIS5               ; Call DIS5 with Y = 1 to draw the roll indicator using
+                        ; a range of 0-15, and increment Y to 2 to point to the
+                        ; next indicator (the pitch indicator)
+
+ LDA BET1               ; Fetch the magnitude of the pitch angle beta as a
+ ASL A                  ; positive value between 0 and 8, and multiply by 2 to
+                        ; get a value of 0 to 16
+
+ BIT BET2               ; Set the N flag according to the sign of the pitch
+                        ; angle, which is stored in BET2
+
+ JSR DIS5               ; Call DIS5 with Y = 2 to draw the pitch indicator using
+                        ; a range of 0-15, and increment Y to 3 to point to the
+                        ; next indicator (the bottom of the four energy banks)
 
 ; ******************************************************************************
 ;
@@ -10380,20 +10411,37 @@ ENDIF
 ;
 ; ******************************************************************************
 
- LDA ENERGY             ; ???
- LSR A
+ LDA ENERGY             ; Set A = ENERGY / 2, so it is in the range 0-127 (so
+ LSR A                  ; that's a maximum of 32 in each of the banks, and a
+                        ; maximum of 31 in the top bank)
 
 .DIL1
 
- STA K+1                ; ???
- JSR DIS2
- LDA K+1
- SEC
- SBC #32
- BCS P%+4
- LDA #0
- CPY #7
- BNE DIL1
+ STA K+1                ; Store A in K+1 so we can retrieve it after the call
+                        ; to DIS2
+
+ JSR DIS2               ; Draw the energy bank specified in Y using a range of
+                        ; 0-31, and increment Y to point to the next indicator
+                        ; (the next energy bank up)
+
+ LDA K+1                ; Restore A from K+1, so it once again contains the
+                        ; remaining energy as we work our way through each bank,
+                        ; from the full ones at the bottom to the empty ones at
+                        ; the top
+
+ SEC                    ; Set A = A - 32 to reduce the energy count by a full
+ SBC #32                ; bank
+
+ BCS P%+4               ; If the subtraction didn't underflow then we still have
+                        ; some energy to draw in the banks above, so skip the
+                        ; following instruction
+
+ LDA #0                 ; We have now drawn all the energy in the energy banks,
+                        ; so set A = 0 so we draw empty energy bars for the rest
+                        ; of the banks, working upwards
+
+ CPY #7                 ; Loop back until we have drawn all four energy banks
+ BNE DIL1               ; (for Y = 3, 4, 5, 6)
 
 ; ******************************************************************************
 ;
@@ -10405,8 +10453,9 @@ ENDIF
 ;
 ; ******************************************************************************
 
- LDA #16                ; ???
- STA K
+ LDA #16                ; Set K = 16 to use as the pixel x-coordinate of the
+ STA K                  ; left end of the indicators in the left half of the
+                        ; dashboard, which we draw now
 
  LDA FSH                ; Draw the forward shield indicator using a range of
  JSR DIS1               ; 0-255
@@ -10437,73 +10486,178 @@ ENDIF
 ;   Category: Dashboard
 ;    Summary: Update a bar-based indicator on the dashboard
 ;
+; ------------------------------------------------------------------------------
+;
+; The range of values shown on the indicator depends on which entry point is
+; called. For the default entry point of DIS1, the range is 0-255 (as the value
+; passed in A is one byte), while for DIS2 the range is 0-31.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   A                   The value to be shown on the indicator (so the larger
+;                       the value, the longer the bar)
+;
+;   Y                   The indicator number:
+;
+;                         *  0 = Speed indicator
+;                         *  3 = Energy bank 4 (bottom)
+;                         *  4 = Energy bank 3
+;                         *  5 = Energy bank 2
+;                         *  6 = Energy bank 1 (top)
+;                         *  7 = Forward shield indicator
+;                         *  8 = Aft shield indicator
+;                         *  9 = Fuel level indicator
+;                         * 10 = Altitude indicator
+;                         * 11 = Cabin temperature indicator
+;                         * 12 = Laser temperature indicator
+;
+;   K                   The screen x-coordinate of the left end of the indicator
+;
+;   K+2                 The colour we should use for dangerous values
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   A                   The value to be shown on the indicator, scaled to fit
+;                       into the range 0 to 31
+;
+;   Y                   Y is incremented to the next indicator number
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   DIR1                Contains an RTS
+;
 ; ******************************************************************************
 
 .DIS1
 
- LSR A                  ; Like DILX
+ LSR A                  ; Set A = A / 16, so A is 0-31
  LSR A
  LSR A
 
 .DIS2
 
- CMP #32
- BCC P%+4
+ CMP #32                ; Cap A to a maximum value of 31, so A is in the range
+ BCC P%+4               ; 0 to 31
  LDA #31
- LDX dialc1,Y
- CMP dialle,Y
- BCC DI3
- LDX dialc2,Y
+
+ LDX dialc1,Y           ; Set X to the low-value colour for indicator Y from the
+                        ; dialc1 table 
+
+ CMP dialle,Y           ; If A < dialle for indicator Y, then this is a low
+ BCC DI3                ; value that is below the threshold for this indicator,
+                        ; so jump to DI3 as we aleady have the correct colour
+
+ LDX dialc2,Y           ; If we get here then A > dialle for indicator Y,
+                        ; which is a high value that is on or above the
+                        ; threshold for this indicator, so set X to the
+                        ; high-value colour for indicator Y from the dialc2
+                        ; table 
 
 .DI3
 
- CPX #$FF
+ CPX #$FF               ; If the colour in X is not $FF, jump to DI4
  BNE DI4
- LDX K+2
- CLC
+
+ LDX K+2                ; If the colour in X is $FF, set X = K + 2, so X is
+                        ; either red, or flashing red-and-white if flashing
+                        ; colours are configured
+
+ CLC                    ; Clear the C flag (though this doesn't seem to have any
+                        ; effect, as we do a comparison almost straight away
+                        ; that will override the C flag)
 
 .DI4
 
- INY
- PHA
- CMP dials-1,Y
- BNE DI6
- TXA
- CMP dialc-1,Y
- BEQ DI8
+ INY                    ; Increment Y to point to the next indicator, ready for
+                        ; the next indicator to be drawn
+
+ PHA                    ; Store the indicator value in A on the stack, so we can
+                        ; retrieve it below
+
+                        ; If we have already drawn this indicator in a previous
+                        ; iteration of the main loop, then we will have stored
+                        ; the indicator value and colour in the dials and dialc
+                        ; tables, so we now check these to see whether we need
+                        ; to update the indicator
+                        ;
+                        ; If this is the first time we have drawn this indicator
+                        ; then the values in dials and dialc will be zero, to
+                        ; indicate that no bar is shown
+                        ;
+                        ; Note that as we just incremented Y, we need to fetch
+                        ; the values for this indicator from dials-1 + Y and
+                        ; dialc-1 + Y, for example
+
+ CMP dials-1,Y          ; If the indicator value in A does not match the
+ BNE DI6                ; previous value for this indicator in dials, jump to
+                        ; DI6 to update the indicator
+
+ TXA                    ; If the colour in X matches the previous colour in
+ CMP dialc-1,Y          ; dialc, then both the value and the colour of this
+ BEQ DI8                ; indicator are unchanged, so jump to DI8 to return
+                        ; from the subroutine without drawing anything
 
 .DI6
 
- TXA
- LDX dialc-1,Y
- STA dialc-1,Y
- LDA dials-1,Y
- JSR DIS7
- LDX dialc-1,Y
- PLA
- STA dials-1,Y
+ TXA                    ; Store the new colour of the bar in the dialc table,
+ LDX dialc-1,Y          ; for use the next time the indicator is drawn, and
+ STA dialc-1,Y          ; set X to the previous colour
+
+ LDA dials-1,Y          ; Set A to the previous value of this indicator from
+                        ; the dials table
+
+ JSR DIS7               ; Call DIS7 below to draw this indicator using its
+                        ; previous value and colour, which will remove it from
+                        ; the screen as we draw indicators using EOR logic
+
+ LDX dialc-1,Y          ; Set X to the new colour for the indicator, which we
+                        ; just stored in the dialc table
+
+ PLA                    ; Retrieve the new indicator value from the stack and
+ STA dials-1,Y          ; store it in the dials table, for use the next time
+                        ; the indicator is drawn
 
 .DIS7
 
- STX COL
- LDX dialY-1,Y
- STX Y1
- LDX K
- STX X1
- CLC
- ADC K
- AND #$FE
- STA X2
- JSR P%+3
- JMP MSBARS
+                        ; We now draw the indicator with the colour in X and
+                        ; the value in A
+
+ STX COL                ; Set the drawing colour to X
+
+ LDX dialY-1,Y          ; Set Y1 to the screen y-coordinate of the indicator
+ STX Y1                 ; from the dialY table (so this is the y-coordinate of
+                        ; the top line of the four-line indicator)
+
+ LDX K                  ; Set X1 to K, so it contains the x-coordinate of the
+ STX X1                 ; left end of the indicator
+
+ CLC                    ; Set X2 = K + A, so it contains the x-coordinate of the
+ ADC K                  ; right end of the indicator bar (as we want to draw a
+ AND #%11111110         ; bar of length A pixels)
+ STA X2                 ;
+                        ; We round this down to an even number to ensure that
+                        ; the two-bit colour pattern fits exactly (though this
+                        ; isn't strictly necessary as the HLOIN routine also
+                        ; does this)
+
+ JSR P%+3               ; Call MSBARS twice to draw four pixel lines to form the
+ JMP MSBARS             ; indicator bar, returning from the subroutine using a
+                        ; tail call
 
 .DI8
 
- PLA
+ PLA                    ; Retrieve the indicator value from the stack so we can
+                        ; return it in A
 
 .DIR1
 
- RTS
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -10512,138 +10666,208 @@ ENDIF
 ;   Category: Dashboard
 ;    Summary: Update the roll or pitch indicator on the dashboard
 ;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   Y                   The indicator number:
+;
+;                         * 1 = Roll indicator
+;
+;                         * 2 = Pitch indicator
+;
+;   A                   The magnitude of the pitch or roll, in the range 0 to 15
+;                       (for roll) or 0 to 16 (for pitch)
+;
+;   N flag              The sign of the magnitude in A
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   Y                   Y is incremented to the next indicator number
+;
 ; ******************************************************************************
 
 .DIS5
 
- BPL DI9                ; Like DIL2
- EOR #$FF
- CLC
+ BPL DI9                ; If the angle whose magnitude in A is negative, negate
+ EOR #$FF               ; A using two's complement, so A is now in the range
+ CLC                    ; -15 to +15 (for roll) or -16 to +16 (for pitch)
  ADC #1
 
 .DI9
 
- INY
- CLC
- ADC #224
- CMP dials-1,Y
- BEQ DIR1
- PHA
- LDA dials-1,Y
- BEQ P%+5
- JSR DIS6
- PLA
- STA dials-1,Y
+ INY                    ; Increment Y to point to the next indicator, ready for
+                        ; the next indicator to be drawn
+
+                        ; If we have already drawn this indicator in a previous
+                        ; iteration of the main loop, then we will have stored
+                        ; the indicator value in the dials table, so we now
+                        ; check this to see whether we need to update the
+                        ; indicator
+                        ;
+                        ; If this is the first time we have drawn this indicator
+                        ; then the value in dials will be zero, to indicate that
+                        ; no bar has yet been drawn
+                        ;
+                        ; Note that as we just incremented Y, we need to fetch
+                        ; the value for this indicator from dials-1 + Y
+
+ CLC                    ; Set A = A + 224
+ ADC #224               ;
+                        ; The x-coordinate of the centre point of the indicator
+                        ; is 224, so this gives us the x-coordinate of the bar
+                        ; that we need to draw to represent the angle in A
+
+ CMP dials-1,Y          ; If the indicator value in A matches the previous value
+ BEQ DIR1               ; for this indicator in dials, jump to DIR1 to return
+                        ; from the subroutine without updating the indicator (as
+                        ; DIR1 contains an RTS)
+
+ PHA                    ; Store the indicator value in A on the stack, so we can
+                        ; retrieve it below
+
+ LDA dials-1,Y          ; If the previous value is zero, then skip the following
+ BEQ P%+5               ; instruction as there is currently no bar to be removed
+
+ JSR DIS6               ; Call DIS6 below to draw the indicator bar using its
+                        ; previous value, which will remove it from the screen
+                        ; as we draw indicators using EOR logic
+
+ PLA                    ; Retrieve the new indicator value from the stack and
+ STA dials-1,Y          ; store it in the dials table, for use the next time
+                        ; the indicator is drawn
 
 .DIS6
 
- STA X1
- LDA dialY-1,Y
- STA Y1
- CLC
- ADC #6
+ STA X1                 ; Set X1 to the indicator value (which we converted into
+                        ; the x-coordinate of the bar earlier)
+
+ LDA dialY-1,Y          ; Set Y1 to the screen y-coordinate of the indicator
+ STA Y1                 ; from the dialY table (so this is the y-coordinate of
+                        ; the top line of the indicator)
+
+ CLC                    ; Set Y2 = Y1 + 6, so we draw a vertical bar of six
+ ADC #6                 ; pixels in height
  STA Y2
- JMP VLOIN
+
+ JMP VLOIN              ; Jump to VLOIN to draw the indicator bar as a vertical
+                        ; line from (X1, Y1) to (X1, Y2), returning from the
+                        ; subroutine using a tail call
 
 ; ******************************************************************************
 ;
 ;       Name: dialY
 ;       Type: Variable
 ;   Category: Dashboard
-;    Summary: ???
+;    Summary: The screen y-coordinate of the top-left corner of each indicator
 ;
 ; ******************************************************************************
 
 .dialY
 
- EQUB $89
- EQUB $90
- EQUB $98
- EQUB $B9
- EQUB $B1
- EQUB $A9
- EQUB $A1
- EQUB $89
- EQUB $91
- EQUB $99
- EQUB $B1
- EQUB $A1
- EQUB $A9
+ EQUB 137               ;  0 = Speed indicator
+ EQUB 144               ;  1 = Roll indicator
+ EQUB 152               ;  2 = Pitch indicator
+ EQUB 185               ;  3 = Energy bank 4 (bottom)
+ EQUB 177               ;  4 = Energy bank 3
+ EQUB 169               ;  5 = Energy bank 2
+ EQUB 161               ;  6 = Energy bank 1 (top)
+ EQUB 137               ;  7 = Forward shield indicator
+ EQUB 145               ;  8 = Aft shield indicator
+ EQUB 153               ;  9 = Fuel level indicator
+ EQUB 177               ; 10 = Altitude indicator
+ EQUB 161               ; 11 = Cabin temperature indicator
+ EQUB 169               ; 12 = Laser temperature indicator
 
 ; ******************************************************************************
 ;
 ;       Name: dialle
 ;       Type: Variable
 ;   Category: Dashboard
-;    Summary: ???
+;    Summary: The threshold value for each indicator that defines low and high
+;             values, and therefore the low and high colours for the indicator
 ;
 ; ******************************************************************************
 
 .dialle
 
- EQUB 28
- EQUB  0
- EQUB  0
- EQUB 16
- EQUB  0
- EQUB  0
- EQUB  0
- EQUB  8
- EQUB  8
- EQUB  0
- EQUB  8
- EQUB 24
- EQUB 24
+ EQUB 28                ;  0 = Speed indicator
+ EQUB 0                 ;  1 = Roll indicator
+ EQUB 0                 ;  2 = Pitch indicator
+ EQUB 16                ;  3 = Energy bank 4 (bottom)
+ EQUB 0                 ;  4 = Energy bank 3
+ EQUB 0                 ;  5 = Energy bank 2
+ EQUB 0                 ;  6 = Energy bank 1 (top)
+ EQUB 8                 ;  7 = Forward shield indicator
+ EQUB 8                 ;  8 = Aft shield indicator
+ EQUB 0                 ;  9 = Fuel level indicator
+ EQUB 8                 ; 10 = Altitude indicator
+ EQUB 24                ; 11 = Cabin temperature indicator
+ EQUB 24                ; 12 = Laser temperature indicator
 
 ; ******************************************************************************
 ;
 ;       Name: dialc1
 ;       Type: Variable
 ;   Category: Dashboard
-;    Summary: ???
+;    Summary: The colour for each indicator for values that are below the
+;             threshold in dialle
+;
+; ------------------------------------------------------------------------------
+;
+; A colour value of $FF represents the colour red, or flashing red-and-white if
+; flashing colours are configured.
 ;
 ; ******************************************************************************
 
 .dialc1
 
- EQUB WHITE
- EQUB WHITE
- EQUB WHITE
- EQUB $FF
- EQUB VIOLET
- EQUB VIOLET
- EQUB VIOLET
- EQUB $FF
- EQUB $FF
- EQUB GREEN
- EQUB $FF
- EQUB BLUE
- EQUB BLUE
+ EQUB WHITE             ;  0 = Speed indicator
+ EQUB WHITE             ;  1 = Roll indicator
+ EQUB WHITE             ;  2 = Pitch indicator
+ EQUB $FF               ;  3 = Energy bank 4 (bottom)
+ EQUB VIOLET            ;  4 = Energy bank 3
+ EQUB VIOLET            ;  5 = Energy bank 2
+ EQUB VIOLET            ;  6 = Energy bank 1 (top)
+ EQUB $FF               ;  7 = Forward shield indicator
+ EQUB $FF               ;  8 = Aft shield indicator
+ EQUB GREEN             ;  9 = Fuel level indicator
+ EQUB $FF               ; 10 = Altitude indicator
+ EQUB BLUE              ; 11 = Cabin temperature indicator
+ EQUB BLUE              ; 12 = Laser temperature indicator
 
 ; ******************************************************************************
 ;
 ;       Name: dialc2
 ;       Type: Variable
 ;   Category: Dashboard
-;    Summary: ???
+;    Summary: The colour for each indicator for values that are on or above the
+;             threshold in dialle
+;
+; ------------------------------------------------------------------------------
+;
+; A colour value of $FF represents the colour red, or flashing red-and-white if
+; flashing colours are configured.
 ;
 ; ******************************************************************************
 
 .dialc2
 
- EQUB $FF
- EQUB WHITE
- EQUB WHITE
- EQUB VIOLET
- EQUB VIOLET
- EQUB VIOLET
- EQUB VIOLET
- EQUB VIOLET
- EQUB VIOLET
- EQUB GREEN
- EQUB GREEN
- EQUB $FF
- EQUB $FF
+ EQUB $FF               ;  0 = Speed indicator
+ EQUB WHITE             ;  1 = Roll indicator
+ EQUB WHITE             ;  2 = Pitch indicator
+ EQUB VIOLET            ;  3 = Energy bank 4 (bottom)
+ EQUB VIOLET            ;  4 = Energy bank 3
+ EQUB VIOLET            ;  5 = Energy bank 2
+ EQUB VIOLET            ;  6 = Energy bank 1 (top)
+ EQUB VIOLET            ;  7 = Forward shield indicator
+ EQUB VIOLET            ;  8 = Aft shield indicator
+ EQUB GREEN             ;  9 = Fuel level indicator
+ EQUB GREEN             ; 10 = Altitude indicator
+ EQUB $FF               ; 11 = Cabin temperature indicator
+ EQUB $FF               ; 12 = Laser temperature indicator
 
 ; ******************************************************************************
 ;
@@ -29956,16 +30180,31 @@ ENDIF
 
  DEC MCNT               ; Decrement the main loop counter
 
- LDA $C061              ; ???
- ORA $C062
+ LDA $C061              ; Combine the soft switches at PB0 and PB1, which are
+ ORA $C062              ; mapped to push button 0 and 1 (i.e. the fire buttons
+                        ; on the joysticks)
+                        ;
+                        ; If a fire button is being pressed then bit 7 in that
+                        ; soft switch will be set, so this sets bit 7 of A if
+                        ; either one of the fire buttons is being pressed
 
 IF _IB_DISK
 
- AND L4562              ; ???
+ AND fireButtonMask     ; This is a strange bit of code - fireButtonMask is set
+                        ; to %00001011 but it is never changed, so this AND will
+                        ; always clear bit 7
+                        ;
+                        ; This means that we will never take the following
+                        ; branch to TL3, so we will never be able to configure
+                        ; the joystick from the title screen by pressing fire
+                        ;
+                        ; The value of %00001011 in fireButtonMask is also a bit
+                        ; odd, as $C061 and $C062 only record the button status
+                        ; in bit 7, so the mask value is rather intriguing too
 
 ENDIF
 
- BMI TL3
+ BMI TL3                ; If bit 7 of A is set then the 
 
  BCC TLL2               ; If no key is being pressed then the C flag will be
                         ; clear from the call to RDKEY, so loop back up to
@@ -32626,6 +32865,7 @@ ENDMACRO
 ;       Type: Variable
 ;   Category: Market
 ;    Summary: Market prices table
+;  Deep dive: Market item prices and availability
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -32637,12 +32877,12 @@ ENDMACRO
 ;   Byte #2 = Base quantity
 ;   Byte #3 = Mask to control price fluctuations
 ;
-; To make it easier for humans to follow, we've defined a macro called ITEM
+; To make it easier for humans to follow, I've defined a macro called ITEM
 ; that takes the following arguments and builds the four bytes for us:
 ;
 ;   ITEM base price, economic factor, units, base quantity, mask
 ;
-; So for food, we have the following:
+; So for food, we have the following, for example:
 ;
 ;   * Base price = 19
 ;   * Economic factor = -2
@@ -32670,6 +32910,18 @@ ENDMACRO
  ITEM 97,  -1, 'k',  66, %00000111  ; 13 = Gold
 
 ;EQUD $360A118          ; This data is commented out in the original source
+                        ;
+                        ; It would have inserted an item as follows:
+                        ;
+                        ;   ITEM 24, -1, 'k',  96, %00000011
+                        ;
+                        ; So that's an item with a base price of 24 credits that
+                        ; is slightly cheaper than average in agricultural
+                        ; economies but closer to average in rich industrial
+                        ; ones, with a base quantity of 96kg and a reasonably
+                        ; stable price
+                        ;
+                        ; I wonder what this mysterious item was going to be?
 
  ITEM 171, -2, 'k',  55, %00011111  ; 14 = Platinum
  ITEM 45,  -1, 'g', 250, %00001111  ; 15 = Gem-Stones
@@ -42476,14 +42728,26 @@ ENDMACRO
 ;       Name: MSBARS
 ;       Type: Subroutine
 ;   Category: Dashboard
-;    Summary: Draw an indicator in the dashboard's missile bar
+;    Summary: Draw two horizontal lines as part of an indicator bar, from
+;             (X1, Y1+1) to (X2, Y1+1) and (X1, Y1+2) to (X2, Y1+2)
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   Y1                  Y1 is incremented by 2
 ;
 ; ******************************************************************************
 
 .MSBARS
 
- JSR P%+3               ; ???
- INC Y1
+ JSR P%+3               ; Call the following instruction as a subroutine, to
+                        ; draw a line from (X1, Y1+1) to (X2, Y1+1), and then
+                        ; fall through to draw another line from (X1, Y1+2) to
+                        ; (X2, Y1+2), as Y1 is incremented each time
+
+ INC Y1                 ; Increment Y1 and fall through into HLOIN to draw a
+                        ; horizontal line from (X1, Y1) to (X2, Y1)
 
 ; ******************************************************************************
 ;
@@ -43575,7 +43839,7 @@ ENDIF
 
 .CHPR2
 
- CMP #123
+ CMP #123               ; ???
  BCS whosentthisshit
  CMP #13
  BCC whosentthisshit
