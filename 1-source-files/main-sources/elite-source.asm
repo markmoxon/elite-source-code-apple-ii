@@ -18134,19 +18134,23 @@ ENDIF
  LDA #199               ; Print recursive token 39 ("GALACTIC CHART{galaxy
  JSR TT27               ; number right-aligned to width 3}")
 
- LDA #GCYT-1            ; ???
- JSR NLIN5
- LDA #GCYB+1
- STA Y1
- LDA #31
+ LDA #GCYT-1            ; Draw a screen-wide horizontal line at pixel row
+ JSR NLIN5              ; GCYT-1, to act as the bottom of the title box and the
+                        ; top border of the chart
+
+ LDA #GCYB+1            ; Draw a horizontal line from x-coordinate 31 to 228 on
+ STA Y1                 ; pixel row GCYB+1 for the bottom edge of the chart, so
+ LDA #31                ; the chart itself is 128 * 0.75 pixels high
  STA X1
  LDA #228
  STA X2
  JSR HLOIN
- LDA #30
- JSR DVLOIN
- LDA #226
- JSR DVLOIN
+
+ LDA #30                ; Draw a vertical line from (30, GCYT) to (30, GCYB),
+ JSR DVLOIN             ; for the left edge of the chart
+
+ LDA #226               ; Draw a vertical line from (226, GCYT) to (226, GCYB),
+ JSR DVLOIN             ; for the right edge of the chart
 
  JSR TT14               ; Call TT14 to draw a circle with crosshairs at the
                         ; current system's galactic coordinates
@@ -18169,8 +18173,8 @@ ENDIF
 
  TAX                    ; Copy the scaled x-coordinate into X
 
- LDA #$FF               ; ???
- STA ZZ
+ LDA #255               ; Set ZZ = 255 so the call to PIXEL below draws each
+ STA ZZ                 ; system as a single-height two-pixel dash
 
  LDA QQ15+1             ; Fetch the s0_hi seed into A, which gives us the
                         ; galactic y-coordinate of this system
@@ -18190,10 +18194,9 @@ ENDIF
  ADC #GCYT              ; of the chart is on pixel row GCYT)
 
  JSR PIXEL              ; Call PIXEL to draw a point at (X, A), with the size of
-                        ; the point dependent on the distance specified in ZZ
-                        ; (so a high value of ZZ will produce a one-pixel point,
-                        ; a medium value will produce a two-pixel dash, and a
-                        ; small value will produce a four-pixel square)
+                        ; the point dependent on the distance specified in ZZ,
+                        ; so as we set ZZ to 255 earlier, this will draw the
+                        ; system as a single-height two-pixel dash
 
  JSR TT20               ; We want to move on to the next system, so call TT20
                         ; to twist the three 16-bit seeds in QQ15
@@ -18277,11 +18280,13 @@ ENDIF
  SBC QQ19+2             ; crosshairs
 
  BIT QQ11               ; If bit 7 of QQ11 is set, then this this is the
- BMI TT84               ; Short-range Chart, so jump to TT84
+ BMI TT84               ; Short-range Chart, so jump to TT84 to skip the
+                        ; following
 
- CMP #34                ; ???
- BCS TT84
- LDA #34
+ CMP #34                ; This is the Long-range Chart, so clip the x-coordinate
+ BCS TT84               ; of the left edge of the crosshairs so that it is at
+ LDA #34                ; least 34 (so it doesn't go off the left edge of the
+                        ; chart)
 
 .TT84
 
@@ -18293,11 +18298,14 @@ ENDIF
  ADC #2                 ; crosshairs
  ADC QQ19+2
 
- BIT QQ11               ; ???
- BMI TT85
- CMP #224
- BCC TT85
- LDA #224
+ BIT QQ11               ; If bit 7 of QQ11 is set, then this this is the
+ BMI TT85               ; Short-range Chart, so jump to TT85 to skip the
+                        ; following
+
+ CMP #224               ; This is the Long-range Chart, so clip the x-coordinate
+ BCC TT85               ; of the right edge of the crosshairs so that it is no
+ LDA #224               ; more than 224 (so it doesn't go off the right edge of
+                        ; the chart)
 
 .TT85
 
@@ -18355,7 +18363,10 @@ ENDIF
  LDA QQ19               ; Set X1 = the x-coordinate of the centre of the
  STA X1                 ; crosshairs
 
- JMP VLOIN              ; ???
+ JMP VLOIN              ; Draw a vertical line from (X1, Y1) to (X1, Y2), which
+                        ; will draw from the top edge of the crosshairs to the
+                        ; bottom edge, through the centre of the crosshairs,
+                        ; and returning from the subroutine using a tail call
 
 ; ******************************************************************************
 ;
@@ -31629,11 +31640,16 @@ ENDIF
 ;   Category: Keyboard
 ;    Summary: Scan the joysticks
 ;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   X                   The number of the joystick to read (0 to 3)
+;
 ; ******************************************************************************
 
 .RDS1
 
- \Read Joystick X
  LDA $C064,X            ; ???
  BMI RDS1
  LDY $C070
@@ -31992,7 +32008,7 @@ ENDIF
 
 .DKSANYKEY
 
- LDX #0
+ LDX #0                 ; ???
  BIT $C000
  BPL P%+6
  DEX
