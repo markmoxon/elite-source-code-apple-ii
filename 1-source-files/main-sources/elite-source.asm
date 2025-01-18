@@ -1951,9 +1951,11 @@ ENDIF
 
 .dialc
 
- SKIP 14                ; Storage for the current colour of each of the
-                        ; indicators on the dashboard, so we can check whether
-                        ; an indicator's colour has changed when updating it
+ SKIP 14                ; Current dashboard indicator colours
+                        ;
+                        ; The current colour of each of the indicators on the
+                        ; dashboard, so we can check whether an indicator's
+                        ; colour has changed when updating it
 
 .QQ24
 
@@ -2354,13 +2356,19 @@ NEXT
 
 .dials
 
- SKIP 14                ; Storage for the current value of each of the
-                        ; indicators on the dashboard, so we can check whether
-                        ; an indicator's value has changed when updating it
+ SKIP 14                ; Current dashboard indicator values
+                        ;
+                        ; The current value of each of the indicators on the
+                        ; dashboard, so we can check whether an indicator's
+                        ; value has changed when updating it
 
 .mscol
 
- SKIP 4                 ; ???
+ SKIP 4                 ; Current missile indicator colours
+                        ;
+                        ; The current colour of each of the missile indicators
+                        ; on the dashboard, so we can check whether an
+                        ; indicator's colour has changed when updating it
 
 .DFLAG
 
@@ -25351,7 +25359,15 @@ ENDIF
 ;
 ; Arguments:
 ;
-;   Y                   The new status of the leftmost missile indicator
+;   Y                   The new colour of the missile indicator:
+;
+;                         * #BLACK = black (no missile)
+;
+;                         * #RED = red (armed and locked)
+;
+;                         * #WHITE = white (armed)
+;
+;                         * #GREEN = green (disarmed)
 ;
 ; ******************************************************************************
 
@@ -25387,7 +25403,7 @@ ENDIF
 ;
 ;                         * #RED = red (armed and locked)
 ;
-;                         * #YELLOW = yellow (armed)
+;                         * #WHITE = white (armed)
 ;
 ;                         * #GREEN = green (disarmed)
 ;
@@ -43869,37 +43885,87 @@ ENDMACRO
 ;   Category: Dashboard
 ;    Summary: Draw a specific indicator in the dashboard's missile bar
 ;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   X                   The number of the missile indicator to update (counting
+;                       from right to left, so indicator NOMSL is the leftmost
+;                       indicator)
+;
+;   Y                   The new colour of the missile indicator:
+;
+;                         * #BLACK = black (no missile)
+;
+;                         * #RED = red (armed and locked)
+;
+;                         * #WHITE = white (armed)
+;
+;                         * #GREEN = green (disarmed)
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   X                   X is preserved
+;
+;   Y                   Y is set to 0
+;
 ; ******************************************************************************
 
 .MSBAR
 
- TYA                    ; ???
- PHA
- JSR MSBAR2
- PLA
- STA mscol-1,X
+ TYA                    ; Store the new indicator colour in Y on the stack so we
+ PHA                    ; can retrieve it after the call to MSBAR2
+
+ JSR MSBAR2             ; Call MSBAR2 below to draw this indicator using its
+                        ; previous value and colour, which will remove it from
+                        ; the screen as we draw indicators using EOR logic
+
+ PLA                    ; Retrieve the new indicator colour from the stack and
+ STA mscol-1,X          ; store it in the mscol table, for use the next time
+                        ; the indicator is drawn
+                        ;
+                        ; We subtract 1 as the indicator number is in the range
+                        ; 1 to NOMSL (i.e. 1 to 4 if we have four missiles
+                        ; fitted)
 
 .MSBAR2
 
- LDA mscol-1,X
- BEQ coolkey
- STA COL
- LDA msloc-1,X
+ LDA mscol-1,X          ; Set A to the previous colour of this indicator from
+                        ; the mscol table
+
+ BEQ coolkey            ; If the previous colour is the same as the new colour,
+                        ; jump to coolkey to clear the C flag and return from
+                        ; the subroutine, as we do not need to redraw the
+                        ; indicator
+
+ STA COL                ; Set the drawing colour to A
+
+ LDA msloc-1,X          ; ???
  STA X1
+
  CLC
  ADC #6
  STA X2
+
  TXA
  PHA
+
  LDA #184
  STA Y1
- JSR MSBARS
- JSR MSBARS
- PLA
- TAX
- TYA
- LDY #0
- RTS
+
+ JSR MSBARS             ; Call MSBARS twice to draw four pixel lines to form the
+ JSR MSBARS             ; missile indicator
+
+ PLA                    ; Restore the indicator number from the stack into X so
+ TAX                    ; it is preserved
+
+ TYA                    ; Set A = ???
+
+ LDY #0                 ; Set Y = 0, so we can return it from the subroutine
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -43929,6 +43995,14 @@ ENDMACRO
 ;
 ; This routine is not used in this version of Elite. It is left over from the
 ; 650s Second Processor version.
+;
+; The entry point at coolkey is used, however.
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   coolkey             Clear the C flag and return from the subroutine
 ;
 ; ******************************************************************************
 
