@@ -305,6 +305,9 @@ ENDIF
  KWH% = $A380           ; The address of the kill tally integer table, as set in
                         ; elite-data.asm
 
+ SHIP_CORIOLIS = $A49E  ; The address of the ship blueprint for the Coriolis
+                        ; station, as set in elite-data.asm
+
  R% = $BFFF             ; The address of the last byte of game code
 
  phsoff  =  $C080       ; Disk controller I/O soft switch for turning the
@@ -29757,7 +29760,7 @@ ENDIF
 
 IF _IB_DISK
 
- EQUW $A49E             ; This variable is set by routine BEGIN to the address
+ EQUW SHIP_CORIOLIS     ; This variable is set by routine BEGIN to the address
                         ; of the Coriolis space station's ship blueprint (the
                         ; initial address in this instruction is overwritten)
 
