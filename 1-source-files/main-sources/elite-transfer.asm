@@ -114,7 +114,7 @@
  LDA $C057              ; Select high-resolution graphics by reading the HIRESON
                         ; soft switch
 
- LDA $C050              ; Select the graphics mode by eading the TEXTOFF soft
+ LDA $C050              ; Select the graphics mode by reading the TEXTOFF soft
                         ; switch
 
  LDA ZP1

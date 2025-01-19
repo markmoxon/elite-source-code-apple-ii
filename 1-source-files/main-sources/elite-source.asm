@@ -2832,7 +2832,7 @@ ENDIF
 ;JSR HALL               ; This instruction is commented out in the original
                         ; source
 
- LDY #44                ; Wait for 44/50 of a second (0.88 seconds)
+ LDY #44                ; Wait for 44 delay loops
  JSR DELAY
 
  LDA TP                 ; Fetch bits 0 and 1 of TP, and if they are non-zero
@@ -6103,7 +6103,7 @@ ENDIF
  EQUW MT18              ; Token 18: Randomly print 1 to 4 two-letter tokens
  EQUW MT19              ; Token 19: Capitalise first letter of next word only
  EQUW DASC              ; Token 20: Unused
- EQUW CLYNS             ; Token 21: Clear the bottom few lines of the space view
+ EQUW CLYNS             ; Token 21: Clear a space near the bottom of the screen
  EQUW PAUSE             ; Token 22: Display ship and wait for key press
  EQUW MT23              ; Token 23: Move to row 10, white text, set lower case
  EQUW PAUSE2            ; Token 24: Wait for a key press
@@ -16708,8 +16708,8 @@ ENDIF
  JSR DETOK              ; to row 10, white, lower case}{white}{all caps}INCOMING
                         ; MESSAGE"
 
- LDY #100               ; Wait for 100/50 of a second (2 seconds) and return
- JMP DELAY              ; from the subroutine using a tail call
+ LDY #100               ; Wait for 100 delay loops and return from the
+ JMP DELAY              ; subroutine using a tail call
 
 ; ******************************************************************************
 ;
@@ -16890,19 +16890,17 @@ ENDIF
 ;       Name: DELAY
 ;       Type: Subroutine
 ;   Category: Utility routines
-;    Summary: Wait for a specified time, in either 1/60s of a second or
-;             iterations of a fixed-length loop, depending on the variant
+;    Summary: Wait for a specified time, measured in loop iterations
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Wait for the number of vertical syncs given in Y, so this effectively waits
-; for Y/60 of a second (as the vertical sync occurs 60 times a second).
+; This routine uses the WSCAN routine to implement a pause. In the released
+; version of Apple II Elite, WSCAN waits for 15 * 256 iterations of an empty
+; loop, so the DELAY routine waits for a specified number of loop iterations.
 ;
-; That said, the WSCAN routine in the released version of Apple II Elite uses a
-; fixed-length loop to wait for the vertical sync to have passed, rather than
-; actually waiting for the vertical sync. The source disk on Ian Bell's site
-; does wait for the vertical sync, so this behaviour was changed at some stage
-; during development.
+; The variant on the source disk from Ian Bell's site implements WSCAN by
+; waiting for the vertical sync (like the BBC Micro and Commodore 64 versions),
+; so this behaviour was presumably changed at some stage during development.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -16914,13 +16912,12 @@ ENDIF
 
 .DELAY
 
- JSR WSCAN              ; Call WSCAN to wait for the vertical sync, so the whole
-                        ; screen gets drawn
+ JSR WSCAN              ; Call WSCAN to wait for 15 * 256 loop iterations
 
  DEY                    ; Decrement the counter in Y
 
  BNE DELAY              ; If Y isn't yet at zero, jump back to DELAY to wait
-                        ; for another vertical sync
+                        ; for another iteration of the delay loop
 
  RTS                    ; Return from the subroutine
 
@@ -18588,8 +18585,8 @@ ENDIF
 
 .TT224
 
- JSR CLYNS              ; Clear the bottom three text rows of the upper screen,
-                        ; and move the text cursor to the first cleared row
+ JSR CLYNS              ; Clear two text rows at the bottom of the screen, and
+                        ; move the text cursor to the first cleared row
 
  LDA #204               ; Print recursive token 44 ("QUANTITY OF ")
  JSR TT27
@@ -19264,9 +19261,7 @@ ENDIF
  EOR #$FF
  PHA
 
- JSR WSCAN              ; Call WSCAN to wait for the vertical sync, so the whole
-                        ; screen gets drawn and we can move the crosshairs with
-                        ; no screen flicker
+ JSR WSCAN              ; Call WSCAN to wait for 15 * 256 loop iterations
 
  JSR TT103              ; Draw small crosshairs at coordinates (QQ9, QQ10),
                         ; which will erase the crosshairs currently there
@@ -20155,8 +20150,10 @@ ENDIF
 
 .dockEd
 
- JSR CLYNS              ; Clear the bottom three text rows of the upper screen,
-                        ; and move the text cursor to the first cleared row
+ JSR CLYNS              ; Clear a space near the bottom of the screen (one
+                        ; character row in the space view, two character rows in
+                        ; the text views), and move the text cursor to the first
+                        ; cleared row
 
  LDA #15                ; Move the text cursor to column 15
  JSR DOXC
@@ -21923,8 +21920,8 @@ ENDIF
  CPX Q                  ; If X < Q, loop back up to print the next item on the
  BCC EQL1               ; list of equipment available at this station
 
- JSR CLYNS              ; Clear the bottom three text rows of the upper screen,
-                        ; and move the text cursor to the first cleared row
+ JSR CLYNS              ; Clear two text rows at the bottom of the screen, and
+                        ; move the text cursor to the first cleared row
 
  LDA #127               ; Print recursive token 127 ("ITEM") followed by a
  JSR prq                ; question mark
@@ -22270,8 +22267,8 @@ ENDIF
 
  JSR BOOP               ; Call the BOOP routine to make a low, long beep
 
- LDY #25                ; Wait for 25/50 of a second (0.5 second) and return
- JMP DELAY              ; from the subroutine using a tail call
+ LDY #25                ; Wait for 25 delay loops and return from the subroutine
+ JMP DELAY              ; using a tail call
 
 ; ******************************************************************************
 ;
@@ -22460,8 +22457,8 @@ ENDIF
  CPY #20                ; If Y < 20 then loop back up to qv1 to print the next
  BCC qv1                ; view in the menu
 
- JSR CLYNS              ; Clear the bottom three text rows of the upper screen,
-                        ; and move the text cursor to the first cleared row
+ JSR CLYNS              ; Clear two text rows at the bottom of the screen, and
+                        ; move the text cursor to the first cleared row
 
 .qv2
 
@@ -22478,7 +22475,7 @@ ENDIF
  BCC qv3                ; view number, so jump down to qv3 as we are done
 
  JSR CLYNS              ; Otherwise we didn't get a valid view number, so clear
-                        ; the bottom three text rows of the upper screen, and
+                        ; two text rows at the bottom of the screen, and
                         ; move the text cursor to column 1 on row 21
 
  JMP qv2                ; Jump back to qv2 to try again
@@ -22500,8 +22497,7 @@ ENDIF
 ;
 ; Set the system closest to galactic coordinates (QQ9, QQ10) as the selected
 ; system, redraw the crosshairs on the chart accordingly (if they are being
-; shown), and, if this is not a space view, clear the bottom three text rows of
-; the screen.
+; shown), and clear one text row at the bottom of the screen.
 ;
 ; ******************************************************************************
 
@@ -22517,10 +22513,9 @@ ENDIF
                         ; which will draw the crosshairs at our current home
                         ; system
 
- JMP CLYNS              ; Clear the bottom three text rows of the upper screen,
-                        ; and move the text cursor to the first cleared row
-
-                        ; Return from the subroutine using a tail call
+ JMP CLYNS              ; Clear one text row at the bottom of the screen, move
+                        ; the text cursor to the cleared row, and return from
+                        ; the subroutine using a tail call
 
 ; ******************************************************************************
 ;
@@ -28147,8 +28142,10 @@ ENDIF
 
 .clynsneed
 
- JSR CLYNS              ; Clear the bottom three text rows of the upper screen,
-                        ; and move the text cursor to the first cleared row
+ JSR CLYNS              ; Clear a space near the bottom of the screen (one
+                        ; character row in the space view, two character rows in
+                        ; the text views), and move the text cursor to the first
+                        ; cleared row
 
  JMP me3                ; Jump back into the main spawning loop at me3
 
@@ -28938,8 +28935,8 @@ ENDIF
  LSR A                  ; and bit 0 of QQ11 is 1 (the current view is type 1),
  BCS plus13             ; then skip the following two instructions
 
- LDY #2                 ; Wait for 2/50 of a second (0.04 seconds), to slow the
- JSR DELAY              ; main loop down a bit
+ LDY #2                 ; Wait for 2 delay loops, to slow the main loop down a
+ JSR DELAY              ; bit
 
 .plus13
 
@@ -30622,7 +30619,7 @@ ENDIF
 ;LDA #MAG2              ; These instructions are commented out in the original
 ;STA COL                ; source
 
- LDY #8                 ; Wait for 8/50 of a second (0.16 seconds)
+ LDY #8                 ; Wait for 8 delay loops
  JSR DELAY
 
  JSR FLKB               ; Call FLKB to flush the keyboard buffer
@@ -32321,7 +32318,7 @@ ENDIF
  TYA                    ; Store Y and A on the stack so we can retrieve them
  PHA                    ; below
 
- LDY #20                ; Wait for 20/50 of a second (0.4 seconds)
+ LDY #20                ; Wait for 20 delay loops
  JSR DELAY
 
  PLA                    ; Restore A and Y from the stack
@@ -32628,8 +32625,7 @@ ENDIF
                         ; pauses the game when COPY is pressed, and unpauses
                         ; it when DELETE is pressed
 
- JSR WSCAN              ; Call WSCAN to wait for the vertical sync, so the whole
-                        ; screen gets drawn
+ JSR WSCAN              ; Call WSCAN to wait for 15 * 256 loop iterations
 
  JSR RDKEY              ; Scan the keyboard for a key press and return the ASCII
                         ; code of the key pressed in A and X (or 0 for no key
@@ -32727,9 +32723,9 @@ ENDIF
 
 .t
 
- LDY #2                 ; Wait for 2/50 of a second (0.04 seconds) to implement
- JSR DELAY              ; a simple keyboard debounce and prevent multiple key
-                        ; presses being recorded
+ LDY #2                 ; Wait for 2 delay loops to implement a simple keyboard
+ JSR DELAY              ; debounce and prevent multiple key presses being
+                        ; recorded
 
  JSR RDKEY              ; Scan the keyboard for a key press and return the
                         ; ASCII code of the key pressed in A and X (or 0 for no
@@ -32818,8 +32814,10 @@ ENDIF
  LDX QQ11               ; If this is the space view, skip the following
  BEQ infrontvw          ; instruction
 
- JSR CLYNS              ; Clear the bottom three text rows of the upper screen,
-                        ; and move the text cursor to the first cleared row
+ JSR CLYNS              ; Clear a space near the bottom of the screen (one
+                        ; character row in the space view, two character rows in
+                        ; the text views), and move the text cursor to the first
+                        ; cleared row
 
  LDA #25                ; Set A = 25 to use as the text row for the message if
                         ; this is not a space view
@@ -44091,16 +44089,16 @@ ENDMACRO
 ;       Name: WSCAN
 ;       Type: Subroutine
 ;   Category: Drawing the screen
-;    Summary: Wait for the vertical sync (or pause for 15 * 256 loop iterations)
+;    Summary: Wait for 15 * 256 loop iterations
 ;
 ; ------------------------------------------------------------------------------
 ;
-; In the version of Apple II Elite on the source disk on Ian Bell's site, this
-; routine waits for the vertical sync by checking the state of the VERTBLANK
-; soft switch.
-;
-; In the released version of the game, this routine instead implements a
+; In the released version of Apple II Elite, this routine implements a
 ; fixed-length pause of 15 * 256 iterations of an empty loop.
+;
+; In the version on the source disk on Ian Bell's site, this routine waits for
+; the vertical sync by checking the state of the VERTBLANK soft switch, so this
+; behaviour was presumably changed at some stage during development.
 ;
 ; ******************************************************************************
 
@@ -45111,45 +45109,71 @@ ENDIF
 ;       Name: CLYNS
 ;       Type: Subroutine
 ;   Category: Drawing the screen
-;    Summary: Clear the bottom two text rows of the visible screen ???
+;    Summary: Clear a space near the bottom of the screen (one character row in
+;             the space view, two character rows in the text views)
+;
+; ------------------------------------------------------------------------------
+;
+; This routine clears some space at the bottom of the screen and moves the text
+; cursor to column 1 on row 21 (for the space view) or row 15 (for the text
+; views).
 ;
 ; ******************************************************************************
 
 .CLYNS
 
- LDA #0                 ; ???
- STA DLY
- STA de
+ LDA #0                 ; Set the delay in DLY to 0, to indicate that we are
+ STA DLY                ; no longer showing an in-flight message, so any new
+                        ; in-flight messages will be shown instantly
+
+ STA de                 ; Clear de, the flag that appends " DESTROYED" to the
+                        ; end of the next text token, so that it doesn't
 
 .CLYNS2
 
- JSR CLYS1
- LDA #$FF
- STA DTW2
- LDA #128
- STA QQ17
- LDA text
- BPL CLY1
- LDA #32
- LDX #64
+ JSR CLYS1              ; Call CLYS1 to move the text cursor to column 21 on
+                        ; row 1
+
+ LDA #%11111111         ; Set DTW2 = %11111111 to denote that we are not
+ STA DTW2               ; currently printing a word
+
+ LDA #%10000000         ; Set bit 7 of QQ17 to switch standard tokens to
+ STA QQ17               ; Sentence Case
+
+ LDA text               ; If bit 7 of text is clear then the current screen mode
+ BPL CLY1               ; is the high-resolution graphics mode, so jump to CLY1
+                        ; clear a character row on the graphics screen
+
+                        ; Otherwise this is the text screen, so we clear two
+                        ; character rows by printing 64 spaces (32 spaces per
+                        ; row
+
+ LDA #' '               ; Set A to the space character, so we can pass it to
+                        ; CHPR to print a space
+
+ LDX #64                ; Set a character counter in X so we print 64 spaces
 
 .CLYL1
 
- JSR CHPR
- DEX
- BNE CLYL1
+ JSR CHPR               ; Print a space character
+
+ DEX                    ; Decrement the character counter
+
+ BNE CLYL1              ; Loop back until we have printed 64 spaces to blank
+                        ; out two character rows
 
 .CLYS1
 
- LDA #21
+ LDA #21                ; Move the text cursor to column 21 on row 1
  STA YC
  LDA #1
  STA XC
- RTS
+
+ RTS                    ; Return from the subroutine
 
 .CLY1
 
- LDY #15
+ LDY #15                ; Move the text cursor to column 15 on row 1
  STY YC
  LDA #1
  STA XC
@@ -45367,7 +45391,7 @@ ENDIF
  LDA $C057              ; Select high-resolution graphics by reading the HIRESON
                         ; soft switch
 
- LDA $C050              ; Select the graphics mode by eading the TEXTOFF soft
+ LDA $C050              ; Select the graphics mode by reading the TEXTOFF soft
                         ; switch
 
  LSR text               ; Clear bit 7 of text to indicate that we are now in the
@@ -45389,7 +45413,7 @@ ENDIF
  LDA $C054              ; Select page 1 display (i.e. main screen memory) by
                         ; reading the PAGE20FF soft switch
 
- LDA $C051              ; Select the text mode by eading the TEXTON soft switch
+ LDA $C051              ; Select the text mode by reading the TEXTON soft switch
 
  SEC                    ; Set bit 7 of text to indicate that we are now in the
  ROR text               ; text screen mode
