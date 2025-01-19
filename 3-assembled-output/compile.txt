@@ -22982,6 +22982,48 @@ ZP workspace from &0 to &E2 inclusive
 .K%
      0800
 K% workspace from &800 to &927 inclusive
+.buffer
+     0800
+.fretrk
+     0830
+.dirtrk
+     0831
+.tracks
+     0834
+.bitmap
+     0838
+.buffr2
+     0900
+.track
+     0A5E
+.sector
+     0A5F
+.curtrk
+     0A60
+.tsltrk
+     0A61
+.tslsct
+     0A62
+.filtrk
+     0A63
+.filsct
+     0A64
+.mtimel
+     0A65
+.mtimeh
+     0A66
+.seeks
+     0A67
+.recals
+     0A68
+.slot16
+     0A69
+.atemp0
+     0A6A
+.stkptr
+     0A6B
+.idfld
+     0A6C
 .UP
      0200
      0200

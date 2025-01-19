@@ -307,43 +307,30 @@ ENDIF
 
  R% = $BFFF             ; The address of the last byte of game code
 
-                        ; Disk controller I/O addresses ???
+ phsoff  =  $C080       ; Disk controller I/O soft switch for turning the
+                        ; stepper motor phase 0 off
 
- phsoff  =  $C080       ; stepper motor phase 0 off
- mtroff  =  $C088       ; turn motor off
- mtron   =  $C089       ; turn motor on
- drv1en  =  $C08A       ; enable drive 1
- drv2en  =  $C08B       ; enable drive 2
- Q6L     =  $C08C       ; strobe data latch for I/O
- Q6H     =  $C08D       ; load data latch
- Q7L     =  $C08E       ; prepare latch for input
- Q7H     =  $C08F       ; prepare latch for output
+ mtroff  =  $C088       ; Disk controller I/O soft switch for turning the motor
+                        ; off
 
-                        ; Disk controller buffers ???
+ mtron   =  $C089       ; Disk controller I/O soft switch for turning the motor
+                        ; on
 
- buffer  =  $0800       ; K%, 256 byte sector buffer
- fretrk  =  buffer+$30  ; last allocated track
- dirtrk  =  buffer+$31  ; direction of track allocation (+1 or -1)
- tracks  =  buffer+$34  ; number of tracks per disc
- bitmap  =  buffer+$38  ; bit map of free sectors in track 0
+ drv1en  =  $C08A       ; Disk controller I/O soft switch for enabling drive 1
 
- buffr2  =  $0800+256   ; K%+256, 342 6 bit 'nibble' buffer
+ drv2en  =  $C08B       ; Disk controller I/O soft switch for enabling drive 2
 
- track   =  buffr2+350  ; Disk routine variables $0A5E to $0A6C
- sector  =  track+1
- curtrk  =  sector+1
- tsltrk  =  curtrk+1
- tslsct  =  tsltrk+1
- filtrk  =  tslsct+1
- filsct  =  filtrk+1
- mtimel  =  filsct+1
- mtimeh  =  mtimel+1
- seeks   =  mtimeh+1
- recals  =  seeks+1
- slot16  =  recals+1
- atemp0  =  slot16+1
- stkptr  =  atemp0+1
- idfld   =  stkptr+1
+ Q6L     =  $C08C       ; Disk controller I/O soft switch for strobing the data
+                        ; latch for I/O
+
+ Q6H     =  $C08D       ; Disk controller I/O soft switch for loading the data
+                        ; latch
+
+ Q7L     =  $C08E       ; Disk controller I/O soft switch for preparing the
+                        ; latch for input
+
+ Q7H     =  $C08F       ; Disk controller I/O soft switch for preparing the
+                        ; latch for output
 
 ; ******************************************************************************
 ;
@@ -1337,6 +1324,106 @@ ENDIF
  SKIP NOSH * NI%        ; Ship data blocks and ship line heap
 
  PRINT "K% workspace from ", ~K%, "to ", ~P%-1, "inclusive"
+
+; ******************************************************************************
+;
+;       Name: K%
+;       Type: Workspace
+;    Address: $0800 to $0927
+;   Category: Workspaces
+;    Summary: Disk operations workspace
+;
+; ******************************************************************************
+
+ ORG $0800
+
+ CLEAR $0800, $0A6C     ; The disk operations workspace shares memory with the
+                        ; ship data blocks at K%, so we need to clear this block
+                        ; of memory to prevent BeebAsm from complaining
+
+.buffer
+
+ SKIP 48                ; 256-byte sector buffer, up to buffr2 ???
+
+.fretrk
+
+ SKIP 1                 ; Last allocated track ???
+
+.dirtrk
+
+ SKIP 3                 ; Direction of track allocation (+1 or -1) ???
+
+.tracks
+
+ SKIP 4                 ; Number of tracks per disk ???
+
+.bitmap
+
+ SKIP 200               ; Bit map of free sectors in track 0 ???
+
+.buffr2
+
+ SKIP 350               ; 342-byte 6-bit 'nibble' buffer ???
+
+.track
+
+ SKIP 1                 ; ???
+
+.sector
+
+ SKIP 1                 ; ???
+
+.curtrk
+
+ SKIP 1                 ; ???
+
+.tsltrk
+
+ SKIP 1                 ; ???
+
+.tslsct
+
+ SKIP 1                 ; ???
+
+.filtrk
+
+ SKIP 1                 ; ???
+
+.filsct
+
+ SKIP 1                 ; ???
+
+.mtimel
+
+ SKIP 1                 ; ???
+
+.mtimeh
+
+ SKIP 1                 ; ???
+
+.seeks
+
+ SKIP 1                 ; ???
+
+.recals
+
+ SKIP 1                 ; ???
+
+.slot16
+
+ SKIP 1                 ; ???
+
+.atemp0
+
+ SKIP 1                 ; ???
+
+.stkptr
+
+ SKIP 1                 ; ???
+
+.idfld
+
+ SKIP 1                 ; ???
 
 ; ******************************************************************************
 ;
