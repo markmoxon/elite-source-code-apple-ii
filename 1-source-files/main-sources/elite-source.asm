@@ -45414,6 +45414,16 @@ ENDIF
 ;    Summary: Display the current ship on the scanner
 ;  Deep dive: The 3D scanner
 ;
+; ------------------------------------------------------------------------------
+;
+; This is used both to display a ship on the scanner, and to erase it again.
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   INWK                The ship's data block
+;
 ; ******************************************************************************
 
 .SCR1
@@ -45425,71 +45435,171 @@ ENDIF
 ;LDA QQ11               ; These instructions are commented out in the original
 ;BNE SCR1               ; source
 
- LDA INWK+31            ; ???
- AND #16
- BEQ SCR1
- LDX TYPE
- BMI SCR1
- LDA scacol,X
- STA COL
- LDA INWK+1
- ORA INWK+4
- ORA INWK+7
- AND #$C0
+ LDA INWK+31            ; Fetch the ship's scanner flag from byte #31
+
+ AND #%00010000         ; If bit 4 is clear then the ship should not be shown
+ BEQ SCR1               ; on the scanner, so return from the subroutine (as SCR1
+                        ; contains an RTS)
+
+ LDX TYPE               ; Fetch the ship's type from TYPE into X
+
+ BMI SCR1               ; If this is the planet or the sun, then the type will
+                        ; have bit 7 set and we don't want to display it on the
+                        ; scanner, so return from the subroutine (as SCR1
+                        ; contains an RTS)
+
+ LDA scacol,X           ; Set A to the scanner colour for this ship type from
+                        ; the X-th entry in the scacol table
+
+ STA COL                ; Store the scanner colour in COL so it can be used to
+                        ; draw this ship in the correct colour
+
+ LDA INWK+1             ; If any of x_hi, y_hi and z_hi have a 1 in bit 6 or 7,
+ ORA INWK+4             ; then the ship is too far away to be shown on the
+ ORA INWK+7             ; scanner, so return from the subroutine (as SCR1
+ AND #%11000000         ; contains an RTS)
  BNE SCR1
- LDA INWK+1
- CLC
- LDX INWK+2
- BPL SC2
- EOR #$FF
- ADC #1
- CLC
+
+                        ; If we get here, we know x_hi, y_hi and z_hi are all
+                        ; 63 (%00111111) or less
+
+                        ; Now, we convert the x_hi coordinate of the ship into
+                        ; the screen x-coordinate of the dot on the scanner,
+                        ; using the following:
+                        ;
+                        ;   X1 = 123 + (x_sign x_hi)
+
+ LDA INWK+1             ; Set A = x_hi
+
+ CLC                    ; Clear the C flag so we can do addition below
+
+ LDX INWK+2             ; Set X = x_sign
+
+ BPL SC2                ; If x_sign is positive, skip the following
+
+ EOR #%11111111         ; x_sign is negative, so flip the bits in A and add 1
+ ADC #1                 ; to make it a negative number (bit 7 will now be set
+                        ; as we confirmed above that bits 6 and 7 are clear). So
+                        ; this gives A the sign of x_sign and gives it a value
+                        ; range of -63 (%11000001) to 0
+
+ CLC                    ; Clear the C flag so we can do addition below
 
 .SC2
 
- ADC #125
- AND #$FE
- STA X1
- TAX
- DEX
- DEX
- LDA INWK+7
- LSR A
- LSR A
- CLC
- LDY INWK+8
- BPL SC3
- EOR #$FF
- SEC
+ ADC #125               ; Set X1 = 125 + (x_sign x_hi)
+ AND #%11111110         ;
+ STA X1                 ; and if the result is odd, subtract 1 to make it even
+
+ TAX                    ; Set X = X1 - 2
+ DEX                    ;
+ DEX                    ; So X contains the x-coordinate that's two pixels to
+                        ; left of the top of the stick, so we can draw the dot
+                        ; at the end of the stick by simply drawing a dot at
+                        ; x-coordinate X at the correct end of the stick
+
+                        ; Next, we convert the z_hi coordinate of the ship into
+                        ; the y-coordinate of the base of the ship's stick,
+                        ; like this:
+                        ;
+                        ;   SC = 220 - (z_sign z_hi) / 4
+                        ;
+                        ; though the following code actually does it like this:
+                        ;
+                        ;   SC = 255 - (35 + z_hi / 4)
+
+ LDA INWK+7             ; Set A = z_hi / 4
+ LSR A                  ;
+ LSR A                  ; So A is in the range 0-15
+
+ CLC                    ; Clear the C flag for the addition below
+
+ LDY INWK+8             ; Set Y = z_sign
+
+ BPL SC3                ; If z_sign is positive, skip the following
+
+ EOR #%11111111         ; z_sign is negative, so flip the bits in A and set the
+ SEC                    ; C flag. As above, this makes A negative, this time
+                        ; with a range of -16 (%11110000) to -1 (%11111111). And
+                        ; as we are about to do an ADC, the SEC effectively adds
+                        ; another 1 to that value, giving a range of -15 to 0
 
 .SC3
 
- ADC #91 ;83
- EOR #$FF
- STA Y2
- LDA INWK+4
+ ADC #91                ; Set A = 91 + A to give a number in the range 76 to 106
+
+ EOR #%11111111         ; Flip all the bits and store in Y2, so Y2 is in the
+ STA Y2                 ; range 149 to 179, with a higher z_hi giving a lower Y2
+
+                        ; Now for the stick height, which we calculate using the
+                        ; following:
+                        ;
+                        ; A = - (y_sign y_hi) / 2
+
+ LDA INWK+4             ; Set A = y_hi / 2
  LSR A
- CLC
- LDY INWK+5
- BMI SCD6
- EOR #$FF
- SEC
+
+ CLC                    ; Clear the C flag
+
+ LDY INWK+5             ; Set Y = y_sign
+
+ BMI SCD6               ; If y_sign is negative, skip the following, as we
+                        ; already have a positive value in A
+
+ EOR #%11111111         ; y_sign is positive, so flip the bits in A and set the
+ SEC                    ; C flag. This makes A negative, and as we are about to
+                        ; do an ADC below, the SEC effectively adds another 1 to
+                        ; that value to implement two's complement negation, so
+                        ; we don't need to add another 1 here
 
 .SCD6
 
- ADC Y2
-;BPL ld246
- CMP #146 ;194
- BCS P%+4
- LDA #146
- CMP #191 ;199
- BCC P%+4
+                        ; We now have all the information we need to draw this
+                        ; ship on the scanner, namely:
+                        ;
+                        ;   X1 = the screen x-coordinate of the ship's dot
+                        ;
+                        ;   A = the screen height of the ship's stick, with the
+                        ;       correct sign for adding to the base of the stick
+                        ;       to get the dot's y-coordinate
+                        ;
+                        ; First, though, we have to make sure the dot is inside
+                        ; the dashboard, by moving it if necessary
+
+ ADC Y2                 ; Set A = Y2 + A, so A now contains the y-coordinate of
+                        ; the end of the stick, plus the length of the stick, to
+                        ; give us the screen y-coordinate of the dot
+
+;BPL ld246              ; This instruction is commented out in the original
+                        ; source
+
+ CMP #146               ; If A >= 146, skip the following instruction, as 146 is
+ BCS P%+4               ; the minimum allowed value of A
+
+ LDA #146               ; A < 146, so set A to 146, the minimum allowed value
+                        ; for the y-coordinate of our ship's dot
+
+ CMP #191               ; If A < 191, skip the following instruction, as 190 is
+ BCC P%+4               ; the maximum allowed value of A
 
 .ld246
 
- LDA #190 ;198
- JSR CPIX
- JMP VLOIN
+ LDA #190               ; A >= 191, so set A to 190, the maximum allowed value
+                        ; for the y-coordinate of our ship's dot
+
+ JSR CPIX               ; Draw a single pixel at screen coordinate (X, A), at
+                        ; the start of the line, to draw the ship dot
+                        ;
+                        ; Because this is a colour pixel that is two pixels to
+                        ; the left of the top of the stick, this means the pixel
+                        ; byte will contains pixels of the form %101 (with the
+                        ; dot on the left and the stick on the right), so this
+                        ; will actually draw a two-pixel dash to the left of the
+                        ; top of the stick, rather than a lone colour pixel
+
+ JMP VLOIN              ; Draw a vertical line from (X1, Y1) to (X1, Y2) for the
+                        ; ship stick and return from the subroutine using a tail
+                        ; call
 
 ; ******************************************************************************
 ;
