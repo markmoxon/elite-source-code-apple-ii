@@ -37525,11 +37525,18 @@ Saving file '3-assembled-output/ELTJ.bin'
      A025   85 36      STA &36
      A027   4C 4C A1   JMP &A14C
 .ECBT
-     A02A   7F 7F
+     A02A   7F
+     A02B   7F
      A02C   07
 .SPBT
-     A02D   7F 7F 07 7F
-     A031   7F 70 7F 7F
+     A02D   7F
+     A02E   7F
+     A02F   07
+     A030   7F
+     A031   7F
+     A032   70
+     A033   7F
+     A034   7F
 .MSBAR
      A035   98         TYA
      A036   48         PHA
