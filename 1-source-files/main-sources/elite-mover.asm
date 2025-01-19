@@ -62,6 +62,31 @@ ELIF _SOURCE_DISK
 
 ENDIF
 
+ C% = $9000             ; C% is set to the location that the main game code gets
+                        ; moved to after it is loaded
+
+ L% = $D000             ; L% is the load address of the main game code file
+
+; ******************************************************************************
+;
+;       Name: ZP
+;       Type: Workspace
+;    Address: $0000 to $0004
+;   Category: Workspaces
+;    Summary: Important variables used by the loader
+;
+; ******************************************************************************
+
+ ORG $0000
+
+.ZP
+
+ SKIP 2                 ; Stores addresses used for moving content around
+
+.P
+
+ SKIP 2                 ; Stores addresses used for moving content around
+
 ; ******************************************************************************
 ;
 ; ELITE MOVER
@@ -75,53 +100,58 @@ ENDIF
 ;       Name: Mover
 ;       Type: Subroutine
 ;   Category: Loader
-;    Summary: ???
+;    Summary: Move the game code from its load address to the address where it
+;             will be run
 ;
 ; ******************************************************************************
 
 .Mover
 
- STA $C080
+ STA $C080              ; Set ROM bank 2 to read from RAM and not write to RAM
+                        ; by accessing the READBSR2 soft switch, with bit 3 clear
+                        ; (bank 2), bit 1 clear (read RAM) and bit 0 clear (do
+                        ; not write to RAM)
 
- LDY #0
- STY $00
- STY $02
+ LDY #0                 ; Set the source and destination addresses for the copy:
+ STY ZP                 ;
+ STY P                  ;   ZP(1 0) = L% = $D000
+ LDA #HI(L%)            ;   P(1 0) = C% = $9000
+ STA ZP+1               ;
+ LDA #HI(C%)            ; and set Y = 0 to act as a byte counter in the
+ STA P+1                ; following loop
 
- LDA #$D0
- STA $01
+.MVDL
 
- LDA #$90
- STA $03
+ LDA (ZP),Y             ; Copy the Y-th byte from the source to the Y-th byte of
+ STA (P),Y              ; the destination
 
-.move1
+ INY                    ; Increment the byte counter
 
- LDA ($00),Y
- STA ($02),Y
+ BNE MVDL               ; Loop back until we have copied a whole page of bytes
 
- INY
+ INC ZP+1               ; Increment the high bytes of ZP(1 0) and P(1 0) so we
+ INC P+1                ; copy bytes from the next page in memory
 
- BNE move1
-
- INC $01
- INC $03
-
- LDA $03
+ LDA P+1                ; Loop back until the P(1 0) = $C000
  CMP #$C0
- BCC move1
+ BCC MVDL
 
- STA $C082
+ STA $C082              ; Set ROM bank 2 to read from ROM and not write to RAM
+                        ; by accessing the OFFBSR2 soft switch, with bit 3 clear
+                        ; (bank 2), bit 1 set (read ROM) and bit 0 clear (do
+                        ; not write to RAM)
 
 IF _MAX_COMMANDER
 
- JMP BEGIN
+ JMP BEGIN              ; Jump to BEGIN to run the game
 
 ELSE
 
- JMP TT170
+ JMP TT170              ; Jump to TT170 to run the game
 
 ENDIF
 
- NOP
+ NOP                    ; This instruction has no effect
 
 ; ******************************************************************************
 ;

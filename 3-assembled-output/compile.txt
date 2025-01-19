@@ -38182,6 +38182,10 @@ S.A.CODE &4000  &C000  &4000  &4000
 Saving file '3-assembled-output/CODE.unprot.bin'
 Saving file '3-assembled-output/CODE1.unprot.bin'
 Saving file '3-assembled-output/CODE2.unprot.bin'
+.ZP
+     0000
+.P
+     0002
 .Mover
      0300   8D 80 C0   STA &C080
      0303   A0 00      LDY #&00
@@ -38191,7 +38195,7 @@ Saving file '3-assembled-output/CODE2.unprot.bin'
      030B   85 01      STA &01
      030D   A9 90      LDA #&90
      030F   85 03      STA &03
-.move1
+.MVDL
      0311   B1 00      LDA (&00),Y
      0313   91 02      STA (&02),Y
      0315   C8         INY
