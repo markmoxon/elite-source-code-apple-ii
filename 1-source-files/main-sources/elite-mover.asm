@@ -143,11 +143,18 @@ ENDIF
 
 IF _MAX_COMMANDER
 
- JMP BEGIN              ; Jump to BEGIN to run the game
+ JMP BEGIN              ; Jump to BEGIN to run the game from just after the
+                        ; call to JAMESON, so the maxed-out commander file
+                        ; doesn't get overwritten
+                        ;
+                        ; We can do this because spasto has been pre-filled with
+                        ; the address of the ship blueprint for the Coriolis
+                        ; station, so we can skip this part of the TT170 routine
 
 ELSE
 
- JMP TT170              ; Jump to TT170 to run the game
+ JMP TT170              ; Jump to TT170 to run the game from the main entry
+                        ; point
 
 ENDIF
 
