@@ -2406,14 +2406,21 @@ NEXT
 ;       Name: wtable
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: 6-bit to 7-bit nibble conversion table (part of DOS 3.3, where it
-;             is called NIBL)
+;    Summary: 6-bit to 7-bit nibble conversion table
+;
+; ------------------------------------------------------------------------------
+;
+; This variable is identical to the NIBL table in Apple DOS 3.3, which is
+; shown in the comments.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
 ;
 ; ******************************************************************************
 
 .wtable
 
- EQUD $9B9A9796
+ EQUD $9B9A9796         ; ???
  EQUD $A69F9E9D
  EQUD $ADACABA7
  EQUD $B3B2AFAE
@@ -40886,103 +40893,113 @@ ENDMACRO
 ;   Category: Save and load
 ;    Summary: Read sector
 ;
+; ------------------------------------------------------------------------------
+;
+; This routine is identical to the READ16 routine in Apple DOS 3.3, which is
+; shown in the comments.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
+;
 ; ******************************************************************************
 
 .read
 
- LDY #32                ; ???
+ LDY #32                ; READ16          LDY          #$20
 
 .read2
 
- DEY
- BEQ readE
+ DEY                    ; RSYNC           DEY          IF
+ BEQ readE              ;                 BEQ          RDERR
 
 .read3
 
- LDA Q6L,X
- BPL read3
+ LDA Q6L,X              ; READ1           LDA          Q6L,X
+ BPL read3              ;                 BPL          READ1
 
 .read4
 
- EOR #$D5
- BNE read2
- NOP
+ EOR #$D5               ; RSYNC1          EOR          #$D5
+ BNE read2              ;                 BNE          RSYNC
+ NOP                    ;                 NOP          DELAY
+                        ; *              (ADDED NIBL DELAY)
 
 .read5
 
- LDA Q6L,X
- BPL read5
- CMP #$AA
- BNE read4
- LDY #$56
+ LDA Q6L,X              ; READ2           LDA          Q6L,X
+ BPL read5              ;                 BPL          READ2   
+ CMP #$AA               ;                 CMP          #$AA
+ BNE read4              ;                 BNE          RSYNC1
+ LDY #$56               ;                 LDY          #$56
 
 .read6
 
- LDA Q6L,X
- BPL read6
- CMP #$AD
- BNE read4
- LDA #0
+ LDA Q6L,X              ; READ3           LDA          Q6L,X
+ BPL read6              ;                 BPL          READ3
+ CMP #$AD               ;                 CMP          #$AD
+ BNE read4              ;                 BNE          RSYNC1
+                        ; *         (CARRY SET IF DM3!)
+ LDA #0                 ;                 LDA          #$00
 
 .read7
 
- DEY
- STY ztemp0
+ DEY                    ; RDATA1          DEY
+ STY ztemp0             ;                 STY          IDX
 
 .read8
 
- LDY Q6L,X
- BPL read8
- EOR rtable-$96,Y
- LDY ztemp0
- STA buffr2+256,Y
- BNE read7
+ LDY Q6L,X              ; READ4           LDY          Q6L,X
+ BPL read8              ;                 BPL          READ4 
+ EOR rtable-$96,Y       ;                 EOR          DNIBL,Y   
+ LDY ztemp0             ;                 LDY          IDX
+ STA buffr2+256,Y       ;                 STA          NBUF2,Y 
+ BNE read7              ;                 BNE          RDATA1
 
 .read9
 
- STY ztemp0
+ STY ztemp0             ; RDATA2          STY          IDX
 
 .readA
 
- LDY Q6L,X
- BPL readA
- EOR rtable-$96,Y
- LDY ztemp0
- STA buffr2,Y
- INY
- BNE read9
+ LDY Q6L,X              ; READ5           LDY          Q6L,X
+ BPL readA              ;                 BPL          READ5 
+ EOR rtable-$96,Y       ;                 EOR          DNIBL,Y
+ LDY ztemp0             ;                 LDY          IDX
+ STA buffr2,Y           ;                 STA          NBUF1,Y 
+ INY                    ;                 INY
+ BNE read9              ;                 BNE          RDATA2
 
 .readB
 
- LDY Q6L,X
- BPL readB
- CMP rtable-$96,Y
- BNE readE
+ LDY Q6L,X              ; READ6           LDY          Q6L,X
+ BPL readB              ;                 BPL          READ6
+ CMP rtable-$96,Y       ;                 CMP          DNIBL,Y
+ BNE readE              ;                 BNE          RDERR
 
 .readC
 
- LDA Q6L,X
- BPL readC
- CMP #$DE
- BNE readE
- NOP
+ LDA Q6L,X              ; READ7           LDA          Q6L,X
+ BPL readC              ;                 BPL          READ7
+ CMP #$DE               ;                 CMP          #$DE
+ BNE readE              ;                 BNE          RDERR
+ NOP                    ;                 NOP          DELAY
 
 .readD
 
- LDA Q6L,X
- BPL readD
- CMP #$AA
- BEQ readF
+ LDA Q6L,X              ; READ8           LDA          Q6L,X
+ BPL readD              ;                 BPL          READ8
+ CMP #$AA               ;                 CMP          #$AA
+ BEQ readF              ;                 BEQ          RDEXIT
 
 .readE
 
- SEC
- RTS
+ SEC                    ; RDERR           SEC          INDICATE
+ RTS                    ;                 RTS          RETURN
 
 .readF
 
- CLC
- RTS
+ CLC                    ; RDEXIT          CLC          CLEAR
+ RTS                    ;                 RTS          NORMAL
 
 ; ******************************************************************************
 ;
@@ -40991,14 +41008,24 @@ ENDMACRO
 ;   Category: Save and load
 ;    Summary: Write sector
 ;
+; ------------------------------------------------------------------------------
+;
+; This routine is almost identical to the WRITE16 routine in Apple DOS 3.3,
+; which is shown in the comments. There is one instruction missing from the
+; original DOS source.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
+;
 ; ******************************************************************************
 
 .write
 
- SEC                    ; ???
- STX ztemp1
- LDA Q6H,X
- LDA Q7L,X
+ SEC                    ; WRITE16         SEC          ANTICIPATE
+ STX ztemp1             ;                 STX          SLOTZ
+                        ;                 STX          SLOTABS 
+ LDA Q6H,X              ;                 LDA          Q6H,X
+ LDA Q7L,X              ; ???
  BMI write6
  LDA buffr2+256
  STA ztemp0
@@ -41081,14 +41108,19 @@ ENDMACRO
 ;   Category: Save and load
 ;    Summary: Read track address field
 ;
+; ------------------------------------------------------------------------------
+;
+; This routine is identical to the RDADR16 routine in Apple DOS 3.3, which is
+; shown in the comments.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
+;
 ; ******************************************************************************
-
- \REM DOS_RW3
 
 .rdaddr
 
- \ read track address field
- LDY #$FC
+ LDY #$FC               ; ???
  STY ztemp0
 
 .rdadr2
