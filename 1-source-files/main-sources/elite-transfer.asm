@@ -99,7 +99,31 @@
 ;       Name: ENTRY
 ;       Type: Subroutine
 ;   Category: Utility routines
-;    Summary: ???
+;    Summary: Copy the second block of the game code, between CODE2 and STORE,
+;             into bank-switched RAM at $D000
+;
+; ------------------------------------------------------------------------------
+;
+; This transfer program can be found on the source disk on Ian Bell's site. It
+; packs the entire game binary into memory, ready to be transmitted to an Apple
+; II computer connected to the BBC Micro's User Port.
+;
+; The transfer program loads the game binary in two blocks, CODE1 and CODE2.
+; The second block (CODE2, $3000 bytes) is loaded at address $4000-$7000, and
+; the first block (CODE1, $5000 bytes) is loaded at address $7000-$C000.
+;
+; The ENTRY routine then copies the second block of the game binary (from CODE2
+; onwards) into bank-switched RAM at $D000.
+;
+; The two blocks of code could then be transmitted to the Apple II using a
+; *APPLE command, which is unfortunately not present on the source disk.
+;
+; Once transmitted, the main game code could be called at S%, which contains a
+; routine to copy the second block of code in CODE2 from bank-switched RAM at
+; $D000 into main memory at $9000. Presumably by this point the first block of
+; code has also been transmitted, from BBC Micro address $7000-$C000 to Apple II
+; address $4000-$9000, so the code in S% moved CODE2 to just after CODE1,
+; resulting in the complete game binary appearing at $4000 in the Apple II.
 ;
 ; ******************************************************************************
 
@@ -117,46 +141,69 @@
  LDA $C050              ; Select the graphics mode by reading the TEXTOFF soft
                         ; switch
 
- LDA ZP1
- PHA
+ LDA ZP1                ; Store the current contents of ZP1(1 0) and ZP2(1 0) on
+ PHA                    ; the stack, so we can restore them later
  LDA ZP1+1
  PHA
  LDA ZP2
  PHA
  LDA ZP2+1
  PHA
- LDA $C08B ; page in RAM card, see S% in main binary
- LDA #LO(CODE2)
+
+ LDA $C08B              ; Set RAM bank 1 to read RAM and write RAM by reading
+                        ; the RDWRBSR1 soft switch, with bit 3 set (bank 1),
+                        ; bit 1 set (read RAM) and bit 0 set (write RAM)
+                        ;
+                        ; So this enables bank-switched RAM at $D000
+
+                        ; We now want to copy all the data between $9000 and
+                        ; $C000 into the bank-switched RAM at $D000
+
+ LDA #LO(CODE2)         ; Set ZP1(1 0) = CODE2
  STA ZP1
  LDA #HI(CODE2)
  STA ZP1+1
- LDA #LO(STORE)
+
+ LDA #LO(STORE)         ; Set ZP2(1 0) = STORE
  STA ZP2
  LDA #HI(STORE)
  STA ZP2+1
- LDY #0
- LDX #HI($C000-$9000) ;move X pages
+
+ LDY #0                 ; Set Y = 0 to use as a byte counter
+
+ LDX #HI($C000-$9000)   ; We want to copy all the data between $9000 and $C000,
+                        ; so set X to the number of pages to copy
 
 .MVLP1
 
- LDA (ZP1),Y
- STA (ZP2),Y
- INY
- BNE MVLP1
- INC ZP1+1
- INC ZP2+1
- DEX
- BNE MVLP1
- LDA $C081 ; page in ROMs
- PLA
- STA ZP2+1
+ LDA (ZP1),Y            ; Copy the Y-th byte of ZP1(1 0) to the Y-th byte of
+ STA (ZP2),Y            ; ZP2(1 0)
+
+ INY                    ; Increment the byte counter
+
+ BNE MVLP1              ; Loop back until we have copied a whole page of bytes
+
+ INC ZP1+1              ; Increment the high bytes of ZP1(1 0) and ZP2(1 0) so
+ INC ZP2+1              ; theypoint to the next page in memory
+
+ DEX                    ; Decrement the page counter
+
+ BNE MVLP1              ; Loop back until we have copied X pages
+
+ LDA $C081              ; Set ROM bank 2 to read ROM and write RAM by reading
+                        ; the WRITEBSR2 soft switch, with bit 3 clear (bank 2),
+                        ; bit 1 clear (read ROM) and bit 0 set (write RAM)
+
+ PLA                    ; Restore the contents of ZP1(1 0) and ZP2(1 0) from
+ STA ZP2+1              ; the stack, so they are unchanged by the subroutine
  PLA
  STA ZP2
  PLA
  STA ZP1+1
  PLA
  STA ZP1
- RTS
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -207,13 +254,13 @@ IF _SOURCE_DISK_BUILD
 
 ELIF _SOURCE_DISK_CODE_FILES OR _SOURCE_DISK_ELT_FILES
 
- SKIPTO CODE%+$160
+ SKIPTO CODE%+$160      ; Skip to $0B60
 
 ENDIF
 
  INCBIN "3-assembled-output/DATA.bin"
 
- SKIPTO CODE%+$1600
+ SKIPTO CODE%+$1600     ; Skip to $2000
 
 IF _IB_DISK
 
@@ -233,7 +280,7 @@ ELIF _SOURCE_DISK_ELT_FILES
 
 ENDIF
 
- SKIPTO CODE%+$3600
+ SKIPTO CODE%+$3600     ; Skip to $4000
 
  INCBIN "3-assembled-output/CODE2.bin"
 

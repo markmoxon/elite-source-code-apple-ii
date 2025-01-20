@@ -66,9 +66,13 @@ IF _IB_DISK
 
 ELIF _SOURCE_DISK
 
- STORE = $D000          ; The address where the dashboard image is loaded
+ STORE = $D000          ; The address where the second block of the main game
+                        ; code is loaded as part of the transfer process from a
+                        ; BBC Micro to an Apple II (the transfer utility loads
+                        ; it into bank-switched RAM at $D000)
 
- CODE2 = $9000          ; The address where the dashboard image is stored
+ CODE2 = $9000          ; The address where the second block of the main game
+                        ; code is copied to before the game is run
 
 ENDIF
 
@@ -1330,11 +1334,11 @@ ENDIF
 
 ; ******************************************************************************
 ;
-;       Name: K%
+;       Name: Disk operations workspace
 ;       Type: Workspace
-;    Address: $0800 to $0927
+;    Address: $0800 to $0A6C
 ;   Category: Workspaces
-;    Summary: Disk operations workspace
+;    Summary: Variables used by the disk operations and DOS 3.3 RWTS routines
 ;
 ; ******************************************************************************
 
@@ -1427,6 +1431,8 @@ ENDIF
 .idfld
 
  SKIP 1                 ; ???
+
+ PRINT "Disk operations workspace from ", ~K%, "to ", ~P%-1, "inclusive"
 
 ; ******************************************************************************
 ;
@@ -2596,7 +2602,7 @@ ENDIF
                         ; isn't actually used but is still updated by pressing
                         ; "T" while the game is paused. This is a configuration
                         ; option from the Commodore 64 version of Elite that
-                        ; lets you switch between tape and disc
+                        ; lets you switch between tape and disk
 
 .MULIE
 
@@ -2684,16 +2690,27 @@ IF _IB_DISK
 
 ELIF _SOURCE_DISK
 
+                        ; On the source disk, there is a transfer program that
+                        ; packs the entire game binary into memory, ready to be
+                        ; transmitted to a connected Apple II computer
+                        ;
+                        ; The transfer program copies the second block of the
+                        ; game binary (from CODE2 onwards) into bank-switched
+                        ; RAM at $D000, so the following copies it back to the
+                        ; correct address of $9000
+                        ;
+                        ; See the transfer source code in elite-transfer.asm
+
  LDA $C08B              ; Set RAM bank 1 to read RAM and write RAM by reading
                         ; the RDWRBSR1 soft switch, with bit 3 set (bank 1),
                         ; bit 1 set (read RAM) and bit 0 set (write RAM)
-
- LDX #($C0-$90)         ; This sets X = 48 so we copy 48 pages from SC(1 0) to
-                        ; P(1 0) in the following loop
                         ;
-                        ; This would appear to copy the whole game into memory
-                        ; at $9000, presumably as part of the development
-                        ; process
+                        ; So this enables bank-switched RAM at $D000
+
+ LDX #($C0-$90)         ; We want to copy all the data from $D000 into main
+                        ; memory between $9000 and $C000, so set X to the number
+                        ; of pages to copy from SC(1 0) to P(1 0) in the
+                        ; following loop
 
 ENDIF
 
@@ -6809,9 +6826,9 @@ ENDIF
  DEX                    ; Decrement the column counter in X to move left to the
                         ; next text column
 
- BPL NLL1               ; Loop back until we have reached 
+ BPL NLL1               ; Loop back until we have reached the start of the row
 
- RTS
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -7202,7 +7219,7 @@ ENDIF
 
  ASL A                  ; Set the high byte of SC(1 0) as follows:
  ASL A                  ;
- ADC SCTBH,Y            ;   SC+1 = SCBTH for row Y + pixel row * 4 
+ ADC SCTBH,Y            ;   SC+1 = SCBTH for row Y + pixel row * 4
  STA SC+1               ;
                         ; Because this is the high byte, and because we already
                         ; set the low byte in SC to the Y-th entry from SCTBL,
@@ -7264,7 +7281,7 @@ ENDIF
                         ; want to draw
 
  TAX                    ; Copy the value of A into X, so X now contains the
-                        ; index into TWOS3 for the 
+                        ; index into TWOS3 for the pixel byte
 
  BCS PX4                ; If the C flag is set then the point distance in Y is
                         ; 80 or more, so jump to PX4 to skip the following and
@@ -10649,7 +10666,7 @@ ENDIF
  LDA #31
 
  LDX dialc1,Y           ; Set X to the low-value colour for indicator Y from the
-                        ; dialc1 table 
+                        ; dialc1 table
 
  CMP dialle,Y           ; If A < dialle for indicator Y, then this is a low
  BCC DI3                ; value that is below the threshold for this indicator,
@@ -10659,7 +10676,7 @@ ENDIF
                         ; which is a high value that is on or above the
                         ; threshold for this indicator, so set X to the
                         ; high-value colour for indicator Y from the dialc2
-                        ; table 
+                        ; table
 
 .DI3
 
@@ -13824,7 +13841,7 @@ ENDIF
 
  LDY #10                ; Call the SOHISS routine with Y = 10 to make the sound
  JSR SOHISS             ; of the launch or hyperspace tunnel, which we make when
-                        ; drawing each ring 
+                        ; drawing each ring
 
  LDA #1                 ; Set LSP = 1 to reset the ball line heap
  STA LSP
@@ -16893,7 +16910,6 @@ ENDIF
  JSR RDKEY              ; Scan the keyboard for a key press and return the ASCII
                         ; code of the key pressed in A and X (or 0 for no key
                         ; press)
- 
 
  BNE PAUSE2             ; If a key was already being held down when we entered
                         ; this routine, keep looping back up to PAUSE2, until
@@ -16903,7 +16919,6 @@ ENDIF
                         ; start scanning the keyboard again, returning the
                         ; ASCII code of the key pressed in X (or 0 for no key
                         ; press)
- 
 
  BEQ PAUSE2             ; Keep looping up to PAUSE2 until a key is pressed
 
@@ -19236,7 +19251,7 @@ ENDIF
 
 .TT213
 
- LDA #8                 ; Clear the screen and set up a trading screen with a 
+ LDA #8                 ; Clear the screen and set up a trading screen with a
  JSR TRADEMODE          ; view type in QQ11 of 4 (Inventory screen)
 
  LDA #11                ; Move the text cursor to column 11 to print the screen
@@ -20240,10 +20255,8 @@ ENDIF
 
 .dockEd
 
- JSR CLYNS              ; Clear a space near the bottom of the screen (one
-                        ; character row in the space view, two character rows in
-                        ; the text views), and move the text cursor to the first
-                        ; cleared row
+ JSR CLYNS              ; Clear two text rows at the bottom of the screen, and
+                        ; move the text cursor to the first cleared row
 
  LDA #15                ; Move the text cursor to column 15
  JSR DOXC
@@ -22587,7 +22600,7 @@ ENDIF
 ;
 ; Set the system closest to galactic coordinates (QQ9, QQ10) as the selected
 ; system, redraw the crosshairs on the chart accordingly (if they are being
-; shown), and clear one text row at the bottom of the screen.
+; shown), and clear two text rows at the bottom of the screen.
 ;
 ; ******************************************************************************
 
@@ -22603,7 +22616,7 @@ ENDIF
                         ; which will draw the crosshairs at our current home
                         ; system
 
- JMP CLYNS              ; Clear one text row at the bottom of the screen, move
+ JMP CLYNS              ; Clear two text rows at the bottom of the screen, move
                         ; the text cursor to the cleared row, and return from
                         ; the subroutine using a tail call
 
@@ -22636,8 +22649,8 @@ ENDIF
 ;                       ; source, but they would jump to pres in the EQSHP
 ;LDY #187               ; routine with Y = 187, which would show the error:
 ;JMP pres               ; "LASER PRESENT" (this code was part of the refund
-;                       ; bug in the disc version of Elite, which is why it is
-;Belgium                ; commented out)
+;                       ; bug in the BBC Micro disc version of Elite, which
+;Belgium                ; is why it is commented out)
                         ;
                         ; There is also a comment in the original source - the
                         ; solitary word "Belgium"
@@ -22658,8 +22671,9 @@ ENDIF
 ;CMP T1                 ; These instructions are commented out in the original
 ;BEQ ref2               ; source, but they would jump to ref2 above if we were
                         ; trying to replace a laser with one of the same type
-                        ; (this code was part of the refund bug in the disc
-                        ; version of Elite, which is why it is commented out)
+                        ; (this code was part of the refund bug in the BBC Micro
+                        ; disc version of Elite, which is why it is commented
+                        ; out)
 
  LDY #4                 ; If the current laser has power #POW (pulse laser),
  CMP #POW               ; jump to ref1 with Y = 4 (the item number of a pulse
@@ -24861,10 +24875,10 @@ ENDIF
 ;                       compass dot when the item is in front):
 ;
 ;                         * 0 = do not draw a dot on the compass
-;                       
+;
 ;                         * $30 = a double-height dash in white, for when the
 ;                           object in the compass is behind us
-;                       
+;
 ;                         * $60 = a single-height dash in white, for when the
 ;                           object in the compass is in front of us
 ;
@@ -28232,10 +28246,8 @@ ENDIF
 
 .clynsneed
 
- JSR CLYNS              ; Clear a space near the bottom of the screen (one
-                        ; character row in the space view, two character rows in
-                        ; the text views), and move the text cursor to the first
-                        ; cleared row
+ JSR CLYNS              ; Clear two text rows at the bottom of the screen, and
+                        ; move the text cursor to the first cleared row
 
  JMP me3                ; Jump back into the main spawning loop at me3
 
@@ -29047,7 +29059,7 @@ ENDIF
 ; This is the second half of the minimal game loop, which we iterate when we are
 ; docked. This section covers the following:
 ;
-;   * Process more key presses (red function keys, docked keys etc.)
+;   * Process more key presses (docked keys etc.)
 ;
 ; It also supports joining the main loop with a key already "pressed", so we can
 ; jump into the main game loop to perform a specific action. In practice, this
@@ -29060,8 +29072,8 @@ ENDIF
 ;
 ;   FRCE                The entry point for the main game loop if we want to
 ;                       jump straight to a specific screen, by pretending to
-;                       "press" a key, in which case A contains the internal key
-;                       number of the key we want to "press"
+;                       "press" a key, in which case A contains the ASCII code
+;                       of the key we want to "press"
 ;
 ; ******************************************************************************
 
@@ -29083,16 +29095,16 @@ ENDIF
 ;       Name: TT102
 ;       Type: Subroutine
 ;   Category: Keyboard
-;    Summary: Process function key, save key, hyperspace and chart key presses
+;    Summary: Process number key, save key, hyperspace and chart key presses
 ;             and update the hyperspace counter
 ;
 ; ------------------------------------------------------------------------------
 ;
-; Process function key presses, plus "@" (save commander), "H" (hyperspace),
-; "D" (show distance to system) and "O" (move chart cursor back to current
-; system). We can also pass cursor position deltas in X and Y to indicate that
-; the cursor keys or joystick have been used (i.e. the values that are returned
-; by routine TT17).
+; Process number key presses, plus "I" (save commander), "H" (hyperspace), "G"
+; (galactic hyperspace), "D" (show distance to system) and "O" (move chart
+; cursor back to current system). We can also pass cursor position deltas in X
+; and Y to indicate that the cursor keys or joystick have been used (i.e. the
+; values that are returned by routine TT17).
 ;
 ; This routine also checks for the "F" key press (search for a system), which
 ; applies to enhanced versions only.
@@ -29573,7 +29585,7 @@ ENDIF
 
  LDA ($FD),Y            ; Fetch the Y-th byte of the block pointed to by
                         ; ($FD $FE), so that's the Y-th character of the message
-                        ; pointed to by the MOS error message pointer
+                        ; pointed to by the error message pointer
 
  BNE BRBRLOOP           ; If the fetched character is non-zero, loop back to the
                         ; JSR OSWRCH above to print the it, and keep looping
@@ -30350,7 +30362,9 @@ IF _IB_DISK
 
 ENDIF
 
- BMI TL3                ; If bit 7 of A is set then the 
+ BMI TL3                ; If bit 7 of A is set then the fire button is being
+                        ; pressed, so jump to TL3 to set the JSTK configuration
+                        ; option to enable joysticks
 
  BCC TLL2               ; If no key is being pressed then the C flag will be
                         ; clear from the call to RDKEY, so loop back up to
@@ -31249,7 +31263,7 @@ ENDIF
  JSR t                  ; Scan the keyboard until a key is pressed, returning
                         ; the ASCII code in A and X
 
- JMP SVE                ; Jump to SVE to display the disc access menu and return
+ JMP SVE                ; Jump to SVE to display the disk access menu and return
                         ; from the subroutine using a tail call
 
 ; ******************************************************************************
@@ -32904,10 +32918,8 @@ ENDIF
  LDX QQ11               ; If this is the space view, skip the following
  BEQ infrontvw          ; instruction
 
- JSR CLYNS              ; Clear a space near the bottom of the screen (one
-                        ; character row in the space view, two character rows in
-                        ; the text views), and move the text cursor to the first
-                        ; cleared row
+ JSR CLYNS              ; Clear two text rows at the bottom of the screen, and
+                        ; move the text cursor to the first cleared row
 
  LDA #25                ; Set A = 25 to use as the text row for the message if
                         ; this is not a space view
@@ -32918,7 +32930,7 @@ ENDIF
 
 .infrontvw
 
- STA YC                ; Move the text cursor to the row specified in A
+ STA YC                 ; Move the text cursor to the row specified in A
 
  LDX #0                 ; Set QQ17 = 0 to switch to ALL CAPS
  STX QQ17
@@ -40317,7 +40329,7 @@ ENDMACRO
  \ save a new commander file
  JSR isfull ; check for at least two free sectors
  LDA #2
- BCS rfile3 ; branch if disc full
+ BCS rfile3 ; branch if disk full
  JSR finde ; find an empty file entry
  LDA #3
  BCS rfile3 ; branch if cat full
@@ -40342,7 +40354,7 @@ ENDMACRO
  INX
  CPX #30
  BNE newfl2
- JSR wsect ; write catalog sector to disc
+ JSR wsect ; write catalog sector to disk
  JSR isfull ; allocate two free sectors
  JSR wsect ; write VTOC
 
@@ -40528,7 +40540,7 @@ ENDMACRO
 .getsc5
 
  LDA ztemp0
- BNE getscB ; branch if no free sectors - disc full
+ BNE getscB ; branch if no free sectors - disk full
  LDA #1 ; direction = forwards
  STA ztemp0
 
@@ -40578,7 +40590,7 @@ ENDMACRO
 
 .getscB
 
- SEC ; signifies disc full
+ SEC ; signifies disk full
  RTS
 
 ; ******************************************************************************
@@ -40594,7 +40606,7 @@ ENDMACRO
 
  JSR rvtoc              ; read VTOC ???
  JSR getsct ; find free sector for tsl
- BCS isful2 ; branch if disc full
+ BCS isful2 ; branch if disk full
  STX tsltrk
  STY tslsct
  JSR getsct ; find free sector for commander file
@@ -40603,7 +40615,7 @@ ENDMACRO
 
 .isful2
 
- RTS ; C = 0 = disc full, C = 1 = enough space
+ RTS ; C = 0 = disk full, C = 1 = enough space
 
 ; ******************************************************************************
 ;
@@ -40705,18 +40717,18 @@ ENDMACRO
  PLA
  CMP $100
  CMP Q6L,X
- BNE rwts3 ; branch if data latch changed ie. disc is spinning
+ BNE rwts3 ; branch if data latch changed ie. disk is spinning
  DEY
  BNE rwts2
 
 .rwts3
 
- PHP ; save result - Z = 0 = disc is spinning, Z = 1 = disc not spinning
- LDA mtron,X ; turn motor on - if disc was not spinning
+ PHP ; save result - Z = 0 = disk is spinning, Z = 1 = disk not spinning
+ LDA mtron,X ; turn motor on - if disk was not spinning
  LDA drv1en,X ; enable drive 1
  PLP
  PHP
- BNE rwts5 ; branch if disc is spinning
+ BNE rwts5 ; branch if disk is spinning
  LDY #7
 
 .rwts4
@@ -40731,7 +40743,7 @@ ENDMACRO
  LDA track
  JSR seek
  PLP
- BNE trytrk ; branch if disc is spinning
+ BNE trytrk ; branch if disk is spinning
  LDY mtimeh
  BPL trytrk ; branch if motor reached correct speed
 
@@ -40799,7 +40811,7 @@ ENDMACRO
 
 .prterr
 
- \ disc write protected
+ \ disk write protected
  LDA #1
  BPL drver2_copy
 
@@ -40807,7 +40819,7 @@ ENDMACRO
 .drverr     ; Removed as it isn't used and clashes with drverr below
 }
 
- \ disc I/O error
+ \ disk I/O error
  LDA #4 ; I/O error
 
 .drver2
@@ -40844,7 +40856,7 @@ ENDMACRO
 
 .drverr
 
- \ disc I/O error
+ \ disk I/O error
  LDA #4 ; I/O error
 
 ;.drver2
@@ -42219,7 +42231,7 @@ ENDMACRO
 
  ASL A                  ; Set the high byte of SC(1 0) as follows:
  ASL A                  ;
- ADC SCTBH,Y            ;   SC+1 = SCBTH for row Y + pixel row * 4 
+ ADC SCTBH,Y            ;   SC+1 = SCBTH for row Y + pixel row * 4
  STA SC+1               ;
                         ; Because this is the high byte, and because we already
                         ; set the low byte in SC to the Y-th entry from SCTBL,
@@ -42663,7 +42675,7 @@ ENDMACRO
 
  ASL A                  ; Set the high byte of SC(1 0) as follows:
  ASL A                  ;
- ADC SCTBH,Y            ;   SC+1 = SCBTH for row Y + pixel row * 4 
+ ADC SCTBH,Y            ;   SC+1 = SCBTH for row Y + pixel row * 4
  STA SC+1               ;
                         ; Because this is the high byte, and because we already
                         ; set the low byte in SC to the Y-th entry from SCTBL,
@@ -43166,7 +43178,7 @@ ENDMACRO
 
  ASL A                  ; Set the high byte of SC(1 0) as follows:
  ASL A                  ;
- ADC SCTBH,Y            ;   SC+1 = SCBTH for row Y + pixel row * 4 
+ ADC SCTBH,Y            ;   SC+1 = SCBTH for row Y + pixel row * 4
  STA SC+1               ;
                         ; Because this is the high byte, and because we already
                         ; set the low byte in SC to the Y-th entry from SCTBL,
@@ -43743,7 +43755,7 @@ ENDMACRO
 
  ASL A                  ; Set the high byte of SC(1 0) as follows:
  ASL A                  ;
- ADC SCTBH,Y            ;   SC+1 = SCBTH for row Y + pixel row * 4 
+ ADC SCTBH,Y            ;   SC+1 = SCBTH for row Y + pixel row * 4
  STA SC+1               ;
                         ; Because this is the high byte, and because we already
                         ; set the low byte in SC to the Y-th entry from SCTBL,
@@ -44653,8 +44665,8 @@ ENDIF
                         ;
                         ; The Apple II version of Elite uses its own unique font
                         ; which is embedded into this source code at page FONT,
-                        ; so page 0 of the font is at FONT, page 1 is at FONT+$100,
-                        ; and page 2 at FONT+2
+                        ; so page 0 of the font is at FONT, page 1 is at
+                        ; FONT+$100, and page 2 at FONT+$200
                         ;
                         ; The following code reads the relevant character
                         ; bitmap from the copied font bitmaps at FONT and pokes
@@ -45319,8 +45331,7 @@ ENDIF
 ;       Name: CLYNS
 ;       Type: Subroutine
 ;   Category: Drawing the screen
-;    Summary: Clear a space near the bottom of the screen (one character row in
-;             the space view, two character rows in the text views)
+;    Summary: Clear two character rows near the bottom of the screen
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -45352,7 +45363,7 @@ ENDIF
 
  LDA text               ; If bit 7 of text is clear then the current screen mode
  BPL CLY1               ; is the high-resolution graphics mode, so jump to CLY1
-                        ; clear a character row on the graphics screen
+                        ; clear two character rows on the graphics screen
 
                         ; Otherwise this is the text screen, so we clear two
                         ; character rows by printing 64 spaces (32 spaces per
@@ -45391,7 +45402,11 @@ ENDIF
  JSR clearrow           ; Clear character row Y in screen memory, drawing blue
                         ; borders along the left and right edges as we do so
 
- INY
+ INY                    ; Increment Y to the next character row
+
+                        ; Fall through into clearrow to clear a second character
+                        ; row in screen memory, drawing blue borders along the
+                        ; left and right edges as we do so
 
 ; ******************************************************************************
 ;

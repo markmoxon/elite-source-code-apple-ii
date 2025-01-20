@@ -23024,6 +23024,7 @@ K% workspace from &800 to &927 inclusive
      0A6B
 .idfld
      0A6C
+Disk operations workspace from &800 to &A6C inclusive
 .UP
      0200
      0200

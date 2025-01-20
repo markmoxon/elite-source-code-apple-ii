@@ -108,9 +108,9 @@ ENDIF
 .Mover
 
  STA $C080              ; Set ROM bank 2 to read from RAM and not write to RAM
-                        ; by accessing the READBSR2 soft switch, with bit 3 clear
-                        ; (bank 2), bit 1 clear (read RAM) and bit 0 clear (do
-                        ; not write to RAM)
+                        ; by accessing the READBSR2 soft switch, with bit 3
+                        ; clear (bank 2), bit 1 clear (read RAM) and bit 0 clear
+                        ; (do not write to RAM)
 
  LDY #0                 ; Set the source and destination addresses for the copy:
  STY ZP                 ;
@@ -147,9 +147,12 @@ IF _MAX_COMMANDER
                         ; call to JAMESON, so the maxed-out commander file
                         ; doesn't get overwritten
                         ;
-                        ; We can do this because spasto has been pre-filled with
-                        ; the address of the ship blueprint for the Coriolis
-                        ; station, so we can skip this part of the TT170 routine
+                        ; The standard mover program on the game disk from Ian
+                        ; Bell's site jumps to TT170 to start the game, but we
+                        ; want to ensure that the maxed-out commander in NA2% is
+                        ; copied into the current commander slot by the JAMESON
+                        ; routine, which is called by the the BEGIN routine
+                        ; before it falls through into TT170 to run the game
 
 ELSE
 
