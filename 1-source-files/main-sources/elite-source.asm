@@ -2410,8 +2410,9 @@ NEXT
 ;
 ; ------------------------------------------------------------------------------
 ;
-; This variable is identical to the NIBL table in Apple DOS 3.3, which is
-; shown in the comments.
+; This table is identical to the NIBL table in Apple DOS 3.3.
+;
+; The original DOS 3.3 source code for this table in is shown in the comments.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
@@ -2420,23 +2421,28 @@ NEXT
 
 .wtable
 
- EQUD $9B9A9796         ; ???
- EQUD $A69F9E9D
- EQUD $ADACABA7
- EQUD $B3B2AFAE
- EQUD $B7B6B5B4
- EQUD $BCBBBAB9
- EQUD $CBBFBEBD
- EQUD $D3CFCECD
-
- EQUD $DAD9D7D6
- EQUD $DEDDDCDB
- EQUD $E7E6E5DF
- EQUD $ECEBEAE9
- EQUD $F2EFEEED
- EQUD $F6F5F4F3
- EQUD $FBFAF9F7
- EQUD $FFFEFDFC
+ EQUD $9B9A9796         ; NIBL     DFB $96,$97,$9A
+ EQUD $A69F9E9D         ;          DFB $9B,$9D,$9E
+ EQUD $ADACABA7         ;          DFB $9F,$A6,$A7
+ EQUD $B3B2AFAE         ;          DFB $AB,$AC,$AD
+ EQUD $B7B6B5B4         ;          DFB $AE,$AF,$B2
+ EQUD $BCBBBAB9         ;          DFB $B3,$B4,$B5
+ EQUD $CBBFBEBD         ;          DFB $B6,$B7,$B9
+ EQUD $D3CFCECD         ;          DFB $BA,$BB,$BC
+ EQUD $DAD9D7D6         ;          DFB $BD,$BE,$BF
+ EQUD $DEDDDCDB         ;          DFB $CB,$CD,$CE
+ EQUD $E7E6E5DF         ;          DFB $CF,$D3,$D6
+ EQUD $ECEBEAE9         ;          DFB $D7,$D9,$DA
+ EQUD $F2EFEEED         ;          DFB $DB,$DC,$DD
+ EQUD $F6F5F4F3         ;          DFB $DE,$DF,$E5
+ EQUD $FBFAF9F7         ;          DFB $E6,$E7,$E9
+ EQUD $FFFEFDFC         ;          DFB $EA,$EB,$EC
+                        ;          DFB $ED,$EE,$EF
+                        ;          DFB $F2,$F3,$F4
+                        ;          DFB $F5,$F6,$F7
+                        ;          DFB $F9,$FA,$FB
+                        ;          DFB $FC,$FD,$FE
+                        ;          DFB $FF
 
 ; ******************************************************************************
 ;
@@ -40895,8 +40901,9 @@ ENDMACRO
 ;
 ; ------------------------------------------------------------------------------
 ;
-; This routine is identical to the READ16 routine in Apple DOS 3.3, which is
-; shown in the comments.
+; This routine is identical to the READ16 routine in Apple DOS 3.3.
+;
+; The original DOS 3.3 source code for this routine in is shown in the comments.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
@@ -40905,101 +40912,101 @@ ENDMACRO
 
 .read
 
- LDY #32                ; READ16          LDY          #$20
+ LDY #32                ; READ16   LDY #$20       ; 'MUST FIND' COUNT.
 
 .read2
 
- DEY                    ; RSYNC           DEY          IF
- BEQ readE              ;                 BEQ          RDERR
+ DEY                    ; RSYNC    DEY IF         ; CAN'T FIND MARKS
+ BEQ readE              ;          BEQ RDERR      ; THEN EXIT WITH CARRY SET.
 
 .read3
 
- LDA Q6L,X              ; READ1           LDA          Q6L,X
- BPL read3              ;                 BPL          READ1
+ LDA Q6L,X              ; READ1    LDA Q6L,X      ; READ NIBL.
+ BPL read3              ;          BPL READ1      ; *** NO PAGE CROSS! ***
 
 .read4
 
- EOR #$D5               ; RSYNC1          EOR          #$D5
- BNE read2              ;                 BNE          RSYNC
- NOP                    ;                 NOP          DELAY
-                        ; *              (ADDED NIBL DELAY)
+ EOR #$D5               ; RSYNC1   EOR #$D5       ; DATA MARK 1?
+ BNE read2              ;          BNE RSYNC      ; LOOP IF NOT.
+ NOP                    ;          NOP DELAY      ; BETWEEN NIBLS.
 
 .read5
 
- LDA Q6L,X              ; READ2           LDA          Q6L,X
- BPL read5              ;                 BPL          READ2   
- CMP #$AA               ;                 CMP          #$AA
- BNE read4              ;                 BNE          RSYNC1
- LDY #$56               ;                 LDY          #$56
+ LDA Q6L,X              ; READ2    LDA Q6L,X
+ BPL read5              ;          BPL READ2      ; *** NO PAGE CROSS! ***
+ CMP #$AA               ;          CMP #$AA       ; DATA MARK 2?
+ BNE read4              ;          BNE RSYNC1     ; (IF NOT, IS IT DM1?)
+ LDY #$56               ;          LDY #$56       ; INIT NBUF2 INDEX.
+                        ; *       (ADDED NIBL DELAY)
 
 .read6
 
- LDA Q6L,X              ; READ3           LDA          Q6L,X
- BPL read6              ;                 BPL          READ3
- CMP #$AD               ;                 CMP          #$AD
- BNE read4              ;                 BNE          RSYNC1
-                        ; *         (CARRY SET IF DM3!)
- LDA #0                 ;                 LDA          #$00
+ LDA Q6L,X              ; READ3    LDA Q6L,X
+ BPL read6              ;          BPL READ3      ; *** NO PAGE CROSS! ***
+ CMP #$AD               ;          CMP #$AD       ; DATA MARK 3?
+ BNE read4              ;          BNE RSYNC1     ; (IF NOT, IS IT DM1?)
+                        ; *       (CARRY SET IF DM3!)
+ LDA #0                 ;          LDA #$00       ; INIT CHECKSUM.
 
 .read7
 
- DEY                    ; RDATA1          DEY
- STY ztemp0             ;                 STY          IDX
+ DEY                    ; RDATA1   DEY
+ STY ztemp0             ;          STY IDX
 
 .read8
 
- LDY Q6L,X              ; READ4           LDY          Q6L,X
- BPL read8              ;                 BPL          READ4 
- EOR rtable-$96,Y       ;                 EOR          DNIBL,Y   
- LDY ztemp0             ;                 LDY          IDX
- STA buffr2+256,Y       ;                 STA          NBUF2,Y 
- BNE read7              ;                 BNE          RDATA1
+ LDY Q6L,X              ; READ4    LDY Q6L,X
+ BPL read8              ;          BPL READ4      ; *** NO PAGE CROSS! ***
+ EOR rtable-$96,Y       ;          EOR DNIBL,Y    ; XOR 6-BIT NIBL.
+ LDY ztemp0             ;          LDY IDX
+ STA buffr2+256,Y       ;          STA NBUF2,Y    ; STORE IN NBUF2 PAGE.
+ BNE read7              ;          BNE RDATA1     ; TAKEN IF Y-REG NONZERO.
 
 .read9
 
- STY ztemp0             ; RDATA2          STY          IDX
+ STY ztemp0             ; RDATA2   STY IDX
 
 .readA
 
- LDY Q6L,X              ; READ5           LDY          Q6L,X
- BPL readA              ;                 BPL          READ5 
- EOR rtable-$96,Y       ;                 EOR          DNIBL,Y
- LDY ztemp0             ;                 LDY          IDX
- STA buffr2,Y           ;                 STA          NBUF1,Y 
- INY                    ;                 INY
- BNE read9              ;                 BNE          RDATA2
+ LDY Q6L,X              ; READ5    LDY Q6L,X
+ BPL readA              ;          BPL READ5      ; *** NO PAGE CROSS! ***
+ EOR rtable-$96,Y       ;          EOR DNIBL,Y    ; XOR 6-BIT NIBL.
+ LDY ztemp0             ;          LDY IDX
+ STA buffr2,Y           ;          STA NBUF1,Y    ; STORE IN NBUF1 PAGE.
+ INY                    ;          INY
+ BNE read9              ;          BNE RDATA2
 
 .readB
 
- LDY Q6L,X              ; READ6           LDY          Q6L,X
- BPL readB              ;                 BPL          READ6
- CMP rtable-$96,Y       ;                 CMP          DNIBL,Y
- BNE readE              ;                 BNE          RDERR
+ LDY Q6L,X              ; READ6    LDY Q6L,X      ; READ 7-BIT CSUM NIBL.
+ BPL readB              ;          BPL READ6      ; *** NO PAGE CROSS! ***
+ CMP rtable-$96,Y       ;          CMP DNIBL,Y    ; IF LAST NBUF1 NIBL NOT
+ BNE readE              ;          BNE RDERR      ; EQUAL CHKSUM NIBL THEN ERR.
 
 .readC
 
- LDA Q6L,X              ; READ7           LDA          Q6L,X
- BPL readC              ;                 BPL          READ7
- CMP #$DE               ;                 CMP          #$DE
- BNE readE              ;                 BNE          RDERR
- NOP                    ;                 NOP          DELAY
+ LDA Q6L,X              ; READ7    LDA Q6L,X
+ BPL readC              ;          BPL READ7      ; *** NO PAGE CROSS! ***
+ CMP #$DE               ;          CMP #$DE       ; FIRST BIT SLIP MARK?
+ BNE readE              ;          BNE RDERR      ; (ERR IF NOT)
+ NOP                    ;          NOP DELAY      ; BETWEEN NIBLS.
 
 .readD
 
- LDA Q6L,X              ; READ8           LDA          Q6L,X
- BPL readD              ;                 BPL          READ8
- CMP #$AA               ;                 CMP          #$AA
- BEQ readF              ;                 BEQ          RDEXIT
+ LDA Q6L,X              ; READ8    LDA Q6L,X
+ BPL readD              ;          BPL READ8      ; *** NO PAGE CROSS! ***
+ CMP #$AA               ;          CMP #$AA       ; SECOND BIT SLIP MARK?
+ BEQ readF              ;          BEQ RDEXIT     ; (DONE IF IT IS)
 
 .readE
 
- SEC                    ; RDERR           SEC          INDICATE
- RTS                    ;                 RTS          RETURN
+ SEC                    ; RDERR    SEC INDICATE   ; 'ERROR EXIT'.
+ RTS                    ;          RTS RETURN     ; FROM READ16 OR RDADR16.
 
 .readF
 
- CLC                    ; RDEXIT          CLC          CLEAR
- RTS                    ;                 RTS          NORMAL
+ CLC                    ; RDEXIT   CLC CLEAR      ; CARRY ON
+ RTS                    ;          RTS NORMAL     ; READ EXITS.
 
 ; ******************************************************************************
 ;
@@ -41010,9 +41017,10 @@ ENDMACRO
 ;
 ; ------------------------------------------------------------------------------
 ;
-; This routine is almost identical to the WRITE16 routine in Apple DOS 3.3,
-; which is shown in the comments. There is one instruction missing from the
-; original DOS source.
+; This routine is almost identical to the WRITE16 routine in Apple DOS 3.3.
+; There is one instruction missing here that is in the original DOS.
+;
+; The original DOS 3.3 source code for this routine in is shown in the comments.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
@@ -41021,85 +41029,98 @@ ENDMACRO
 
 .write
 
- SEC                    ; WRITE16         SEC          ANTICIPATE
- STX ztemp1             ;                 STX          SLOTZ
-                        ;                 STX          SLOTABS 
- LDA Q6H,X              ;                 LDA          Q6H,X
- LDA Q7L,X              ; ???
- BMI write6
- LDA buffr2+256
- STA ztemp0
- LDA #$FF
- STA Q7H,X
- ORA Q6L,X
- PHA
- PLA
- NOP
- LDY #4
+ SEC                    ; WRITE16  SEC ANTICIPATE ; WPROT ERR.
+ STX ztemp1             ;          STX SLOTZ      ; FOR ZERO PAGE ACCESS.
+
+                        ; The following instuction from DOS 3.3 is omitted:
+                        ;
+                        ;          STX SLOTABS    ; FOR NON-ZERO PAGE.
+                        ;
+                        ; This would populate SLOTABS (slot16 in Elite) with X,
+                        ; which contains the slot number * 16
+                        ;
+                        ; The value of slot16 is set to $60 in the wsect routine
+                        ; and is never changed again, so this omission is
+                        ; presumably to prevent the slot number from changing
+
+ LDA Q6H,X              ;          LDA Q6H,X
+ LDA Q7L,X              ;          LDA Q7L,X      ; SENSE WPROT FLAG.
+ BMI write6             ;          BMI WEXIT      ; IF HIGH, THEN ERR.
+ LDA buffr2+256         ;          LDA NBUF2
+ STA ztemp0             ;          STA WTEMP      ; FOR ZERO-PAGE ACCESS.
+ LDA #$FF               ;          LDA #$FF       ; SYNC DATA.
+ STA Q7H,X              ;          STA Q7H,X      ; (5)  WRITE 1ST NIBL.
+ ORA Q6L,X              ;          ORA Q6L,X      ; (4)
+ PHA                    ;          PHA (3)
+ PLA                    ;          PLA (4)        ; CRITICAL TIMING!
+ NOP                    ;          NOP (2)
+ LDY #4                 ;          LDY #4         ; (2)  FOR 5 NIBLS.
 
 .write2
 
- PHA
- PLA
- JSR wbyte2
- DEY
- BNE write2
- LDA #$D5
- JSR wbyte
- LDA #$AA
- JSR wbyte
- LDA #$AD
- JSR wbyte
- TYA
- LDY #$56
- BNE write4
+ PHA                    ; WSYNC    PHA (3)        ; EXACT TIMING.
+ PLA                    ;          PLA (4)        ; EXACT TIMING.
+ JSR wbyte2             ;          JSR WNIBL7     ; (13,9,6)  WRITE SYNC.
+ DEY                    ;          DEY (2)
+ BNE write2             ;          BNE WSYNC      ; (2*)  MUST NOT CROSS PAGE!
+ LDA #$D5               ;          LDA #$D5       ; (2)  1ST DATA MARK.
+ JSR wbyte              ;          JSR WNIBL9     ; (15,9,6)
+ LDA #$AA               ;          LDA #$AA       ; (2)  2ND DATA MARK.
+ JSR wbyte              ;          JSR WNIBL9     ; (15,9,6)
+ LDA #$AD               ;          LDA #$AD       ; (2)  3RD DATA MARK.
+ JSR wbyte              ;          JSR WNIBL9     ; (15,9,6)
+ TYA                    ;          TYA (2)        ; CLEAR CHKSUM.
+ LDY #$56               ;          LDY #$56       ; (2)  NBUF2 INDEX.
+ BNE write4             ;          BNE WDATA1     ; (3)  ALWAYS.  NO PAGE
+                        ;                                CROSS!!
 
 .write3
 
- LDA buffr2+256,Y
+ LDA buffr2+256,Y       ; WDATA0   LDA NBUF2,Y    ; (4)  PRIOR 6-BIT NIBL.
 
 .write4
 
- EOR buffr2+255,Y
- TAX
- LDA wtable,X
- LDX ztemp1
- STA Q6H,X
- LDA Q6L,X
- DEY
- BNE write3
- LDA ztemp0
- NOP
+ EOR buffr2+255,Y       ; WDATA1   EOR NBUF2-1,Y  ; (5)  XOR WITH CURRENT.
+                        ; *   (NBUF2 MUST BE ON PAGE BOUNDARY FOR TIMING!!)
+ TAX                    ;          TAX (2)        ; INDEX TO 7-BIT NIBL.
+ LDA wtable,X           ;          LDA NIBL,X     ; (4)  MUST NOT CROSS PAGE!
+ LDX ztemp1             ;          LDX SLOTZ      ; (3)  CRITICAL TIMING!
+ STA Q6H,X              ;          STA Q6H,X      ; (5)  WRITE NIBL.
+ LDA Q6L,X              ;          LDA Q6L,X      ; (4)
+ DEY                    ;          DEY (2)        ; NEXT NIBL.
+ BNE write3             ;          BNE WDATA0     ; (2*)  MUST NOT CROSS PAGE!
+ LDA ztemp0             ;          LDA WTEMP      ; (3)  PRIOR NIBL FROM BUF6.
+ NOP                    ;          NOP (2)        ; CRITICAL TIMING.
 
 .write5
 
- EOR buffr2,Y
- TAX
- LDA wtable,X
- LDX slot16
- STA Q6H,X
- LDA Q6L,X
- LDA buffr2,Y
- INY
- BNE write5
- TAX
- LDA wtable,X
- LDX ztemp1
- JSR wbyte3
- LDA #$DE
- JSR wbyte
- LDA #$AA
- JSR wbyte
- LDA #$EB
- JSR wbyte
- LDA #$FF
- JSR wbyte
- LDA Q7L,X
+ EOR buffr2,Y           ; WDATA2   EOR NBUF1,Y    ; (4)  XOR NBUF1 NIBL.
+ TAX                    ;          TAX (2)        ; INDEX TO 7-BIT NIBL.
+ LDA wtable,X           ;          LDA NIBL,X     ; (4)
+ LDX slot16             ;          LDX SLOTABS    ; (4)  TIMING CRITICAL.
+ STA Q6H,X              ;          STA Q6H,X      ; (5)  WRITE NIBL.
+ LDA Q6L,X              ;          LDA Q6L,X      ; (4)
+ LDA buffr2,Y           ;          LDA NBUF1,Y    ; (4)  PRIOR 6-BIT NIBL.
+ INY                    ;          INY (2)        ; NEXT NBUF1 NIBL.
+ BNE write5             ;          BNE WDATA2     ; (2*)  MUST NOT CROSS PAGE!
+ TAX                    ;          TAX (2)        ; LAST NIBL AS CHKSUM.
+ LDA wtable,X           ;          LDA NIBL,X     ; (4)  INDEX TO 7-BIT NIBL.
+ LDX ztemp1             ;          LDX SLOTZ      ; (3)
+ JSR wbyte3             ;          JSR WNIBL      ; (6,9,6)  WRITE CHKSUM.
+ LDA #$DE               ;          LDA #$DE       ; (2)  DM4, BIT SLIP MARK.
+ JSR wbyte              ;          JSR WNIBL9     ; (15,9,6)    WRITE IT.
+ LDA #$AA               ;          LDA #$AA       ; (2)  DM5, BIT SLIP MARK.
+ JSR wbyte              ;          JSR WNIBL9     ; (15,9,6)    WRITE IT.
+ LDA #$EB               ;          LDA #$EB       ; (2)  DM6, BIT SLIP MARK.
+ JSR wbyte              ;          JSR WNIBL9     ; (15,9,6)    WRITE IT.
+ LDA #$FF               ;          LDA #$FF       ; (2) TURN-OFF BYTE.
+ JSR wbyte              ;          JSR WNIBL9     ; (15,9,9)  WRITE IT.
+ LDA Q7L,X              ;          LDA Q7L,X      ; OUT OF WRITE MODE.
 
 .write6
 
- LDA Q6L,X
- RTS
+ LDA Q6L,X              ; WEXIT    LDA Q6L,X      ; TO READ MODE.
+ RTS                    ;          RTS RETURN     ; FROM WRITE.
 
 ; ******************************************************************************
 ;
@@ -41110,8 +41131,9 @@ ENDMACRO
 ;
 ; ------------------------------------------------------------------------------
 ;
-; This routine is identical to the RDADR16 routine in Apple DOS 3.3, which is
-; shown in the comments.
+; This routine is identical to the RDADR16 routine in Apple DOS 3.3.
+;
+; The original DOS 3.3 source code for this routine in is shown in the comments.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
@@ -41120,192 +41142,205 @@ ENDMACRO
 
 .rdaddr
 
- LDY #$FC               ; ???
- STY ztemp0
+ LDY #$FC               ; RDADR16  LDY #$FC
+ STY ztemp0             ;          STY COUNT      ; 'MUST FIND' COUNT.
 
 .rdadr2
 
- INY
- BNE rdadr3
- INC ztemp0
- BEQ rdadrD
+ INY                    ; RDASYN   INY
+ BNE rdadr3             ;          BNE RDA1       ; LOW ORDER OF COUNT.
+ INC ztemp0             ;          INC COUNT      ; (2K NIBLS TO FIND
+ BEQ rdadrD             ;          BEQ RDERR      ; ADR MARK, ELSE ERR)
 
 .rdadr3
 
- LDA Q6L,X
- BPL rdadr3
+ LDA Q6L,X              ; RDA1     LDA Q6L,X      ; READ NIBL.
+ BPL rdadr3             ;          BPL RDA1       ; *** NO PAGE CROSS! ***
 
 .rdadr4
 
- CMP #$D5
- BNE rdadr2
- NOP
+ CMP #$D5               ; RDASN1   CMP #$D5       ; ADR MARK 1?
+ BNE rdadr2             ;          BNE RDASYN     ; (LOOP IF NOT)
+ NOP                    ;          NOP ADDED      ; NIBL DELAY.
 
 .rdadr5
 
- LDA Q6L,X
- BPL rdadr5
- CMP #$AA
- BNE rdadr4
- LDY #3
+ LDA Q6L,X              ; RDA2     LDA Q6L,X
+ BPL rdadr5             ;          BPL RDA2       ; *** NO PAGE CROSS! ***
+ CMP #$AA               ;          CMP #$AA       ; ADR MARK 2?
+ BNE rdadr4             ;          BNE RDASN1     ; (IF NOT, IS IT AM1?)
+ LDY #3                 ;          LDY #$3        ; INDEX FOR 4-BYTE READ.
+                        ; *       (ADDED NIBL DELAY)
 
 .rdadr6
 
- LDA Q6L,X
- BPL rdadr6
- CMP #$96
- BNE rdadr4
- LDA #0
+ LDA Q6L,X              ; RDA3     LDA Q6L,X
+ BPL rdadr6             ;          BPL RDA3       ; *** NO PAGE CROSS! ***
+ CMP #$96               ;          CMP #$96       ; ADR MARK 3?
+ BNE rdadr4             ;          BNE RDASN1     ; (IF NOT, IS IT AM1?)
+                        ; *       (LEAVES CARRY SET!)
+ LDA #0                 ;          LDA #$0        ; INIT CHECKSUM.
 
 .rdadr7
 
- STA ztemp1
+ STA ztemp1             ; RDAFLD   STA CSUM
 
 .rdadr8
 
- LDA Q6L,X
- BPL rdadr8
- ROL A
- STA ztemp0
+ LDA Q6L,X              ; RDA4     LDA Q6L,X      ; READ 'ODD BIT' NIBL.
+ BPL rdadr8             ;          BPL RDA4       ; *** NO PAGE CROSS! ***
+ ROL A                  ;          ROL A          ; ALIGN ODD BITS, '1' INTO
+                        ;                           LSB.
+ STA ztemp0             ;          STA LAST       ; (SAVE THEM)
 
 .rdadr9
 
- LDA Q6L,X
- BPL rdadr9
- AND ztemp0
- STA idfld,Y
- EOR ztemp1
- DEY
- BPL rdadr7
- TAY
- BNE rdadrD
+ LDA Q6L,X              ; RDA5     LDA Q6L,X      ; READ 'EVEN BIT' NIBL.
+ BPL rdadr9             ;          BPL RDA5       ; *** NO PAGE CROSS! ***
+ AND ztemp0             ;          AND LAST       ; MERGE ODD AND EVEN BITS.
+ STA idfld,Y            ;          STA CSSTV,Y    ; STORE DATA BYTE.
+ EOR ztemp1             ;          EOR CSUM       ; XOR CHECKSUM.
+ DEY                    ;          DEY
+ BPL rdadr7             ;          BPL RDAFLD     ; LOOP ON 4 DATA BYTES.
+ TAY                    ;          TAY IF         ; FINAL CHECKSUM
+ BNE rdadrD             ;          BNE RDERR      ; NONZERO, THEN ERROR.
 
 .rdadrA
 
- LDA Q6L,X
- BPL rdadrA
- CMP #$DE
- BNE rdadrD
- NOP
+ LDA Q6L,X              ; RDA6     LDA Q6L,X      ; FIRST BIT-SLIP NIBL.
+ BPL rdadrA             ;          BPL RDA6       ; *** NO PAGE CROSS! ***
+ CMP #$DE               ;          CMP #$DE
+ BNE rdadrD             ;          BNE RDERR      ; ERROR IF NONMATCH.
+ NOP                    ;          NOP DELAY      ; BETWEEN NIBLS.
 
 .rdadrB
 
- LDA Q6L,X
- BPL rdadrB
- CMP #$AA
- BNE rdadrD
+ LDA Q6L,X              ; RDA7     LDA Q6L,X      ; SECOND BIT-SLIP NIBL.
+ BPL rdadrB             ;          BPL RDA7       ; *** NO PAGE CROSS! ***
+ CMP #$AA               ;          CMP #$AA
+ BNE rdadrD             ;          BNE RDERR      ; ERROR IF NONMATCH.
 
 .rdadrC
 
- CLC
- RTS
+ CLC                    ; RDEXIT   CLC CLEAR      ; CARRY ON
+ RTS                    ;          RTS NORMAL     ; READ EXITS.
 
 .rdadrD
 
- SEC
- RTS
+ SEC                    ; RDERR    SEC INDICATE   ; 'ERROR EXIT'.
+ RTS                    ;          RTS RETURN     ; FROM READ16 OR RDADR16.
 
 ; ******************************************************************************
 ;
 ;       Name: seek
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: Fast seek routine
+;
+; ------------------------------------------------------------------------------
+;
+; This routine is almost identical to the SEEK routine in Apple DOS 3.3. There
+; is one extra instruction and one moved instruction when compared to the
+; original DOS.
+;
+; These extra instructions double the track number in A.
+;
+; The original DOS 3.3 source code for this routine in is shown in the comments.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
 ;
 ; ******************************************************************************
 
 .seek
 
- \ A = desired track
- STX ztemp0             ; ???
- ASL A
- CMP curtrk
- BEQ step3 ; branch if head already over desired track
- STA ztemp1 ; save desired track*2
- LDA #0
- STA ztemp2
+ STX ztemp0             ; SEEK     STX SLOTTEMP   ; SAVE X-REG
+                        ;          STA TRKN       ; SAVE TARGET TRACK
+
+ ASL A                  ; This is an extra instruction that doubles the track
+                        ; number in A
+
+ CMP curtrk             ;          CMP CURTRK     ; ON DESIRED TRACK?
+ BEQ step3              ;          BEQ SEEKRTS    ; YES, RETURN
+
+ STA ztemp1             ; This is the second instruction from above, which has
+                        ; been moved here (STA TRKN)
+                        ;
+                        ; This saves the now-doubled track number in ztemp1
+
+ LDA #0                 ;          LDA #$0
+ STA ztemp2             ;          STA TRKCNT     ; HALFTRACK COUNT.
 
 .seek2
 
- LDA curtrk
- STA ztemp3
- SEC
- SBC ztemp1
- BEQ seek7 ; branch if reached desired track
- BCS seek3 ; branch if step back
- EOR #$FF
- INC curtrk ; track = track+1
- BCC seek4 ; always
+ LDA curtrk             ; SEEK2    LDA CURTRK     ; SAVE CURTRK FOR
+ STA ztemp3             ;          STA PRIOR      ; DELAYED TURNOFF.
+ SEC                    ;          SEC
+ SBC ztemp1             ;          SBC TRKN       ; DELTA-TRACKS.
+ BEQ seek7              ;          BEQ SEEKEND    ; BR IF CURTRK=DESTINATION
+ BCS seek3              ;          BCS OUT        ; (MOVE OUT, NOT IN)
+ EOR #$FF               ;          EOR #$FF       ; CALC TRKS TO GO.
+ INC curtrk             ;          INC CURTRK     ; INCR CURRENT TRACK (IN).
+ BCC seek4              ;          BCC MINTST     ; (ALWAYS TAKEN)
 
 .seek3
 
- ADC #$FE
- DEC curtrk ; track = track-1
+ ADC #$FE               ; OUT      ADC #$FE       ; CALC TRKS TO GO.
+ DEC curtrk             ;          DEC CURTRK     ; DECR CURRENT TRACK (OUT).
 
 .seek4
 
- CMP ztemp2
- BCC seek5
- LDA ztemp2
+ CMP ztemp2             ; MINTST   CMP TRKCNT
+ BCC seek5              ;          BCC MAXTST     ; AND 'TRKS MOVED'.
+ LDA ztemp2             ;          LDA TRKCNT
 
 .seek5
 
- CMP #12
- BCS seek6
- TAY
+ CMP #12                ; MAXTST   CMP #$C
+ BCS seek6              ;          BCS STEP2      ; IF TRKCNT>$B LEAVE Y ALONE
+                        ;                           (Y=$B).
+ TAY                    ; STEP     TAY            ; ELSE SET ACCELERATION INDEX
+                        ;                           IN Y
 
-.seek6
+.seek6                  ; STEP2    EQU *
 
- SEC
- JSR step
- LDA armtab,Y
- JSR armwat
- LDA ztemp3
- CLC
- JSR step2
- LDA armtb2,Y
- JSR armwat
- INC ztemp2
- BNE seek2 ; always
+ SEC                    ;          SEC            ; CARRY SET=PHASE ON
+ JSR step               ;          JSR SETPHASE   ; PHASE ON
+ LDA armtab,Y           ;          LDA ONTABLE,Y  ; FOR 'ONTIME'.
+ JSR armwat             ;          JSR MSWAIT     ; (100 USEC INTERVALS)
+                        ; *
+ LDA ztemp3             ;          LDA PRIOR
+ CLC                    ;          CLC            ; CARRY CLEAR=PHASE OFF
+ JSR step2              ;          JSR CLRPHASE   ; PHASE OFF
+ LDA armtb2,Y           ;          LDA OFFTABLE,Y ; THEN WAIT 'OFFTIME'.
+ JSR armwat             ;          JSR MSWAIT     ; (100 USEC INTERVALS)
+ INC ztemp2             ;          INC TRKCNT     ; 'TRACKS MOVED' COUNT.
+ BNE seek2              ;          BNE SEEK2      ; (ALWAYS TAKEN)
+                        ; *
+.seek7                  ; SEEKEND  EQU *          ; END OF SEEKING
 
-.seek7
+ JSR armwat             ;          JSR MSWAIT     ; A=0: WAIT 25 MS SETTLE
+ CLC                    ;          CLC            ; AND TURN OFF PHASE
+                        ; *
+                        ; * TURN HEAD STEPPER PHASE ON/OFF
+                        ; *
 
- JSR armwat
- CLC
+.step                   ; SETPHASE EQU *
 
-; ******************************************************************************
-;
-;       Name: step
-;       Type: Subroutine
-;   Category: Save and load
-;    Summary: Step drive head
-;
-; ------------------------------------------------------------------------------
-;
-; Other entry points:
-;
-;   step2               ???
-;
-;   step3               Contains an RTS
-;
-; ******************************************************************************
+ LDA curtrk             ;          LDA CURTRK     ; GET CURRENT PHASE
 
-.step
+.step2                  ; CLRPHASE EQU *
 
- LDA curtrk             ; ???
-
-.step2
-
- AND #3
- ROL A
- ORA ztemp0
- TAX
- LDA phsoff,X ; stepper motor phase 0-3 on/off
- LDX ztemp0
+ AND #3                 ;          AND #3         ; MASK FOR 1 OF 4 PHASES
+ ROL A                  ;          ROL A          ; DOUBLE FOR PHASE INDEX
+ ORA ztemp0             ;          ORA SLOTTEMP
+ TAX                    ;          TAX
+ LDA phsoff,X           ;          LDA PHASEOFF,X ; FLIP THE PHASE
+ LDX ztemp0             ;          LDX SLOTTEMP   ; RESTORE X-REG
 
 .step3
 
- RTS
+ RTS                    ; SEEKRTS  RTS            ; AND RETURN
 
 ; ******************************************************************************
 ;
@@ -41314,42 +41349,60 @@ ENDMACRO
 ;   Category: Save and load
 ;    Summary: Arm move delay
 ;
+; ------------------------------------------------------------------------------
+;
+; This routine is identical to the MSWAIT routine in Apple DOS 3.3.
+;
+; The original DOS 3.3 source code for this routine in is shown in the comments.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
+;
 ; ******************************************************************************
 
 .armwat
 
- LDX #17                ; ???
+ LDX #17                ; MSWAIT   LDX #$11
 
 .armwt2
 
- DEX
- BNE armwt2
- INC mtimel
- BNE armwt3
- INC mtimeh
+ DEX                    ; MSW1     DEX DELAY      ; 86 USEC.
+ BNE armwt2             ;          BNE MSW1
+ INC mtimel             ;          INC MONTIMEL
+ BNE armwt3             ;          BNE MSW2       ; DOUBLE-BYTE
+ INC mtimeh             ;          INC MONTIMEH   ; INCREMENT.
 
 .armwt3
 
- SEC
- SBC #1
- BNE armwat
- RTS
+ SEC                    ; MSW2     SEC
+ SBC #1                 ;          SBC #$1        ; DONE 'N' INTERVALS?
+ BNE armwat             ;          BNE MSWAIT     ; (A-REG COUNTS)
+ RTS                    ;          RTS
 
 ; ******************************************************************************
 ;
 ;       Name: armtab
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: Phase-on time table in 100-usec intervals
+;
+; ------------------------------------------------------------------------------
+;
+; This table is identical to the ONTABLE table in Apple DOS 3.3.
+;
+; The original DOS 3.3 source code for this table in is shown in the comments.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
 ;
 ; ******************************************************************************
 
 .armtab
 
- EQUB 1
- EQUB $30
- EQUB $28
- EQUB $24
+ EQUB 1                 ; ONTABLE  DFB 1,$30,$28
+ EQUB $30               ;          DFB $24,$20,$1E
+ EQUB $28               ;          DFB $1D,$1C,$1C
+ EQUB $24               ;          DFB $1C,$1C,$1C
  EQUB $20
  EQUB $1E
  EQUB $1D
@@ -41364,16 +41417,25 @@ ENDMACRO
 ;       Name: armtb2
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: Phase-off time table in 100-usec intervals
+;
+; ------------------------------------------------------------------------------
+;
+; This table is identical to the OFFTABLE table in Apple DOS 3.3.
+;
+; The original DOS 3.3 source code for this table in is shown in the comments.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
 ;
 ; ******************************************************************************
 
 .armtb2
 
- EQUB $70
- EQUB $2C
- EQUB $26
- EQUB $22
+ EQUB $70               ; OFFTABLE DFB $70,$2C,$26
+ EQUB $2C               ;          DFB $22,$1F,$1E
+ EQUB $26               ;          DFB $1D,$1C,$1C
+ EQUB $22               ;          DFB $1C,$1C,$1C
  EQUB $1F
  EQUB $1E
  EQUB $1D
@@ -41390,38 +41452,49 @@ ENDMACRO
 ;   Category: Save and load
 ;    Summary: Convert 256*8 bit bytes to 342*6 bit 'nibbles'
 ;
+; ------------------------------------------------------------------------------
+;
+; This routine is identical to the PRENIB16 routine in Apple DOS 3.3.
+;
+; The original DOS 3.3 source code for this routine in is shown in the comments.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
+;
 ; ******************************************************************************
 
 .prenib
 
- LDX #0                 ; ???
- LDY #2
+ LDX #0                 ; PRENIB16 LDX #$0        ; START NBUF2 INDEX. CHANGED
+                        ;                           BY WOZ
+ LDY #2                 ;          LDY #2         ; START USER BUF INDEX.
+                        ;                           CHANGED BY WOZ.
 
 .prenb2
 
- DEY
- LDA buffer,Y
- LSR A
- ROL buffr2+256,X
- LSR A
- ROL buffr2+256,X
- STA buffr2,Y
- INX
- CPX #$56
- BCC prenb2
- LDX #0
- TYA
- BNE prenb2
- LDX #$55
+ DEY                    ; PRENIB1  DEY NEXT       ; USER BYTE.
+ LDA buffer,Y           ;          LDA (BUF),Y
+ LSR A                  ;          LSR A          ; SHIFT TWO BITS OF
+ ROL buffr2+256,X       ;          ROL NBUF2,X    ; CURRENT USER BYTE
+ LSR A                  ;          LSR A          ; INTO CURRENT NBUF2
+ ROL buffr2+256,X       ;          ROL NBUF2,X    ; BYTE.
+ STA buffr2,Y           ;          STA NBUF1,Y    ; (6 BITS LEFT).
+ INX                    ;          INX            ; FROM 0 TO $55.
+ CPX #$56               ;          CPX #$56
+ BCC prenb2             ;          BCC PRENIB1    ; BR IF NO WRAPAROUND.
+ LDX #0                 ;          LDX #0         ; RESET NBUF2 INDEX.
+ TYA                    ;          TYA            ; USER BUF INDEX.
+ BNE prenb2             ;          BNE PRENIB1    ; (DONE IF ZERO)
+ LDX #$55               ;          LDX #$55       ; NBUF2 IDX $55 TO 0.
 
 .prenb3
 
- LDA buffr2+256,X
- AND #$3F
- STA buffr2+256,X
- DEX
- BPL prenb3
- RTS
+ LDA buffr2+256,X       ; PRENIB2  LDA NBUF2,X
+ AND #$3F               ;          AND #$3F       ; STRIP EACH BYTE
+ STA buffr2+256,X       ;          STA NBUF2,X    ; OF NBUF2 TO 6 BITS.
+ DEX                    ;          DEX
+ BPL prenb3             ;          BPL PRENIB2    ; LOOP UNTIL X NEG.
+ RTS                    ;          RTS            ; RETURN.
 
 ; ******************************************************************************
 ;
@@ -41430,29 +41503,41 @@ ENDMACRO
 ;   Category: Save and load
 ;    Summary: Convert 342*6 bit 'nibbles' to 256*8 bit bytes
 ;
+; ------------------------------------------------------------------------------
+;
+; This routine is almost identical to the POSTNB16 routine in Apple DOS 3.3. The
+; CPY T0 instruction from the original source is omitted as we only need to
+; check whether the byte counter in Y has reached zero.
+;
+; The original DOS 3.3 source code for this routine in is shown in the comments.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
+
 ; ******************************************************************************
 
 .pstnib
 
- LDY #0                 ; ???
+ LDY #0                 ; POSTNB16 LDY #0         ; USER DATA BUF IDX.
 
 .pstnb2
 
- LDX #$56
+ LDX #$56               ; POST1    LDX #$56       ; INIT NBUF2 INDEX.
 
 .pstnb3
 
- DEX
- BMI pstnb2
- LDA buffr2,Y
- LSR buffr2+256,X
- ROL A
- LSR buffr2+256,X
- ROL A
- STA buffer,Y
- INY
- BNE pstnb3
- RTS
+ DEX                    ; POST2    DEX NBUF       ; IDX $55 TO $0.
+ BMI pstnb2             ;          BMI POST1      ; WRAPAROUND IF NEG.
+ LDA buffr2,Y           ;          LDA NBUF1,Y
+ LSR buffr2+256,X       ;          LSR NBUF2,X    ; SHIFT 2 BITS FROM
+ ROL A                  ;          ROL A          ; CURRENT NBUF2 NIBL
+ LSR buffr2+256,X       ;          LSR NBUF2,X    ; INTO CURRENT NBUF1
+ ROL A                  ;          ROL A          ; NIBL.
+ STA buffer,Y           ;          STA (BUF),Y    ; BYTE OF USER DATA.
+ INY                    ;          INY NEXT       ; USER BYTE.
+                        ;          CPY T0         ; DONE IF EQUAL T0.
+ BNE pstnb3             ;          BNE POST2
+ RTS                    ;          RTS RETURN.
 
 ; ******************************************************************************
 ;
@@ -41463,83 +41548,124 @@ ENDMACRO
 ;
 ; ------------------------------------------------------------------------------
 ;
+; This routine is identical to the WNIBL9 routine in Apple DOS 3.3.
+;
+; The original DOS 3.3 source code for this routine in is shown in the comments.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
+;
+; ------------------------------------------------------------------------------
+;
 ; Other entry points:
 ;
-;   wbyte2              ???
+;   wbyte2              Wait for seven cycles before writing instead of nine
+;                       (this is WNIBL7 in the original source)
 ;
-;   wbyte3              ???
+;   wbyte3              Write straight away without waiting (this is WNIBL in
+;                       the original source)
 ;
 ; ******************************************************************************
 
 .wbyte
 
- CLC                    ; ???
+ CLC                    ; WNIBL9   CLC (2)        ; 9 CYCLES, THEN WRITE.
 
 .wbyte2
 
- PHA
- PLA
+ PHA                    ; WNIBL7   PHA (3)        ; 7 CYCLES, THEN WRITE.
+ PLA                    ;          PLA (4)
 
 .wbyte3
 
- STA Q6H,X
- ORA Q6L,X
- RTS
+ STA Q6H,X              ; WNIBL    STA Q6H,X      ; (5)  NIBL WRITE SUB.
+ ORA Q6L,X              ;          ORA Q6L,X      ; (4)  CLOBBERS ACC, NOT
+                        ;                                CARRY.
+ RTS                    ;          RTS
 
 ; ******************************************************************************
 ;
 ;       Name: scttab
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: Lookup table to translate logical (requested) sector number to
+;             physical sector number
+;
+; ------------------------------------------------------------------------------
+;
+; This table is identical to the INTRLEAV table in Apple DOS 3.3.
+;
+; The original DOS 3.3 source code for this table in is shown in the comments.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
 ;
 ; ******************************************************************************
 
-.scttab
+.scttab                 ; INTRLEAV EQU *
 
- EQUD $090B0D00
- EQUD $01030507
- EQUD $080A0C0E
- EQUD $0F020406
+ EQUD $090B0D00         ;          DFB $00,$0D,$0B,$09
+ EQUD $01030507         ;          DFB $07,$05,$03,$01
+ EQUD $080A0C0E         ;          DFB $0E,$0C,$0A,$08
+ EQUD $0F020406         ;          DFB $06,$04,$02,$0F
 
 ; ******************************************************************************
 ;
 ;       Name: rtable
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: 64 disk nibbles of "6-and-2" Read Translate Table
+;
+; ------------------------------------------------------------------------------
+;
+; This table is identical to the table at address $3A96 in Apple DOS 3.3. The
+; table doesn't have a label in the original source.
+;
+; The original DOS 3.3 source code for this table in is shown in the comments.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
 ;
 ; ******************************************************************************
 
 .rtable
 
- EQUD $99980100
- EQUD $049C0302
- EQUD $A1A00605
- EQUD $A5A4A3A2
- EQUD $A9A80807
- EQUD $0B0A09AA
- EQUD $B1B00D0C
- EQUD $11100F0E
- EQUD $14B81312
- EQUD $18171615
- EQUD $C1C01A19
- EQUD $C5C4C3C2
- EQUD $C9C8C7C6
- EQUD $1CCC1BCA
- EQUD $D1D01E1D
- EQUD $D5D41FD2
- EQUD $22D82120
- EQUD $26252423
- EQUD $E1E02827
- EQUD $29E4E3E2
- EQUD $2CE82B2A
- EQUD $302F2E2D
- EQUD $F1F03231
- EQUD $36353433
- EQUD $39F83837
- EQUD $3D3C3B3A
- EQUW $3F3E
+ EQUD $99980100         ;          DFB $00,$01,$98
+ EQUD $049C0302         ;          DFB $99,$02,$03
+ EQUD $A1A00605         ;          DFB $9C,$04,$05
+ EQUD $A5A4A3A2         ;          DFB $06,$A0,$A1
+ EQUD $A9A80807         ;          DFB $A2,$A3,$A4
+ EQUD $0B0A09AA         ;          DFB $A5,$07,$08
+ EQUD $B1B00D0C         ;          DFB $A8,$A9,$AA
+ EQUD $11100F0E         ;          DFB $09,$0A,$0B
+ EQUD $14B81312         ;          DFB $0C,$0D,$B0
+ EQUD $18171615         ;          DFB $B1,$0E,$0F
+ EQUD $C1C01A19         ;          DFB $10,$11,$12
+ EQUD $C5C4C3C2         ;          DFB $13,$B8,$14
+ EQUD $C9C8C7C6         ;          DFB $15,$16,$17
+ EQUD $1CCC1BCA         ;          DFB $18,$19,$1A
+ EQUD $D1D01E1D         ;          DFB $C0,$C1,$C2
+ EQUD $D5D41FD2         ;          DFB $C3,$C4,$C5
+ EQUD $22D82120         ;          DFB $C6,$C7,$C8
+ EQUD $26252423         ;          DFB $C9,$CA,$1B
+ EQUD $E1E02827         ;          DFB $CC,$1C,$1D
+ EQUD $29E4E3E2         ;          DFB $1E,$D0,$D1
+ EQUD $2CE82B2A         ;          DFB $D2,$1F,$D4
+ EQUD $302F2E2D         ;          DFB $D5,$20,$21
+ EQUD $F1F03231         ;          DFB $D8,$22,$23
+ EQUD $36353433         ;          DFB $24,$25,$26
+ EQUD $39F83837         ;          DFB $27,$28,$E0
+ EQUD $3D3C3B3A         ;          DFB $E1,$E2,$E3
+ EQUW $3F3E             ;          DFB $E4,$29,$2A
+                        ;          DFB $2B,$E8,$2C
+                        ;          DFB $2D,$2E,$2F
+                        ;          DFB $30,$31,$32
+                        ;          DFB $F0,$F1,$33
+                        ;          DFB $34,$35,$36
+                        ;          DFB $37,$38,$F8
+                        ;          DFB $39,$3A,$3B
+                        ;          DFB $3C,$3D,$3E
+                        ;          DFB $3F
 
 ; ******************************************************************************
 ;
