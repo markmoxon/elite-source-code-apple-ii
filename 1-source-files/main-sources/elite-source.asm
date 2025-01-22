@@ -5,7 +5,7 @@
 ; Apple II Elite was written by Ian Bell and David Braben and is copyright
 ; D. Braben and I. Bell 1986
 ;
-; The RWTS code from Apple DOS was written by Steve Wozniak and Randy Wigginton
+; The RWTS code from Apple DOS was written by Randy Wigginton and Steve Wozniak
 ; and is copyright 1978 Apple Computer Inc.
 ;
 ; The code in this file is identical to the source disks released on Ian Bell's
@@ -317,30 +317,32 @@ ENDIF
 
  R% = $BFFF             ; The address of the last byte of game code
 
- phsoff  =  $C080       ; Disk controller I/O soft switch for turning the
-                        ; stepper motor phase 0 off
+ phsoff = $C080         ; Disk controller I/O soft switch for turning the
+                        ; stepper motor phase 0 off (PHASEOFF)
 
- mtroff  =  $C088       ; Disk controller I/O soft switch for turning the motor
-                        ; off
+ mtroff = $C088         ; Disk controller I/O soft switch for turning the motor
+                        ; off (MOTOROFF)
 
- mtron   =  $C089       ; Disk controller I/O soft switch for turning the motor
-                        ; on
+ mtron = $C089          ; Disk controller I/O soft switch for turning the motor
+                        ; on (MOTORON)
 
- drv1en  =  $C08A       ; Disk controller I/O soft switch for enabling drive 1
+ drv1en = $C08A         ; Disk controller I/O soft switch for enabling drive 1
+                        ; (DRV0EN)
 
- drv2en  =  $C08B       ; Disk controller I/O soft switch for enabling drive 2
+ drv2en = $C08B         ; Disk controller I/O soft switch for enabling drive 2
+                        ; (DRV1EN)
 
- Q6L     =  $C08C       ; Disk controller I/O soft switch for strobing the data
-                        ; latch for I/O
+ Q6L = $C08C            ; Disk controller I/O soft switch for strobing the data
+                        ; latch for I/O (Q6L)
 
- Q6H     =  $C08D       ; Disk controller I/O soft switch for loading the data
-                        ; latch
+ Q6H = $C08D            ; Disk controller I/O soft switch for loading the data
+                        ; latch (Q6H)
 
- Q7L     =  $C08E       ; Disk controller I/O soft switch for preparing the
-                        ; latch for input
+ Q7L = $C08E            ; Disk controller I/O soft switch for preparing the
+                        ; latch for input (Q7L)
 
- Q7H     =  $C08F       ; Disk controller I/O soft switch for preparing the
-                        ; latch for output
+ Q7H = $C08F            ; Disk controller I/O soft switch for preparing the
+                        ; latch for output (Q7H)
 
 ; ******************************************************************************
 ;
@@ -1339,7 +1341,7 @@ ENDIF
 ;
 ;       Name: Disk operations workspace
 ;       Type: Workspace
-;    Address: $0800 to $0A6C
+;    Address: $0800 to $0A6E
 ;   Category: Workspaces
 ;    Summary: Variables used by the disk operations and DOS 3.3 RWTS routines
 ;
@@ -1347,7 +1349,7 @@ ENDIF
 
  ORG $0800
 
- CLEAR $0800, $0A6C     ; The disk operations workspace shares memory with the
+ CLEAR $0800, $0A6E     ; The disk operations workspace shares memory with the
                         ; ship data blocks at K%, so we need to clear this block
                         ; of memory to prevent BeebAsm from complaining
 
@@ -1405,23 +1407,29 @@ ENDIF
 
 .mtimel
 
- SKIP 1                 ; ???
+ SKIP 1                 ; The motor on time (low byte)
 
 .mtimeh
 
- SKIP 1                 ; ???
+ SKIP 1                 ; The motor on time (high byte)
 
 .seeks
 
- SKIP 1                 ; ???
+ SKIP 1                 ; The maximum number of seeks
 
 .recals
 
- SKIP 1                 ; ???
+ SKIP 1                 ; The maximum number of arm recalibrations to 2
 
 .slot16
 
- SKIP 1                 ; ???
+ SKIP 1                 ; The slot number containing the disk controller card,
+                        ; multiplied by 16 to move the slot number into the top
+                        ; nibble (so the value is $x0 for slot x)
+                        ;
+                        ; This can then be used as an offset to add to the soft
+                        ; switch addresses for the disk controller, to ensure we
+                        ; access the addresses for the correct slot
 
 .atemp0
 
@@ -1434,7 +1442,7 @@ ENDIF
 
 .idfld
 
- SKIP 1                 ; ???
+ SKIP 3                 ; ???
 
  PRINT "Disk operations workspace from ", ~K%, "to ", ~P%-1, "inclusive"
 
@@ -2422,7 +2430,7 @@ NEXT
 ; is the same.
 ;
 ; This code forms part of the RWTS ("read/write track sector") layer from Apple
-; DOS, which was written by Steve Wozniak and Randy Wigginton. It implements the
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
 ;
@@ -40294,7 +40302,13 @@ ENDMACRO
 ;
 ; Returns:
 ;
-;   C flag              C = 1 file not found, C = 0 file found and in buffer
+;   C flag              The result of the read:
+;
+;                         * Clear = file found and loaded into the comfil buffer
+;
+;                         * Set = file not found, in which case A = 5, which we
+;                                 can pass to the diskerror routine to print a
+;                                 "File not found" error
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40309,25 +40323,39 @@ ENDMACRO
  TSX                    ; Store the stack pointer in stkptr so we can restore it
  STX stkptr             ; if there's a disk error
 
- JSR findf
- LDA #5
- BCS rfile3 ; branch if file not found
- JSR gettsl ; get track/sector list of file
- JSR rsect ; read first sector of file
- LDY #0
+ JSR findf              ; Search the disk catalog for a file with the filename
+                        ; in comnam
+
+ LDA #5                 ; If no file is found with this name then findf will
+ BCS rfile3             ; set the C flag, so jump to rfile3 to return from the
+                        ; subroutine with the C flag set and A = 5, to indicate
+                        ; that the file cannot be found
+
+ JSR gettsl             ; Get the track/sector list of the file ???
+
+ JSR rsect              ; Read the first sector of the file into the buffer
+                        ; (this contains the whole commander file, as it fits
+                        ; into one sector)
+
+ LDY #0                 ; We now copy the loaded file into the comfil buffer,
+                        ; so set a byte counter in Y
 
 .rfile2
 
- LDA buffer+4,Y
- STA comfil,Y ; copy buffer to commander file
- INY
- CPY #comsiz ;loop other way ## <2BS>
- BNE rfile2
- CLC
+ LDA buffer+4,Y         ; Copy the Y-th byte from the disk buffer at buffer+4
+ STA comfil,Y           ; to the Y-th byte of the comfil buffer
+
+ INY                    ; Increment the byte counter
+
+ CPY #comsiz            ; Loop back until we have copied the whole file (which
+ BNE rfile2             ; contains comsiz bytes)
+
+ CLC                    ; Clear the C flag to indicate that the file was found
+                        ; and loaded
 
 .rfile3
 
- RTS
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
@@ -40335,6 +40363,22 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Write a commander file from the buffer to a DOS disk
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              The result of the write:
+;
+;                         * Clear = file written
+;
+;                         * Set = file not written, with the error number in A,
+;                                 which we can pass to the diskerror routine to
+;                                 print the error message:
+;
+;                           * A = 2 = Disk full
+;
+;                           * A = 3 = Catalog full
 ;
 ; ******************************************************************************
 
@@ -40345,47 +40389,100 @@ ENDMACRO
  TSX                    ; Store the stack pointer in stkptr so we can restore it
  STX stkptr             ; if there's a disk error
 
- JSR findf              ; Search the catalog for an existing file ???
+ JSR findf              ; Search the disk catalog for a file with the filename
+                        ; in comnam
 
- BCC oldfil ; branch if file already exists
+ BCC oldfil             ; If a file is found with this name then findf will
+                        ; return with the C flag clear, so jump to oldfil if
+                        ; this is the case so we overwrite the existing file
 
 .newfil
 
- \ save a new commander file
- JSR isfull ; check for at least two free sectors
- LDA #2
- BCS rfile3 ; branch if disk full
- JSR finde ; find an empty file entry
- LDA #3
- BCS rfile3 ; branch if cat full
- LDA tsltrk
- STA buffer,Y ; tsl track field
- LDA tslsct
- STA buffer+1,Y ; tsl sector field
- LDA #4
- STA buffer+2,Y ; file type = BINARY file
- LDA #2
- STA buffer+$21,Y ; sectors lo = 2
- LDA #0
- STA buffer+$22,Y ; sectors hi = 0
- TAX
+                        ; If we get here then this file does not already exist
+                        ; on the disk, so we need to save a new one
+
+ JSR isfull             ; Check the disk to ensure there are are least two free
+                        ; sectors by searching the VTOC for both a tsl sector
+                        ; and commander file sector
+
+ LDA #2                 ; If there are not enough free sectors on the disk then
+ BCS rfile3             ; isfull will set the C flag, so jump to rfile3 to
+                        ; return from the subroutine with the C flag set and
+                        ; A = 2, to indicate that the disk is full
+
+ JSR finde              ; Search the disk catalog for an empty file entry that
+                        ; we can use for the new file, loading the VTOC into the
+                        ; disk buffer and setting Y to the offset of the start
+                        ; of the empty file entry (if there is one)
+
+ LDA #3                 ; If there is no empty file entry in the disk catalog
+ BCS rfile3             ; then finde will set the C flag, so jump to rfile3 to
+                        ; return from the subroutine with the C flag set and
+                        ; A = 3, to indicate that the catalog is full
+
+                        ; We have two free sectors and there is room in the disk
+                        ; catalog for a new file, so we can now write the file
+                        ;
+                        ; We do this in three stages:
+                        ;
+                        ;   * Add the new file to the disk catalog
+                        ;
+                        ;   * Write the track/sector list for the new file
+                        ;
+                        ;   * Write the file itself (which fits into one sector)
+                        ;
+                        ; We start by adding the new file to the disk catalog,
+                        ; which involves populating the empty entry in the VTOC
+                        ;
+                        ; The call to finde loaded the VTOC into the disk buffer
+                        ; at buffer, and the empty file entry is at offset Y, so
+                        ; that's what we need to populate
+
+ LDA tsltrk             ; Copy the track field from the track/sector list into
+ STA buffer,Y           ; the VTOC at byte #0
+
+ LDA tslsct             ; Copy the sector field from the track/sector list into
+ STA buffer+1,Y         ; the VTOC at byte #1
+
+ LDA #4                 ; Set the file type in the VTOC to 4, for a BINARY file,
+ STA buffer+2,Y         ; at byte #2
+
+ LDA #2                 ; Set the sector count in the VTOC to 2, stored as a
+ STA buffer+$21,Y       ; 16-bit value in bytes ($22 $21) of the file entry at
+ LDA #0                 ; offset Y
+ STA buffer+$22,Y
+
+ TAX                    ; We now copy the filename from comnam to byte #3 in
+                        ; the VTOC, so set X = 0 to use as a byte counter
 
 .newfl2
 
- LDA comnam,X
- ORA #$80
- STA buffer+3,Y ; copy commander name to filename field
- INY
- INX
- CPX #30
- BNE newfl2
- JSR wsect ; write catalog sector to disk
- JSR isfull ; allocate two free sectors
- JSR wsect ; write VTOC
+ LDA comnam,X           ; Copy the X-th character from the filename into the
+ ORA #$80               ; VTOC, starting at byte #3
+ STA buffer+3,Y
+
+ INY                    ; Increment the offset index in Y to point to the next
+                        ; byte in the VTOC
+
+ INX                    ; Increment the byte counter in X to point to the next
+                        ; character in the filename
+
+ CPX #30                ; Loop back to copy the next character until we have
+ BNE newfl2             ; copied all 30 characters in the filename
+
+ JSR wsect              ; Write the catalog sector to the disk ???
+
+ JSR isfull             ; Check the disk to ensure there are are least two free
+                        ; sectors by searching the VTOC for both a tsl sector
+                        ; and commander file sector
+
+ JSR wsect              ; Write the VTOC to the disk ???
 
 .newfl3
 
- LDA #0
+                        ; Next we write the track/sector list for the new file
+
+ LDA #0                 ; ???
  TAY
 
 .newfl4
@@ -40406,39 +40503,61 @@ ENDMACRO
  STA track
  LDA filsct
  STA sector
+
+                        ; And finally we write the file itself
+
  BPL oldfl2 ; always
 
 .oldfil
 
- \ update an existing commander file
- JSR gettsl ; get tsl of file
+                        ; If we get here then this file already exists on the
+                        ; disk, so we need to overwrite it with the new file
+
+ JSR gettsl             ; Get the track/sector list of the file ???
 
 .oldfl2
 
- LDY #0
+ LDY #0                 ; We first copy the commander file we want to save from
+                        ; the comfil buffer to the disk buffer, so set a byte
+                        ; counter in Y
 
 .oldfl3
 
- LDA comfil,Y
- STA buffer+4,Y ; copy commander file to buffer
- INY
- CPY #comsiz
- BNE oldfl3
- JMP wsect ; write first sector of commander file
+ LDA comfil,Y           ; Copy the Y-th byte from the commander file at comfil
+ STA buffer+4,Y         ; to the Y-th byte of the disk buffer at buffer+4
+
+ INY                    ; Increment the byte counter
+
+ CPY #comsiz            ; Loop back until we have copied the whole file (which
+ BNE oldfl3             ; contains comsiz bytes)
+
+ JMP wsect              ; Write the first sector of the commander file, which
+                        ; will write the whole file as it fits into one sector,
+                        ; and return from the subroutine using a tail call
 
 ; ******************************************************************************
 ;
 ;       Name: findf
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Search the catalog for an existing file
+;    Summary: Search the disk catalog for an existing file
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              The result of the search:
+;
+;                         * Clear = file found
+;
+;                         * Set = file not found
 ;
 ; ******************************************************************************
 
 .findf
 
  CLC                    ; Clear the C flag to pass to rentry to indicate that we
-                        ; should search the catalog for an existing file
+                        ; should search the disk catalog for an existing file
 
  BCC rentry             ; Jump to rentry to find the file (this BCC is
                         ; effectively a JMP as we just cleared the C flag
@@ -40448,14 +40567,24 @@ ENDMACRO
 ;       Name: finde
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Search the catalog for an empty file entry
+;    Summary: Search the disk catalog for an empty file entry
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              The result of the search:
+;
+;                         * Clear = empty entry found
+;
+;                         * Set = no empty entry found (i.e. catalog is full)
 ;
 ; ******************************************************************************
 
 .finde
 
  SEC                    ; Set the C flag to pass to rentry to indicate that we
-                        ; should search the catalog for an empty file entry
+                        ; should search the disk catalog for an empty file entry
 
                         ; Fall through into rentry to perform the search
 
@@ -40464,7 +40593,8 @@ ENDMACRO
 ;       Name: rentry
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Search the catalog for an existing file or an empty file entry
+;    Summary: Search the disk catalog for an existing file or an empty file
+;             entry
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40651,7 +40781,18 @@ ENDMACRO
 ;       Name: isfull
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Search VTOC for tsl sector and commander file sector
+;    Summary: Check the disk to ensure there are are least two free sectors by
+;             searching for both a tsl sector and commander file sector
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              The result of the check:
+;
+;                         * Clear = two free sectors found
+;
+;                         * Set = no free sectors found (i.e. the disk is full)
 ;
 ; ******************************************************************************
 
@@ -40698,87 +40839,146 @@ ENDMACRO
 ;       Name: rvtoc
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Read VTOC sector into buffer
+;    Summary: Read VTOC sector into the buffer at buffr2+256
 ;
 ; ******************************************************************************
 
 .rvtoc
 
- LDA #17                ; ???
- STA track
- LDA #0
- STA sector
+ LDA #17                ; Set the track number to 17, which is where the VTOC is
+ STA track              ; stored on the disk
+
+ LDA #0                 ; Set the sector number to 0, which is where the VTOC is
+ STA sector             ; stored on the disk
+
+                        ; Fall through into rsect to read sector 0 in track 17,
+                        ; so we read the VTOC sector from the disk into the
+                        ; buffer at buffr2+256
 
 ; ******************************************************************************
 ;
 ;       Name: rsect
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Read sector from disk into buffer
+;    Summary: Read a specific sector from disk into the buffer at buffr2+256
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   track               The track number
+;
+;   sector              The sector number
 ;
 ; ******************************************************************************
 
- \REM DOS_RW2
-
 .rsect
 
- CLC                    ; ???
- BCC wsect2 ; always
+ CLC                    ; Clear the C flag to denote that this is a read
+                        ; operation (this value will be read throughout the
+                        ; RWTS code that follows)
+
+ BCC wsect2             ; Jump to wsect2 to read the specified sector
 
 ; ******************************************************************************
 ;
 ;       Name: wsect
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Write sector from buffer to disk
+;    Summary: Write a specific sector from the buffer at buffr2+256 to disk
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   track               The track number
+;
+;   sector              The sector number
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; Other entry points:
 ;
-;   wsect2              ???
+;   wsect2              Read or write a sector, depending on the value of the
+;                       C flag (clear = read, set = write)
 ;
 ; ******************************************************************************
 
 .wsect
 
- SEC                    ; ???
+ SEC                    ; Set the C flag to denote that this is a write
+                        ; operation (this value will be read throughout the
+                        ; RWTS code that follows)
 
 .wsect2
 
- \ drive = 1, track = ?track, sector = ?sector
- PHP
- LDA #$60
- STA slot16
- LDA #2
- STA recals ; init max number of arm recalibrations
- LDA #4
- STA seeks ; init max number of seeks
- LDA #$D8
- STA mtimeh ; init motor on time hi
- LDX slot16 ; get slot number*16 of controller card
- LDA Q7L,X ; prepare latch for input
- LDA Q6L,X ; strobe data latch for I/O
- LDY #8
+ PHP                    ; Store the read/write status on the stack (specifically
+                        ; the C flag)
 
-.rwts2
+ LDA #$60               ; Set the slot number containing the disk controller 
+ STA slot16             ; to 6 (storing it as the number multiplied by 16 so we
+                        ; can use this as an offset to add to the soft switch
+                        ; addresses for the disk controller, to ensure we access
+                        ; the addresses for slot 6)
 
- LDA Q6L,X ; read data
- PHA ; short delay
- PLA
- PHA
- PLA
- CMP $100
- CMP Q6L,X
- BNE rwts3 ; branch if data latch changed ie. disk is spinning
- DEY
- BNE rwts2
+ LDA #2                 ; Set the maximum number of arm recalibrations to 2
+ STA recals
+
+ LDA #4                 ; Set the maximum number of seeks to 4
+ STA seeks
+
+ LDA #$D8               ; Set the high byte of the motor on time to $D8
+ STA mtimeh
+
+ LDX slot16             ; Set X to the disk controller card slot number * 16
+
+                        ; Fall through into rwts to read or write the specified
+                        ; sector
+
+; ******************************************************************************
+;
+;       Name: rwts
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Read or write a specific sector
+;
+; ******************************************************************************
+
+ LDA Q7L,X              ; SAMESLOT LDA Q7L,X      ; MAKE SURE IN READ MODE
+ LDA Q6L,X              ;          LDA Q6L,X
+ LDY #8                 ;          LDY #8         ; WE MAY HAFTA CHECK SEVERAL
+                        ;                           TIMES TO BE SURE
+
+.rwts2                  ; CHKIFON  EQU *
+
+ LDA Q6L,X              ;          LDA Q6L,X      ; GET THE DATA
+ PHA                    ;          PHA            ; DELAY FOR DISK DATA TO
+                        ;                           CHANGE
+ PLA                    ;          PLA
+ PHA                    ;          PHA
+ PLA                    ;          PLA
+                        ;          STX SLOT
+
+ CMP $100               ; This instruction replaces the STX SLOT instruction in
+                        ; the original code
+                        ;
+                        ; It has no effect as any changes to the flags will be
+                        ; overridden by the next instruction, but the important
+                        ; thing is that both STX SLOT and CMP $100 take four CPU
+                        ; cycles, so this is effectively a way of commenting out
+                        ; the original instruction without affecting the timings
+                        ; that are so crucial to the workings of the RWTS code
+
+ CMP Q6L,X              ;          CMP Q6L,X      ; CHECK RUNNING HERE
+ BNE rwts3              ;          BNE ITISON     ; =>IT'S ON...
+ DEY                    ;          DEY            ; MAYBE WE DIDN'T CATCH IT
+ BNE rwts2              ;          BNE CHKIFON    ; SO WE'LL TRY AGAIN
 
 .rwts3
 
- PHP ; save result - Z = 0 = disk is spinning, Z = 1 = disk not spinning
- LDA mtron,X ; turn motor on - if disk was not spinning
- LDA drv1en,X ; enable drive 1
+ PHP                    ; ??? save result - Z = 0 = disk is spinning, Z = 1 = disk not spinning
+ LDA mtron,X            ; turn motor on - if disk was not spinning
+ LDA drv1en,X           ; enable drive 1
  PLP
  PHP
  BNE rwts5 ; branch if disk is spinning
@@ -40789,7 +40989,8 @@ ENDMACRO
  JSR armwat ; wait for capacitor to discharge
  DEY
  BNE rwts4
- LDX slot16
+
+ LDX slot16             ; Set X to the disk controller card slot number * 16
 
 .rwts5
 
@@ -40813,135 +41014,371 @@ ENDMACRO
  INC mtimeh
  BNE rwts6
 
+; ******************************************************************************
+;
+;       Name: trytrk
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Try finding a specific track on the disk
+;
+; ------------------------------------------------------------------------------
+;
+; This routine is almost identical to the TRYTRK routine in Apple DOS 3.3.
+; It omits code to format the disk, as this is not required.
+;
+; The original DOS 3.3 source code for this routine in is shown in the comments.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
+;
+; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
+; low-level functions to read and write Apple disks, and is included in Elite so
+; the game can use the memory that's normally allocated to DOS for its own use.
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   trytr4              Entry point for track errors, so we can try reading it
+;                       again (must have the status flags on the stack with the
+;                       C flag set)
+;
+; ******************************************************************************
+
 .trytrk
 
- PLP ; get read/write status
- PHP
- BCC trytr2 ; branch if read sector
- JSR prenib ; convert sector to 6 bit 'nibbles'
+                        ; TRYTRK   EQU *
+                        ;          LDY #$0C
+                        ;          LDA (IOBPL),Y  ; GET COMMAND CODE #
+                        ;          BEQ GALLDONE   ; IF NULL COMMAND, GO HOME TO
+                        ;                           BED.
+                        ;          CMP #$04       ; FORMAT THE DISK?
+                        ;          BEQ FORMDSK    ; ALLRIGHT,ALLRIGHT, I WILL...
+                        ;          ROR A          ; SET CARRY=1 FOR READ, 0 FOR
+                        ;                           WRITE
+                        ;          PHP            ; AND SAVE THAT
+                        ;          BCS TRYTRK2    ; MUST PRENIBBLIZE FOR WRITE.
 
-.trytr2
+ PLP                    ; Instead of the above checks, which we don't need to do
+ PHP                    ; as we don't want to format the disk, we can simply
+ BCC trytr2             ; fetch the read/write status into the C flag from the
+                        ; stack, and if the C flag is clear then we are reading
+                        ; a sector, so skip the following instruction as we
+                        ; only need to call prenib if we are writing
 
- LDY #48
- STY ztemp2
+ JSR prenib             ;          JSR PRENIB16
 
-.trytr3
+.trytr2                 
 
- LDX slot16
- JSR rdaddr ; find track address
- BCC rdrght ; branch if no error
+ LDY #48                ; TRYTRK2  LDY #$30       ; ONLY 48 RETRIES OF ANY KIND.
+ STY ztemp2             ;          STY RETRYCNT
 
-.trytr4
+.trytr3                 
 
- DEC ztemp2
- BPL trytr3 ; branch if not last try
+ LDX slot16             ; TRYADR   LDX SLOT       ; GET SLOT NUM INTO X-REG
+ JSR rdaddr             ;          JSR RDADR16    ; READ NEXT ADDRESS FIELD
+ BCC rdrght             ;          BCC RDRIGHT    ; IF READ IT RIGHT, HURRAH!
 
-.trytr5
+.trytr4                 
 
- DEC recals
- BEQ drverr ; branch if last try
- LDA #4
- STA seeks
- LDA #$60
- STA curtrk
- LDA #0
- JSR seek ; reset head
+ DEC ztemp2             ; TRYADR2  DEC RETRYCNT   ; ANOTHER MISTAEK!!
+ BPL trytr3             ;          BPL TRYADR     ; WELL, LET IT GO THIS TIME.,
+                        ; *
+                        ; * RRRRRECALIBRATE !!!!
+                        ; *
 
-.trytr6
+.trytr5                 ; RECAL    EQU *
+                        ;          LDA CURTRK
+                        ;          PHA            ; SAVE TRACK WE REALLY WANT
+                        ;          LDA #$60       ; RECALIBRATE ALL OVER AGAIN!
+                        ;          JSR SETTRK     ; PRETEND TO BE ON TRACK 96
+ DEC recals             ;          DEC RECALCNT   ; ONCE TOO MANY??
+ BEQ drverr             ;          BEQ DRVERR     ; TRIED TO RECALIBRATE TOO
+                        ;                           MANY TIMES, ERROR!
+ LDA #4                 ;          LDA #MAXSEEKS  ; RESET THE
+ STA seeks              ;          STA SEEKCNT    ; SEEK COUNTER
 
- LDA track
- JSR seek ; seek to desired track
- JMP trytr2
+ LDA #$60               ; The instructions LDA #$60 and JSR SETTRK above have
+ STA curtrk             ; been replaced by these two, which do the same thing
+                        ; but without the more generalised code of the original
+
+ LDA #0                 ;          LDA #$00
+ JSR seek               ;          JSR MYSEEK     ; MOVE TO TRACK 00
+                        ;          PLA              
+
+                        ; The first two instructions at RECAL (LDA CURTRK and
+                        ; PHA) and the PLA instruction above have been replaced
+                        ; by the LDA track instruction below, which do the same
+                        ; thing
+
+.trytr6                 
+
+ LDA track              ; Fetch the track number into A
+
+ JSR seek               ; RESEEK   JSR MYSEEK     ; GO TO CORRECT TRACK THIS
+                        ;                           TIME!
+ JMP trytr2             ;          JMP TRYTRK2    ; LOOP BACK, TRY AGAIN ON THIS
+                        ;                           TRACK
+
+; ******************************************************************************
+;
+;       Name: rdrght
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Check that this is the correct track
+;
+; ------------------------------------------------------------------------------
+;
+; This routine is almost identical to the RDRIGHT routine in Apple DOS 3.3.
+; It omits the code that saves the destination track, as this is not required.
+;
+; The original DOS 3.3 source code for this routine in is shown in the comments.
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
+;
+; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
+; low-level functions to read and write Apple disks, and is included in Elite so
+; the game can use the memory that's normally allocated to DOS for its own use.
+;
+; ******************************************************************************
 
 .rdrght
 
- LDY idfld+2
- CPY track
- BEQ rttrk ; branch if track does match track id
- DEC seeks
- BNE trytr6
- BEQ trytr5 ; always
+ LDY idfld+2            ; RDRIGHT  LDY TRACK      ; ON THE RIGHT TRACK?
+ CPY track              ;          CPY CURTRK
+ BEQ rttrk              ;          BEQ RTTRK      ; IF SO, GOOD
+                        ; * NO, DRIVE WAS ON A DIFFERENT TRACK. TRY
+                        ; * RESEEKING/RECALIBRATING FROM THIS TRACK
+                        ;          LDA CURTRK     ; PRESERVE DESTINATION TRACK
+                        ;          PHA
+                        ;          TYA
+                        ;          JSR SETTRK
+                        ;          PLA
+ DEC seeks              ;          DEC SEEKCNT    ; SHOULD WE RESEEK?
+ BNE trytr6             ;          BNE RESEEK     ; =>YES, RESEEK
+ BEQ trytr5             ;          BEQ RECAL      ; =>NO, RECALIBRATE!
+
+; ******************************************************************************
+;
+;       Name: prterr
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Return from the RWTS code with a "Disk write protected" error
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   A                   The error number for the Disk write protected error (1)
+;
+;   C flag              The C flag is set
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   drver2p             Restore the stack pointer and return from the RWTS code
+;                       with the error number in A and the C flag set to
+;                       indicate an error
+;
+; ******************************************************************************
 
 .prterr
 
- \ disk write protected
- LDA #1
- BPL drver2_copy
+ LDA #1                 ; Set A = 1 to return as the error number for the "Disk
+                        ; write protected" error
+
+ BPL drver2             ; Jump to drver2 to restore the stack pointer and
+                        ; return from the RWTS code with an error number of 1
+                        ; and the C flag set to indicate an error (this BPL is
+                        ; effectively a JMP as A is always positive)
 
 {
-.drverr     ; Removed as it isn't used and clashes with drverr below
+.drverr
+
+ LDA #4                 ; This code is never called and is a copy of the drverr
+                        ; label and instruction from the drverr routine, so we
+                        ; need to put this in braces as BeebAsm doesn't allow
+                        ; us to redefine labels, unlike BBC BASIC
+
 }
 
- \ disk I/O error
- LDA #4 ; I/O error
+.drver2p                ; This label is called drver2 in the original source,
+                        ; which is already being used in the drverr routine, so
+                        ; I have renamed it to drver2p
+
+ LDX stkptr             ; Restore the value of the stack pointer from when we
+ TXS                    ; first ran the RWTS code, to remove any return
+                        ; addresses or values from the disk access routines
+                        ; and make sure the RTS below returns from the RWTS
+                        ; code
+
+ LDX slot16             ; Set X to the disk controller card slot number * 16
+
+ LDY mtroff,X           ; Read the disk controller I/O soft switch at MOTOROFF
+                        ; for slot X to turn the disk motor off
+
+ SEC                    ; Set the C flag to denote that an error has occurred
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: rttrk
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Read or write a sector on the current track
+;
+; ******************************************************************************
+
+.rttrk
+
+ LDY sector             ; Use the scttab lookup table to set A to the physical
+ LDA scttab,Y           ; sector number of logical sector Y
+
+ CMP idfld+1            ; If the physical sector number doesn't match the sector
+ BNE trytr4             ; ID, jump to trytr4 to try reading the track again
+
+ PLP                    ; Fetch the read/write status into the C flag from the
+                        ; stack
+
+ BCS rttrk2             ; If the C flag is set then we are writing a sector, so
+                        ; jump to rttrk2 to write the a sector to the disk
+
+ JSR read               ; Otherwise we are reading a sector, so call the read
+                        ; routine read the current sector into the buffer at
+                        ; buffr2+256, which will load the entire commander file
+                        ; as it fits into one sector
+
+ PHP                    ; Store the status flags on the stack, so if we take the
+                        ; following branch, the stack will be in the correct
+                        ; state, with the read/write status on top
+
+ BCS trytr4             ; If there was an error then the read routine will have
+                        ; set the C flag, so if this is the case, jump to trytr4
+                        ; to try reading the track again
+
+ PLP                    ; Otherwise there was no error, so pull the status flags
+                        ; back off the stack as we don't need them there any
+                        ; more
+
+ JSR pstnib             ; Call pstnib to convert the sector data that we just
+                        ; read into 8-bit bytes
+
+ JMP rttrk3             ; Jump to rttrk3 to return from the RWTS code with no
+                        ; error reported
+
+.rttrk2
+
+ JSR write              ; Call the write routine to write a sector's worth of
+                        ; data from the buffer at buffr2+256 to the current
+                        ; track and sector, which will save the entire
+                        ; commander file as it fits into one sector
+
+ BCC rttrk3             ; If there was no write error then the write routine
+                        ; will have cleared the C flag, so jump to rttrk3 to
+                        ; return from the RWTS code with no error reported
+
+ LDA #1                 ; Set A = 1 to return as the error number for the "Disk
+                        ; write protected" error
+
+ BPL drver2p            ; Jump to drver2p to restore the stack pointer and
+                        ; return from the RWTS code with an error number of 1
+                        ; and the C flag set to indicate an error (this BPL is
+                        ; effectively a JMP as A is always positive)
+
+; ******************************************************************************
+;
+;       Name: drverr
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Return from the RWTS code with a "Disk I/O error"
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   A                   The error number for the Disk I/O error (4)
+;
+;   C flag              The C flag is set
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   drver2              Restore the stack pointer and return from the RWTS code
+;                       with the error number in A and the C flag set to
+;                       indicate an error
+;
+; ******************************************************************************
+
+.drverr
+
+ LDA #4                 ; Set A = 4 to return as the error number for the "Disk
+                        ; I/O error"
 
 .drver2
 
  LDX stkptr             ; Restore the value of the stack pointer from when we
- TXS                    ; first ran the RWTS routines, to remove any return
+ TXS                    ; first ran the RWTS code, to remove any return
                         ; addresses or values from the disk access routines
+                        ; and make sure the RTS below returns from the RWTS
+                        ; code
 
- LDX slot16
- LDY mtroff,X ; turn motor off
- SEC ; signify error has occured
- RTS
+ SEC                    ; Set the C flag to denote that an error has occurred
 
-.rttrk
+ BCS rttrk4             ; Jump to rttrk4 to return from the RWTS code with the
+                        ; error number in A and the error status in the C flag
 
- LDY sector
- LDA scttab,Y
- CMP idfld+1
- BNE trytr4 ; branch if sector doesn't match sector id
- PLP
- BCS rttrk2 ; branch if write sector
- JSR read
- PHP
- BCS trytr4 ; branch if read error
- PLP
- JSR pstnib ; convert sector to 8 bit bytes
- JMP rttrk3
-
-.rttrk2
-
- JSR write
- BCC rttrk3 ; branch if no error
- LDA #1
-
- BPL drver2
-
-.drverr
-
- \ disk I/O error
- LDA #4 ; I/O error
-
-;.drver2
-
-.drver2_copy            ; Added as drver2 is repeated
-
- LDX stkptr             ; Restore the value of the stack pointer from when we
- TXS                    ; first ran the RWTS routines, to remove any return
-                        ; addresses or values from the disk access routines
-
- SEC
- BCS rttrk4
+; ******************************************************************************
+;
+;       Name: rttrk3
+;       Type: Subroutine
+;   Category: Save and load
+;    Summary: Successfully return from the RWTS code with no error reported
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   A                   The error number for no error (0)
+;
+;   C flag              The C flag is clear
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   rttrk4              Turn off the disk motor and return from the RWTS code
+;                       with the error number in A and the error status in the
+;                       C flag
+;
+; ******************************************************************************
 
 .rttrk3
 
- LDA #0
- CLC
+ LDA #0                 ; Set A = 0 to indicate there is no error
+
+ CLC                    ; Clear the C flag to indicate there is no disk error
 
 .rttrk4
 
- LDX slot16
- LDY mtroff,X ; turn motor off
- RTS ; C = 0 = no error, C = 1 = error, A = error code
+ LDX slot16             ; Set X to the disk controller card slot number * 16
+
+ LDY mtroff,X           ; Read the disk controller I/O soft switch at MOTOROFF
+                        ; for slot X to turn the disk motor off
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
 ;       Name: read
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Read sector
+;    Summary: Read a sector's worth of data into the buffer at buffr2+256
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40953,7 +41390,7 @@ ENDMACRO
 ; is the same.
 ;
 ; This code forms part of the RWTS ("read/write track sector") layer from Apple
-; DOS, which was written by Steve Wozniak and Randy Wigginton. It implements the
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
 ;
@@ -41062,7 +41499,8 @@ ENDMACRO
 ;       Name: write
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Write sector
+;    Summary: Write a sector's worth of data from the buffer at buffr2+256 to
+;             the current track and sector
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41075,7 +41513,7 @@ ENDMACRO
 ; is the same.
 ;
 ; This code forms part of the RWTS ("read/write track sector") layer from Apple
-; DOS, which was written by Steve Wozniak and Randy Wigginton. It implements the
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
 ;
@@ -41193,7 +41631,7 @@ ENDMACRO
 ; is the same.
 ;
 ; This code forms part of the RWTS ("read/write track sector") layer from Apple
-; DOS, which was written by Steve Wozniak and Randy Wigginton. It implements the
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
 ;
@@ -41310,7 +41748,7 @@ ENDMACRO
 ; is the same.
 ;
 ; This code forms part of the RWTS ("read/write track sector") layer from Apple
-; DOS, which was written by Steve Wozniak and Randy Wigginton. It implements the
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
 ;
@@ -41423,7 +41861,7 @@ ENDMACRO
 ; is the same.
 ;
 ; This code forms part of the RWTS ("read/write track sector") layer from Apple
-; DOS, which was written by Steve Wozniak and Randy Wigginton. It implements the
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
 ;
@@ -41465,7 +41903,7 @@ ENDMACRO
 ; is the same.
 ;
 ; This code forms part of the RWTS ("read/write track sector") layer from Apple
-; DOS, which was written by Steve Wozniak and Randy Wigginton. It implements the
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
 ;
@@ -41503,7 +41941,7 @@ ENDMACRO
 ; is the same.
 ;
 ; This code forms part of the RWTS ("read/write track sector") layer from Apple
-; DOS, which was written by Steve Wozniak and Randy Wigginton. It implements the
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
 ;
@@ -41541,7 +41979,7 @@ ENDMACRO
 ; is the same.
 ;
 ; This code forms part of the RWTS ("read/write track sector") layer from Apple
-; DOS, which was written by Steve Wozniak and Randy Wigginton. It implements the
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
 ;
@@ -41599,7 +42037,7 @@ ENDMACRO
 ; is the same.
 ;
 ; This code forms part of the RWTS ("read/write track sector") layer from Apple
-; DOS, which was written by Steve Wozniak and Randy Wigginton. It implements the
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
 ;
@@ -41645,7 +42083,7 @@ ENDMACRO
 ; is the same.
 ;
 ; This code forms part of the RWTS ("read/write track sector") layer from Apple
-; DOS, which was written by Steve Wozniak and Randy Wigginton. It implements the
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
 ;
@@ -41695,7 +42133,7 @@ ENDMACRO
 ; is the same.
 ;
 ; This code forms part of the RWTS ("read/write track sector") layer from Apple
-; DOS, which was written by Steve Wozniak and Randy Wigginton. It implements the
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
 ;
@@ -41726,7 +42164,7 @@ ENDMACRO
 ; is the same.
 ;
 ; This code forms part of the RWTS ("read/write track sector") layer from Apple
-; DOS, which was written by Steve Wozniak and Randy Wigginton. It implements the
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
 ;

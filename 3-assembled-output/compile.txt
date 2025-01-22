@@ -23024,7 +23024,7 @@ K% workspace from &800 to &927 inclusive
      0A6B
 .idfld
      0A6C
-Disk operations workspace from &800 to &A6C inclusive
+Disk operations workspace from &800 to &A6E inclusive
 .UP
      0200
      0200
@@ -36432,7 +36432,7 @@ Saving file '3-assembled-output/ELTI.bin'
      98B2   10 34      BPL &98E8
 .drverr
      98B4   A9 04      LDA #&04
-.drver2
+.drver2p
      98B6   AE 6B 0A   LDX &0A6B
      98B9   9A         TXS
      98BA   AE 69 0A   LDX &0A69
@@ -36459,7 +36459,7 @@ Saving file '3-assembled-output/ELTI.bin'
      98E4   10 D0      BPL &98B6
 .drverr
      98E6   A9 04      LDA #&04
-.drver2_copy
+.drver2
      98E8   AE 6B 0A   LDX &0A6B
      98EB   9A         TXS
      98EC   38         SEC
