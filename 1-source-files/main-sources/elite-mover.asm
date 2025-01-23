@@ -151,8 +151,8 @@ IF _MAX_COMMANDER
                         ; Bell's site jumps to TT170 to start the game, but we
                         ; want to ensure that the maxed-out commander in NA2% is
                         ; copied into the current commander slot by the JAMESON
-                        ; routine, which is called by the the BEGIN routine
-                        ; before it falls through into TT170 to run the game
+                        ; routine, which is called by the BEGIN routine before
+                        ; it falls through into TT170 to run the game
 
 ELSE
 

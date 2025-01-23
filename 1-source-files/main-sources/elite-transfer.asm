@@ -184,7 +184,7 @@
  BNE MVLP1              ; Loop back until we have copied a whole page of bytes
 
  INC ZP1+1              ; Increment the high bytes of ZP1(1 0) and ZP2(1 0) so
- INC ZP2+1              ; theypoint to the next page in memory
+ INC ZP2+1              ; they point to the next page in memory
 
  DEX                    ; Decrement the page counter
 

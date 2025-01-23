@@ -7253,8 +7253,8 @@ ENDIF
  STY T1                 ; Store Y in T1 so we can restore it at the end of the
                         ; subroutine
 
-                        ; We start by calculating the address in scren memory of
-                        ; the start of the pixel row containing the pixel we
+                        ; We start by calculating the address in screen memory
+                        ; of the start of the pixel row containing the pixel we
                         ; want to draw (i.e. pixel row A)
 
  STA SC+1               ; Store the pixel y-coordinate in SC+1, so we can use it
@@ -10730,7 +10730,7 @@ ENDIF
 
  CMP dialle,Y           ; If A < dialle for indicator Y, then this is a low
  BCC DI3                ; value that is below the threshold for this indicator,
-                        ; so jump to DI3 as we aleady have the correct colour
+                        ; so jump to DI3 as we already have the correct colour
 
  LDX dialc2,Y           ; If we get here then A > dialle for indicator Y,
                         ; which is a high value that is on or above the
@@ -21979,7 +21979,7 @@ ENDIF
  LDA #32                ; Clear the screen and set up a trading screen with a
  JSR TRADEMODE          ; view type in QQ11 of 32 (Equip Ship screen)
 
- LDA #12                ; Sety A = 12 to denote column 12
+ LDA #12                ; Set A = 12 to denote column 12
 
 IF _IB_DISK
 
@@ -29585,18 +29585,18 @@ ENDIF
 ;       Name: brkd
 ;       Type: Variable
 ;   Category: Utility routines
-;    Summary: A flag that indicates whether a system error has occured
+;    Summary: A flag that indicates whether a system error has occurred
 ;
 ; ******************************************************************************
 
 .brkd
 
- EQUB 0                 ; A flag to record whether a system error has occured,
+ EQUB 0                 ; A flag to record whether a system error has occurred,
                         ; so we can print it out
                         ;
-                        ;   * 0 = no system error has occured
+                        ;   * 0 = no system error has occurred
                         ;
-                        ;   * $FF = a system error has occured
+                        ;   * $FF = a system error has occurred
 
 ; ******************************************************************************
 ;
@@ -30297,7 +30297,7 @@ ENDIF
  BEQ BRBR2              ; we do not have a system error message to display
 
                         ; If we get here then brkd = $FF, which indicates that
-                        ; wa have a system error we need to display
+                        ; we have a system error we need to display
 
  INC brkd               ; Set brkd = 0 to clear the error flag and indicate that
                         ; the error has been processed
@@ -31509,7 +31509,7 @@ ENDIF
 
  EQUW DERR2             ; Error 2: Disk full
 
- EQUW DERR3             ; Error 3: Datalog full
+ EQUW DERR3             ; Error 3: Catalog full
 
  EQUW DERR4             ; Error 4: Disk I/O error
 
@@ -39970,8 +39970,8 @@ ENDMACRO
 ;       Name: SOBLIP
 ;       Type: Subroutine
 ;   Category: Sound
-;    Summary: Make the sound sound of the hyperspace drive being engaged, or the
-;             sound of the E.C.M.
+;    Summary: Make the sound of the hyperspace drive being engaged, or the sound
+;             of the E.C.M.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40453,7 +40453,7 @@ ENDMACRO
                         ; If we get here then this file does not already exist
                         ; on the disk, so we need to save a new one
 
- JSR isfull             ; Check the disk to ensure there are are least two free
+ JSR isfull             ; Check the disk to ensure there are least two free
                         ; sectors, returning one sector for the commander file's
                         ; track/sector list and another sector for the commander
                         ; file's contents
@@ -40529,7 +40529,7 @@ ENDMACRO
 
  JSR wsect              ; Write the updated catalog sector to the disk
 
- JSR isfull             ; Check the disk to ensure there are are least two free
+ JSR isfull             ; Check the disk to ensure there are least two free
                         ; sectors, returning one sector for the commander file's
                         ; track/sector list and another sector for the commander
                         ; file's contents
@@ -40762,9 +40762,9 @@ ENDMACRO
  BEQ rentr6             ; entry, so jump to rentr6 to return from the subroutine
                         ; with a successful result
 
- BNE rentr8             ; This file entry doesn't match our requirements, so jump
-                        ; to rentr8 to try the next file entry in this catalog
-                        ; sector
+ BNE rentr8             ; This file entry doesn't match our requirements, so
+                        ; jump to rentr8 to try the next file entry in this
+                        ; catalog sector
 
 .rentr4
 
@@ -40808,8 +40808,8 @@ ENDMACRO
  CPX #30                ; Loop back until we have checked all 30 characters
  BNE rentr5
 
-                        ; If we get here then all 30 charaaters of the filename
-                        ; in the file entry match the filename in comnamm, so we
+                        ; If we get here then all 30 characters of the filename
+                        ; in the file entry match the filename in comnam, so we
                         ; have found the file entry we are looking for
 
  PLA                    ; Set Y to the file entry index that we stored on the
@@ -40920,9 +40920,10 @@ ENDMACRO
 
  BEQ getsc5             ; If we have reached track 0, jump to getsc5
 
- CMP tracks             ; If A is less than the number of tracks on the disc then
- BCC getsc7             ; we haven't reached the highest numbered track yet, so
-                        ; jump to getsc7 to check this track for a free sector
+ CMP tracks             ; If A is less than the number of tracks on the disc
+ BCC getsc7             ; then we haven't reached the highest numbered track
+                        ; yet, so jump to getsc7 to check this track for a free
+                        ; sector
 
  LDA #$FF               ; Otherwise we have reached the highest numbered track,
                         ; so set A = -1 so we start searching from track 16 down
@@ -41079,8 +41080,8 @@ ENDMACRO
 ;       Name: isfull
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Check the disk to ensure there are are least two free sectors, one
-;             one for the file's track/sector list and one for the file contents
+;    Summary: Check the disk to ensure there are least two free sectors, one for
+;             the file's track/sector list and one for the file's contents
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41306,7 +41307,7 @@ ENDMACRO
  PHP                    ; Store the read/write status on the stack (specifically
                         ; the C flag)
 
- LDA #$60               ; Set the slot number containing the disk controller 
+ LDA #$60               ; Set the slot number containing the disk controller
  STA slot16             ; to 6 (storing it as the number multiplied by 16 so we
                         ; can use this as an offset to add to the soft switch
                         ; addresses for the disk controller, to ensure we access
@@ -41406,7 +41407,8 @@ ENDMACRO
                         ; OK       ROR A          ; BY GOING INTO THE CARRY
                         ;          BCC SD1        ; SELECT DRIVE 2 !
  LDA drv1en,X           ;          LDA DRV1EN,X   ; ASSUME DRIVE 1 TO HIT
-                        ;          BCS DRVSEL     ; IF WRONG, ENABLE DRIVE 2 INSTEAD
+                        ;          BCS DRVSEL     ; IF WRONG, ENABLE DRIVE 2
+                        ;                           INSTEAD
                         ;
                         ; SD1      LDA DRV2EN,X
                         ;
@@ -41421,7 +41423,7 @@ ENDMACRO
  BNE rwts5              ;          BNE NOWAIT     ; =>NO, FORGET WAITING.
  LDY #7                 ;          LDY #7         ; YES, DELAY 150 MS
 
-.rwts4                  
+.rwts4
 
  JSR armwat             ; SEEKW    JSR MSWAIT
  DEY                    ;          DEY
@@ -41444,18 +41446,20 @@ ENDMACRO
                         ; * SEE IFMOTOR WAS ALREADY SPINNING.
                         ; *
  PLP                    ;          PLP            ; WAS MOTOR ON?
- BNE trytrk             ;          BNE TRYTRK     ; IF SO, DON'T DELAY, GET IT TODAY!
+ BNE trytrk             ;          BNE TRYTRK     ; IF SO, DON'T DELAY, GET IT
+                        ;                           TODAY!
                         ; *
                         ; *  WAIT FOR MOTOR SPEED TO COME UP.
                         ; *
  LDY mtimeh             ;          LDY MONTIME+1  ; IF MOTORTIME IS POSITIVE,
- BPL trytrk             ;          BPL MOTORUP    ; THEN SEEK WASTED ENUFF TIME FOR US
+ BPL trytrk             ;          BPL MOTORUP    ; THEN SEEK WASTED ENUFF TIME
+                        ;                           FOR US
 
-.rwts6                  
+.rwts6
 
  LDY #18                ; MOTOF    LDY #$12       ; DELAY 100 USEC PER COUNT
 
-.rwts7                  
+.rwts7
 
  DEY                    ; CONWAIT  DEY
  BNE rwts7              ;          BNE CONWAIT
@@ -41482,10 +41486,6 @@ ENDMACRO
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
 ; VTOC, catalog sector, file entry and file/track list.
-;
-; For details of the VTOC layout, see page 34; for details of the catalog sector
-; layout and file entry layout see page 37; and for the track/sector list see
-; page 39.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
@@ -41528,18 +41528,18 @@ ENDMACRO
 
  JSR prenib             ;          JSR PRENIB16
 
-.trytr2                 
+.trytr2
 
  LDY #48                ; TRYTRK2  LDY #$30       ; ONLY 48 RETRIES OF ANY KIND.
  STY ztemp2             ;          STY RETRYCNT
 
-.trytr3                 
+.trytr3
 
  LDX slot16             ; TRYADR   LDX SLOT       ; GET SLOT NUM INTO X-REG
  JSR rdaddr             ;          JSR RDADR16    ; READ NEXT ADDRESS FIELD
  BCC rdrght             ;          BCC RDRIGHT    ; IF READ IT RIGHT, HURRAH!
 
-.trytr4                 
+.trytr4
 
  DEC ztemp2             ; TRYADR2  DEC RETRYCNT   ; ANOTHER MISTAEK!!
  BPL trytr3             ;          BPL TRYADR     ; WELL, LET IT GO THIS TIME.,
@@ -41564,14 +41564,14 @@ ENDMACRO
 
  LDA #0                 ;          LDA #$00
  JSR seek               ;          JSR MYSEEK     ; MOVE TO TRACK 00
-                        ;          PLA              
+                        ;          PLA
 
                         ; The first two instructions at RECAL (LDA CURTRK and
                         ; PHA) and the PLA instruction above have been replaced
                         ; by the LDA track instruction below, which do the same
                         ; thing
 
-.trytr6                 
+.trytr6
 
  LDA track              ; Fetch the track number into A
 
@@ -41707,7 +41707,7 @@ ENDMACRO
                         ; stack
 
  BCS rttrk2             ; If the C flag is set then we are writing a sector, so
-                        ; jump to rttrk2 to write the a sector to the disk
+                        ; jump to rttrk2 to write the sector to the disk
 
  JSR read               ; Otherwise we are reading a sector, so call the read
                         ; routine to read the current sector into the buffer at
@@ -41996,7 +41996,7 @@ ENDMACRO
  SEC                    ; WRITE16  SEC ANTICIPATE ; WPROT ERR.
  STX ztemp1             ;          STX SLOTZ      ; FOR ZERO PAGE ACCESS.
 
-                        ; The following instuction from DOS 3.3 is omitted:
+                        ; The following instruction from DOS 3.3 is omitted:
                         ;
                         ;          STX SLOTABS    ; FOR NON-ZERO PAGE.
                         ;
@@ -44490,7 +44490,7 @@ ENDMACRO
 
  BEQ HL4                ; If X = 0 then there are no more pixel bytes before we
                         ; reach the end of the line, so jump to HL4 to skip
-                        ; drawing any pixel bytes inbetween the start and end
+                        ; drawing any pixel bytes between the start and end
                         ; bytes (as there aren't any)
 
                         ; Otherwise we now loop through all the pixel bytes in
@@ -45082,7 +45082,7 @@ ENDMACRO
 
  LDX #7*8               ; The E.C.M. bulb is in character block number 7 and
                         ; each character is eight pixels wide, so this sets
-                        ; X to the pixel x-coodrinate of the bulb we want to
+                        ; X to the pixel x-coordinate of the bulb we want to
                         ; draw
 
  BNE BULB               ; Jump down to BULB (this BNE is effectively a JMP as
@@ -45104,7 +45104,7 @@ ENDMACRO
 
  LDX #24*8              ; The space station bulb is in character block number 24
                         ; and each character is eight pixels wide, so this sets
-                        ; X to the pixel x-coodrinate of the bulb we want to
+                        ; X to the pixel x-coordinate of the bulb we want to
                         ; draw
 
 ; ******************************************************************************
