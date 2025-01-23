@@ -4,7 +4,7 @@
 
 ![Screenshot of Elite on the Apple II](https://elite.bbcelite.com/images/github/Elite-AppleII.png)
 
-This repository contains the original source code for Elite on the Apple II<!--, with every single line documented and (for the most part) explained-->. It is literally the original source code, <!-- just heavily commented--> and I am in the process of documenting every single line.
+This repository contains the original source code for Elite on the Apple II, with every single line documented and (for the most part) explained. It is literally the original source code, just heavily commented.
 
 It is a companion to the [elite.bbcelite.com website](https://elite.bbcelite.com).
 
@@ -46,7 +46,7 @@ See the [introduction](#introduction) for more information, or jump straight int
 
 ## Introduction
 
-This repository contains the original source code for Elite on the Apple II<!--, with every single line documented and (for the most part) explained-->.
+This repository contains the original source code for Elite on the Apple II, with every single line documented and (for the most part) explained.
 
 You can build the fully functioning game from this source. [Four variants](#building-different-variants-of-apple-ii-elite) are currently supported: the game disk from Ian Bell's personal website, the variant built by the source disk build process, the variant built from the CODE* binary files already on the source disk, and the variant built from the ELT* binary files already on the source disk.
 
@@ -377,8 +377,6 @@ make variant=source-disk-code-files
 
 This does not currently produce a game disk, but instead produces the CODE* binary files that can be found on the source disk. In the original development system, these files would then be transmitted from the BBC Micro to the Apple II via a serial link, but that setup isn't emulated here.
 
-<!--This will produce a file called `elite-apple-ii-gma86-pal.dsk` in the `5-compiled-game-disks` folder that contains the Firebird GMA86 PAL variant.-->
-
 The verification checksums for this version are as follows:
 
 ```
@@ -428,8 +426,6 @@ make variant=source-disk-elt-files
 
 This does not currently produce a game disk, but instead produces the ELT* binary files that can be found on the source disk. In the original development system, these files would then be transmitted from the BBC Micro to the Apple II via a serial link, but that setup isn't emulated here.
 
-<!--This will produce a file called `elite-apple-ii-gma86-pal.dsk` in the `5-compiled-game-disks` folder that contains the Firebird GMA86 PAL variant.-->
-
 The verification checksums for this version are as follows:
 
 ```
@@ -471,7 +467,7 @@ Analysis into the differences between the variants is ongoing.
 
 <!--The main differences in the Ian Bell game disk variant compared to the source disk build variant are:-->
 
-<!--See the [accompanying website](https://elite.bbcelite.com/master/releases.html) for a comprehensive list of differences between the variants.-->
+<!--See the [accompanying website](https://elite.bbcelite.com/apple/releases.html) for a comprehensive list of differences between the variants.-->
 
 ## Notes on the original source files
 
