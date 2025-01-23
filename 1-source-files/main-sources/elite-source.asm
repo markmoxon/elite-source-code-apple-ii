@@ -1341,7 +1341,7 @@ ENDIF
 ;
 ;       Name: Disk operations workspace
 ;       Type: Workspace
-;    Address: $0800 to $0A6E
+;    Address: $0800 to $0A6F
 ;   Category: Workspaces
 ;    Summary: Variables used by the disk operations and DOS 3.3 RWTS routines
 ;
@@ -1355,55 +1355,80 @@ ENDIF
 
 .buffer
 
- SKIP 48                ; 256-byte sector buffer, up to buffr2 ???
+ SKIP 48                ; A 256-byte sector buffer, where we can load sectors
+                        ; from the disk, such as the track/sector list, or the
+                        ; commander file contents
+                        ;
+                        ; For file data, this is where we store the data that
+                        ; we want to save, before it is pre-nibblized into
+                        ; 6-bit nibbles in buff2 by the prenib routine
+                        ;
+                        ; It is also where file data is stored after being
+                        ; post-nibblized, in which case the 6-bit nibbles in
+                        ; buffr2 are converted into 8-bit bytes and stored here
 
 .fretrk
 
- SKIP 1                 ; Last allocated track ???
+ SKIP 1                 ; The number of the last track that we checked for a
+                        ; free sector in the getsct routine
 
 .dirtrk
 
- SKIP 3                 ; Direction of track allocation (+1 or -1) ???
+ SKIP 3                 ; The direction in which we are searching tracks for
+                        ; free sectors in the getsct routine (+1 or -1)
 
 .tracks
 
- SKIP 4                 ; Number of tracks per disk ???
+ SKIP 1                 ; The number of tracks per disk
+
+ SKIP 3                 ; Padding to ensure the bitmap variable lines up with
+                        ; byte #56 ($38) for the bitmap of free sectors
 
 .bitmap
 
- SKIP 200               ; Bit map of free sectors in track 0 ???
+ SKIP 200               ; Bit map of free sectors in track 0, at byte #56 ($38)
+                        ; in the buffer
 
 .buffr2
 
- SKIP 350               ; 342-byte 6-bit 'nibble' buffer ???
+ SKIP 350               ; A 342-byte buffer for storing data in the 6-bit nibble
+                        ; format
+                        ;
+                        ; This is where we load file data from the disk in the
+                        ; 6-bit nibble format, so it can be post-nibblized into
+                        ; 8-bit bytes and stored in buffer
+                        ;
+                        ; It is also where we store nibblized data that is ready
+                        ; to be saved to the disk
 
 .track
 
- SKIP 1                 ; ???
+ SKIP 1                 ; Storage for a track number in the RWTS code
 
 .sector
 
- SKIP 1                 ; ???
+ SKIP 1                 ; Storage for a sector number in the RWTS code
 
 .curtrk
 
- SKIP 1                 ; ???
+ SKIP 1                 ; The current track before performing a seek in the RWTS
+                        ; code
 
 .tsltrk
 
- SKIP 1                 ; ???
+ SKIP 1                 ; The track for the commander file's track/sector list
 
 .tslsct
 
- SKIP 1                 ; ???
+ SKIP 1                 ; The sector for the commander file's track/sector list
 
 .filtrk
 
- SKIP 1                 ; ???
+ SKIP 1                 ; The track for the commander file's contents
 
 .filsct
 
- SKIP 1                 ; ???
+ SKIP 1                 ; The sector for the commander file's contents
 
 .mtimel
 
@@ -1433,7 +1458,7 @@ ENDIF
 
 .atemp0
 
- SKIP 1                 ; ???
+ SKIP 1                 ; Temporary storage for the read/write status bit
 
 .stkptr
 
@@ -1442,7 +1467,12 @@ ENDIF
 
 .idfld
 
- SKIP 3                 ; ???
+ SKIP 4                 ; Storage for four bytes used in the RDADR16 routine:
+                        ;
+                        ;   * Checksum
+                        ;   * Sector
+                        ;   * Track
+                        ;   * Volume
 
  PRINT "Disk operations workspace from ", ~K%, "to ", ~P%-1, "inclusive"
 
@@ -40296,7 +40326,7 @@ ENDMACRO
 ;       Name: rfile
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Read a Commander file from a DOS disk into buffer
+;    Summary: Read a commander file from a DOS disk into the buffer
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40309,6 +40339,8 @@ ENDMACRO
 ;                         * Set = file not found, in which case A = 5, which we
 ;                                 can pass to the diskerror routine to print a
 ;                                 "File not found" error
+;
+;   buffer              Contains the commander file
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40331,11 +40363,13 @@ ENDMACRO
                         ; subroutine with the C flag set and A = 5, to indicate
                         ; that the file cannot be found
 
- JSR gettsl             ; Get the track/sector list of the file ???
+ JSR gettsl             ; Get the track/sector list of the file and populate the
+                        ; track and sector variables with the track and sector
+                        ; of the file's contents, to pass to the call to wsect
 
- JSR rsect              ; Read the first sector of the file into the buffer
-                        ; (this contains the whole commander file, as it fits
-                        ; into one sector)
+ JSR rsect              ; Read the first sector of the file's data into the
+                        ; buffer (this contains the whole commander file, as it
+                        ; fits into one sector)
 
  LDY #0                 ; We now copy the loaded file into the comfil buffer,
                         ; so set a byte counter in Y
@@ -40363,6 +40397,12 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Write a commander file from the buffer to a DOS disk
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   buffer              Contains the commander file
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40402,8 +40442,9 @@ ENDMACRO
                         ; on the disk, so we need to save a new one
 
  JSR isfull             ; Check the disk to ensure there are are least two free
-                        ; sectors by searching the VTOC for both a tsl sector
-                        ; and commander file sector
+                        ; sectors, returning one sector for the commander file's
+                        ; track/sector list and another sector for the commander
+                        ; file's contents
 
  LDA #2                 ; If there are not enough free sectors on the disk then
  BCS rfile3             ; isfull will set the C flag, so jump to rfile3 to
@@ -40411,9 +40452,9 @@ ENDMACRO
                         ; A = 2, to indicate that the disk is full
 
  JSR finde              ; Search the disk catalog for an empty file entry that
-                        ; we can use for the new file, loading the VTOC into the
-                        ; disk buffer and setting Y to the offset of the start
-                        ; of the empty file entry (if there is one)
+                        ; we can use for the new file, loading the catalog
+                        ; sector into the buffer and setting Y to the offset of
+                        ; the start of the empty file entry (if there is one)
 
  LDA #3                 ; If there is no empty file entry in the disk catalog
  BCS rfile3             ; then finde will set the C flag, so jump to rfile3 to
@@ -40429,40 +40470,44 @@ ENDMACRO
                         ;
                         ;   * Write the track/sector list for the new file
                         ;
-                        ;   * Write the file itself (which fits into one sector)
+                        ;   * Write the file contents (which all fits into one
+                        ;     sector)
                         ;
                         ; We start by adding the new file to the disk catalog,
                         ; which involves populating the empty entry in the VTOC
+                        ; and adding a file entry for this file to the catalog
+                        ; sector
                         ;
                         ; The call to finde loaded the VTOC into the disk buffer
                         ; at buffer, and the empty file entry is at offset Y, so
                         ; that's what we need to populate
 
  LDA tsltrk             ; Copy the track field from the track/sector list into
- STA buffer,Y           ; the VTOC at byte #0
+ STA buffer,Y           ; the file entry at byte #0
 
  LDA tslsct             ; Copy the sector field from the track/sector list into
- STA buffer+1,Y         ; the VTOC at byte #1
+ STA buffer+1,Y         ; the file entry at byte #1
 
- LDA #4                 ; Set the file type in the VTOC to 4, for a BINARY file,
- STA buffer+2,Y         ; at byte #2
+ LDA #4                 ; Set the file type to 4, for a BINARY file, at byte #2
+ STA buffer+2,Y         ; in the file entry
 
- LDA #2                 ; Set the sector count in the VTOC to 2, stored as a
- STA buffer+$21,Y       ; 16-bit value in bytes ($22 $21) of the file entry at
- LDA #0                 ; offset Y
+ LDA #2                 ; Set the sector count to 2, stored as a 16-bit value
+ STA buffer+$21,Y       ; in bytes ($22 $21) of the file entry
+ LDA #0
  STA buffer+$22,Y
 
  TAX                    ; We now copy the filename from comnam to byte #3 in
-                        ; the VTOC, so set X = 0 to use as a byte counter
+                        ; the file entry for this file, so set X = 0 to use as a
+                        ; byte counter
 
 .newfl2
 
  LDA comnam,X           ; Copy the X-th character from the filename into the
- ORA #$80               ; VTOC, starting at byte #3
- STA buffer+3,Y
+ ORA #$80               ; file entry, starting at byte #3 (which is where the
+ STA buffer+3,Y         ; filename is stored in the entry)
 
  INY                    ; Increment the offset index in Y to point to the next
-                        ; byte in the VTOC
+                        ; byte in the file entry
 
  INX                    ; Increment the byte counter in X to point to the next
                         ; character in the filename
@@ -40470,50 +40515,81 @@ ENDMACRO
  CPX #30                ; Loop back to copy the next character until we have
  BNE newfl2             ; copied all 30 characters in the filename
 
- JSR wsect              ; Write the catalog sector to the disk ???
+ JSR wsect              ; Write the updated catalog sector to the disk
 
  JSR isfull             ; Check the disk to ensure there are are least two free
-                        ; sectors by searching the VTOC for both a tsl sector
-                        ; and commander file sector
+                        ; sectors, returning one sector for the commander file's
+                        ; track/sector list and another sector for the commander
+                        ; file's contents
+                        ;
+                        ; We do this so the VTOC gets loaded and updated once
+                        ; again (as we corrupted it above when updating the
+                        ; catalog sector), and because isfull doesn't write the
+                        ; updated VTOC to disk, we do that now
 
- JSR wsect              ; Write the VTOC to the disk ???
+ JSR wsect              ; Write the updated VTOC sector to the disk
 
 .newfl3
 
-                        ; Next we write the track/sector list for the new file
+                        ; Next we create the track/sector list for the new file
 
- LDA #0                 ; ???
- TAY
+ LDA #0                 ; First we zero the buffer so we can use it to build the
+                        ; track/sector list, so set A = 0 to use as a reset
+                        ; value
+
+ TAY                    ; Set Y = 0 to use as a byte counter
 
 .newfl4
 
- STA buffer,Y ; init tsl
- INY
- BNE newfl4
- LDA filtrk
- STA buffer+12 ; track of commander file
- LDA filsct
- STA buffer+13 ; sector of commander file
- LDA tsltrk
- STA track
- LDA tslsct
- STA sector
- JSR wsect ; write tsl sector
- LDA filtrk
- STA track
- LDA filsct
- STA sector
+ STA buffer,Y           ; Zero the Y-th byte in the buffer
 
-                        ; And finally we write the file itself
+ INY                    ; Increment the byte counter
 
- BPL oldfl2 ; always
+ BNE newfl4             ; Loop back until we have zeroed all 256 bytes
+
+ LDA filtrk             ; Set byte #12 of the track/sector list to the track
+ STA buffer+12          ; number for the file contents, which the call to isfull
+                        ; put into filtrk
+
+ LDA filsct             ; Set byte #13 of the track/sector list to the sector
+ STA buffer+13          ; number for the file contents, which the call to isfull
+                        ; put into filsct
+
+ LDA tsltrk             ; Set the track variable to the track number of the
+ STA track              ; track/sector list, which the call to isfull put into
+                        ; tsltrk, so we can pass this to the wsect routine
+
+ LDA tslsct             ; Set the sector variable to the sector number of the
+ STA sector             ; track/sector list, which the call to isfull put into
+                        ; tslsct, so we can pass this to the wsect routine
+
+ JSR wsect              ; Write the contents of the buffer to the specified
+                        ; track and sector, to write the track/sector list for
+                        ; the commander file to disk
+
+                        ; And finally we write the file contents
+
+ LDA filtrk             ; Set the track variable to the track number of the
+ STA track              ; file contents, which the call to isfull put into
+                        ; filtrk, so we can pass this to the wsect routine
+
+ LDA filsct             ; Set the sector variable to the sector number of the
+ STA sector             ; file contents, which the call to isfull put into
+                        ; filsct, so we can pass this to the wsect routine
+
+ BPL oldfl2             ; Jump to oldfl2 to write the file contents to the disk
+                        ; using the track and sector we just specified (this BPL
+                        ; if effectively a JMP as the sector number in A is
+                        ; always less than 128)
 
 .oldfil
 
                         ; If we get here then this file already exists on the
                         ; disk, so we need to overwrite it with the new file
 
- JSR gettsl             ; Get the track/sector list of the file ???
+ JSR gettsl             ; Get the track/sector list of the file and populate the
+                        ; track and sector variables with the track and sector
+                        ; of the file's contents, to pass to the call to wsect
 
 .oldfl2
 
@@ -40616,173 +40692,371 @@ ENDMACRO
 ;
 ;                         * Set = file/entry not found
 ;
+;   Y                   The offset to the file entry in the catalog sector
+;
 ; ******************************************************************************
 
 .rentry
 
- ROR atemp0
- JSR rvtoc ; read VTOC
+ ROR atemp0             ; Store the C flag in bit 7 of atemp0, so we can check
+                        ; it later
+
+ JSR rvtoc              ; Read the VTOC sector into the buffer
+
+                        ; We now work through the catalog sectors to look for
+                        ; the existing file entry (if bit 7 of atemp0 is clear)
+                        ; or an empty file empty (if bit 7 of atemp0 is set)
 
 .rentr2
 
- LDA buffer+1 ; read track of next catalog
- STA track
- LDA buffer+2 ; read sector of next catalog
- STA sector
- JSR rsect ; read catalog sector
- LDY #$B ; point to first entry in sector
+ LDA buffer+1           ; Set track to the track number of the next catalog
+ STA track              ; sector from byte #1 of the VTOC
+
+ LDA buffer+2           ; Set sector to the sector number of the next catalog
+ STA sector             ; sector from byte #2 of the VTOC
+
+ JSR rsect              ; Read the catalog sector into the buffer
+
+ LDY #$B                ; Set Y to use as an index to the first file entry in
+                        ; the catalog sector (as the file entries start at
+                        ; offset $B in the catalog, with each entry taking up
+                        ; 35 bytes)
 
 .rentr3
 
- LDA buffer,Y
- BIT atemp0
- BPL rentr4 ; branch if searching catalog for a file
- TAX
- BEQ rentr6 ; branch if found blank entry
- CMP #$FF ;INX ##
- BEQ rentr6 ; branch if found deleted entry
- BNE rentr8 ; branch if used entry
+ LDA buffer,Y           ; Set A to the first byte from the file entry, which
+                        ; will either be the track number of the file, or 0 to
+                        ; indicate an empty file entry, or $FF to indicate a
+                        ; deleted file
+
+ BIT atemp0             ; If bit 7 of atemp0 is clear then we are searching the
+ BPL rentr4             ; catalog for an existing file entry, so jump to rentr4
+                        ; to do this
+
+                        ; If we get here then we are searching for an empty file
+                        ; entry
+
+ TAX                    ; If A = 0 then we have just found an empty file entry,
+ BEQ rentr6             ; so jump to rentr6 to return from the subroutine with a
+                        ; successful result
+
+ CMP #$FF               ; If A = $FF then we have just found a deleted file
+ BEQ rentr6             ; entry, so jump to rentr6 to return from the subroutine
+                        ; with a successful result
+
+ BNE rentr8             ; This file entry doesn't match our requirements, so jump
+                        ; to rentr8 to try the next file entry in this catalog
+                        ; sector
 
 .rentr4
 
- TAX
- BEQ rentr9 ; branch if last catalog entry
- CMP #$FF
- BEQ rentr8 ; branch if deleted file
- TYA
- PHA
- LDX #0
+                        ; If we get here then we are searching for an existing
+                        ; file entry
+
+ TAX                    ; If A = 0 then we have just found an empty file entry,
+ BEQ rentr9             ; which means we have not found a match for our file, so
+                        ; jump to rentr9 to return from the subroutine with the
+                        ; C flag set to indicate that we can't find the file
+
+ CMP #$FF               ; If A = $FF then we have just found a deleted file
+ BEQ rentr8             ; entry, which is not a match for our file, so jump to
+                        ; rentr8 to try the next file entry in this catalog
+                        ; sector
+
+ TYA                    ; Store the file entry index in Y on the stack, so we
+ PHA                    ; can retrieve it after the following loop
+
+                        ; We now check the file entry to see if it matches the
+                        ; filename in comnam
+
+ LDX #0                 ; Set X = 0 to use as a character index for the filename
+                        ; in the file entry
 
 .rentr5
 
- LDA buffer+3,Y
- AND #$7F
- CMP comnam,X
- BNE rentr7 ; branch if names don't match
- INY
- INX
- CPX #30
+ LDA buffer+3,Y         ; Set A to the Y-th character from the filename in the
+ AND #%01111111         ; file entry we are checking (the filename in a file
+                        ; entry starts at byte #3)
+
+ CMP comnam,X           ; If the character does not match the X-th character of
+ BNE rentr7             ; comnam then the names don't match, to jump to rentr7
+                        ; to try the next file entry in this catalog sector
+
+ INY                    ; Increment the character index for the file entry
+
+ INX                    ; Increment the character index for the filename we are
+                        ; searching for
+
+ CPX #30                ; Loop back until we have checked all 30 characters
  BNE rentr5
- PLA
- TAY ; Y points to start of file entry
+
+                        ; If we get here then all 30 charaaters of the filename
+                        ; in the file entry match the filename in comnamm, so we
+                        ; have found the file entry we are looking for
+
+ PLA                    ; Set Y to the file entry index that we stored on the
+ TAY                    ; stack above, so it once again points to the entry we
+                        ; are checking
 
 .rentr6
 
- CLC ; signifies file found
- RTS
+ CLC                    ; Clear the C flag to indicate that we have found the
+                        ; file entry we are looking for
+
+ RTS                    ; Return from the subroutine
 
 .rentr7
 
- PLA
- TAY
+ PLA                    ; Set Y to the file entry index that we stored on the
+ TAY                    ; stack above, so it once again points to the entry we
+                        ; are checking
 
 .rentr8
 
- TYA
- CLC
- ADC #35
- TAY
- BNE rentr3 ; branch if not reached last entry
- LDA buffer+1
- BNE rentr2 ; branch if not last catalog sector
+ TYA                    ; Set Y = Y + 35
+ CLC                    ;
+ ADC #35                ; Each file entry in the catalog consists of 35 bytes,
+ TAY                    ; so this increments Y to point to the next entry
+
+ BNE rentr3             ; Loop back until we have reached the last file entry
+
+ LDA buffer+1           ; Set track to the track number of the next catalog
+                        ; sector from byte #1 of the VTOC
+
+ BNE rentr2             ; If the next catalog sector is non-zero then loop back
+                        ; to load and search this sector
+
+                        ; Otherwise we have searched every catalog sector and we
+                        ; haven't found what we're looking for, so fall through
+                        ; into rentr9 to return from the subroutine with the C
+                        ; flag set to indicate that the catalog is full
 
 .rentr9
 
- SEC ; signifies file not found
- RTS
+ SEC                    ; Clear the C flag to indicate that we have not found
+                        ; the file entry we are looking for
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
 ;       Name: getsct
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Allocate one free sector from VTOC - doesn't update VTOC on disk
+;    Summary: Analyse the VTOC and allocate one free sector
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   buffer              The VTOC sector for this disk
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   C flag              The result of the check:
+;
+;                         * Clear = free sector found
+;
+;                         * Set = no free sectors found (i.e. the disk is full)
+;
+;   X                   The track number containing the free sector
+;
+;   Y                   The free sector number
 ;
 ; ******************************************************************************
 
 .getsct
 
- LDA #0                 ; ???
- STA ztemp0 ; init allocation flag
- BEQ getsc4 ; always
+ LDA #0                 ; Set ztemp0 = 0 to denote that we are starting this
+ STA ztemp0             ; search in the outer half of the disk from track 16
+                        ; down to track 0
+
+ BEQ getsc4             ; Jump into the loop below at getsc4 with A = 0, so we
+                        ; start the search at the last track number that we
+                        ; checked, which is in fretrk
 
 .getsc3
 
- LDA dirtrk
+ LDA dirtrk             ; Set A to the direction we are moving in our search for
+                        ; a free sector (-1 or +1)
 
 .getsc4
 
- CLC
- ADC fretrk ; add last allocated track to direction of allocation
- BEQ getsc5 ; branch if track 0
- CMP tracks
- BCC getsc7 ; branch if not last track+1
- LDA #$FF
- BNE getsc6 ; always - direction  =  backwards
+ CLC                    ; Add the direction in A to the last allocated track so
+ ADC fretrk             ; we move in the direction in A
+                        ;
+                        ; Or, if we just started searching with A = 0, we check
+                        ; the last allocated track, as it might not have been
+                        ; used last time and might still be free
+                        ;
+                        ; In either case, A now contains the next track to check
+                        ; for a free sector
+
+ BEQ getsc5             ; If we have reached track 0, jump to getsc5
+
+ CMP tracks             ; If A is less than the number of tracks on the disc then
+ BCC getsc7             ; we haven't reached the highest numbered track yet, so
+                        ; jump to getsc7 to check this track for a free sector
+
+ LDA #$FF               ; Otherwise we have reached the highest numbered track,
+                        ; so set A = -1 so we start searching from track 16 down
+                        ; to track 0
+
+ BNE getsc6             ; Jump to getsc6 to set the direction to -1 and start
+                        ; searching from track 16 down to track 0 (this BNE is
+                        ; effectively a JMP as A is always non-zero)
 
 .getsc5
 
- LDA ztemp0
- BNE getscB ; branch if no free sectors - disk full
- LDA #1 ; direction = forwards
- STA ztemp0
+ LDA ztemp0             ; If ztemp0 is non-zero then we have already searched
+ BNE getscB             ; the disk from track 18 up to track 34, and we jumped
+                        ; here when we finished searching track 16 down to track
+                        ; 0, so we have searched the whole disk and haven't
+                        ; found a free sector, so jump to getscB to return from
+                        ; the subroutine with a disk full error
+
+ LDA #1                 ; Otherwise we have not already searched from track 18
+                        ; up to track 34, so set A = +1 so we start searching
+                        ; from track 18 up to track 34
+
+ STA ztemp0             ; Set ztemp0 = 1 to record that we are now searching the
+                        ; half of the disk track 18 up to track 34
 
 .getsc6
 
- STA dirtrk ; change direction
- CLC
- ADC #17
+ STA dirtrk             ; Set the search direction to A, so it's now -1 or +1
+
+ CLC                    ; Set A = A + 17, so A is now the track next to the VTOC
+ ADC #17                ; track in the direction we want to search (the VTOC is
+                        ; always in track 17)
+                        ;
+                        ; So this is the track to start searching from, heading
+                        ; in the new direction in dirtrk
 
 .getsc7
 
- STA fretrk
- ASL A
- ASL A
- TAY
- LDX #16
- LDA bitmap,Y
- BNE getsc8 ; branch if not all allocated
- INY
- LDX #8
- LDA bitmap,Y
- BEQ getsc3 ; branch if all allocated
+ STA fretrk             ; Store the number of the track we are checking for a
+                        ; free sector in fretrk
+
+                        ; We now search the bitmap of free sectors for the track
+                        ; in A, which is part of the VTOC and is therefore in
+                        ; buffer
+                        ;
+                        ; The bitmaps for each track are stored at byte $38 (for
+                        ; track 0) onwards, with four bitmap bytes per track,
+                        ; though only the first two bytes contain bitmap data
+                        ;
+                        ; The bitmap variable points to byte #56 ($38) of the
+                        ; buffer where we loaded the VTOC, so it points to the
+                        ; first bitmap for track 0
+
+ ASL A                  ; Set Y = A * 4
+ ASL A                  ;
+ TAY                    ; So we can use Y as an index into the bitmap of free
+                        ; sectors in the buffer, so the bitmap for track Y is
+                        ; at bitmap + Y
+
+ LDX #16                ; Set X = 16 to denote that we are searching the first
+                        ; byte of the bitmap
+
+ LDA bitmap,Y           ; Set A to the first byte of the bitmap for the track
+                        ; we are checking
+
+ BNE getsc8             ; If A is non-zero then there is a non-zero bit in the
+                        ; bitmap, which indicates a free sector, so jump to
+                        ; getsc8 to convert this into a sector number
+
+ INY                    ; Increment Y to point to the next byte in the bitmap
+                        ; of free sectors
+
+ LDX #8                 ; Set X = 8 to denote that we are searching the second
+                        ; byte of the bitmap
+
+ LDA bitmap,Y           ; Set A to the second byte of the bitmap for the track
+                        ; we are checking
+
+ BEQ getsc3             ; If A is zero then every sector is occupied in the
+                        ; bitmap, so loop back getsc3 to move on to the next
+                        ; track, as there are no free sectors in this one
 
 .getsc8
 
- STX ztemp0
- LDX #0
+                        ; If we get here then we have found a free sector in
+                        ; the bitmap for this track, so we need to convert this
+                        ; into a sector number
+                        ;
+                        ; We do this by looping through the bitmap byte in A
+                        ; until we find a set bit to indicate a free sector
+
+ STX ztemp0             ; Store X in ztemp0, so it is 16 if we found a free
+                        ; sector in the first bitmap byte, or 8 if we found a
+                        ; free sector in the second bitmap byte
+                        ;
+                        ; So ztemp0 is the sector number that corresponds to
+                        ; bit 7 in the relevant byte, as the first byte covers
+                        ; sectors 8 to 15 (bit 0 to 7), and the second byte
+                        ; covers sectors 0 to 7 (bit 0 to 7)
+
+ LDX #0                 ; Set a counter in X to keep track of the position of
+                        ; the bit we are currently checking
 
 .getsc9
 
- INX
- DEC ztemp0 ; sector = sector-1
- ROL A
- BCC getsc9 ; loop until got a free sector
- CLC ; allocate sector by clearing bit
+ INX                    ; Increment the bit position in X
+
+ DEC ztemp0             ; Decrement the sector number in ztemp0
+
+ ROL A                  ; Set the C flag to the next bit from the bitmap byte
+
+ BCC getsc9             ; Loop back to getsc9 until we shift a 1 out of the
+                        ; bitmap byte, which indicates a free sector
+
+                        ; We now change this 1 to a 0 and shift all the other
+                        ; bits in the bitmap back to their original positions
+
+ CLC                    ; Clear the C flag so the first rotation in the
+                        ; following loop will replace the 1 we just found with a
+                        ; 0, to indicate that it is no longer free
 
 .getscA
 
- ROR A ; shift bits back again
- DEX
- BNE getscA
- STA bitmap,Y ; update VTOC
- LDX fretrk ; next free track
- LDY ztemp0 ; next free sector
- CLC ; signifies one sector has been allocated
- RTS
+ ROR A                  ; Rotate the bits back into A again
+
+ DEX                    ; Decrement the position counter in X
+
+ BNE getscA             ; Loop back until we have rotated all the bits back into
+                        ; the bitmap, with the 1 changed to a 0
+
+ STA bitmap,Y           ; update VTOC
+
+ LDX fretrk             ; Set X to the track number where we found the free
+                        ; sector, which we stored in fretrk, so we can return it
+                        ; from the subroutine
+
+ LDY ztemp0             ; Set X to the number of the free sector in ztemp0, so
+                        ; we can return it from the subroutine
+
+ CLC                    ; Clear the C flag to indicate that we have successfully
+                        ; found a free sector
+
+ RTS                    ; Return from the subroutine
 
 .getscB
 
- SEC ; signifies disk full
- RTS
+ SEC                    ; Clear the C flag to indicate that we have not found
+                        ; a free sector and the disk is full
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
 ;       Name: isfull
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Check the disk to ensure there are are least two free sectors by
-;             searching for both a tsl sector and commander file sector
+;    Summary: Check the disk to ensure there are are least two free sectors, one
+;             one for the file's track/sector list and one for the file contents
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40794,52 +41068,113 @@ ENDMACRO
 ;
 ;                         * Set = no free sectors found (i.e. the disk is full)
 ;
+;   tsltrk              The track for the file's track/sector list
+;
+;   tslsct              The sector for the file's track/sector list
+;
+;   filtrk              The track for the file's contents
+;
+;   filsct              The sector for the file's contents
+;
 ; ******************************************************************************
 
 .isfull
 
- JSR rvtoc              ; read VTOC ???
- JSR getsct ; find free sector for tsl
- BCS isful2 ; branch if disk full
- STX tsltrk
- STY tslsct
- JSR getsct ; find free sector for commander file
- STX filtrk
- STY filsct
+ JSR rvtoc              ; Read the VTOC sector into the buffer
+
+ JSR getsct             ; Allocate a free sector in the VTOL, that we can use
+                        ; for the track/sector list, and return the track number
+                        ; in X and the sector number in Y
+
+ BCS isful2             ; If we the call to getsct couldn't find a free sector,
+                        ; then it will have set the C flag, so jump to isful2 to
+                        ; return this from the subroutine to indicate that the
+                        ; catalog is full
+
+ STX tsltrk             ; Store the track number containing the free sector in
+                        ; tsltrk
+
+ STY tslsct             ; Store the free sector number in tslsct
+
+ JSR getsct             ; Allocate a free sector in the VTOL, that we can use
+                        ; for the file contents, and return the track number
+                        ; in X and the sector number in Y
+                        ;
+                        ; If there is not enough space, this will set the C
+                        ; flag, which we will return from the subroutine to
+                        ; indicate that the catalog is full
+
+ STX filtrk             ; Store the track number containing the free sector in
+                        ; filtrk
+
+ STY filsct             ; Store the free sector number in filsct
 
 .isful2
 
- RTS ; C = 0 = disk full, C = 1 = enough space
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
 ;       Name: gettsl
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Read a file's track sector list
+;    Summary: Read a file's track/sector list
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   buffer              The catalog sector for this file
+;
+;   Y                   The offset within the catalog sector for the relevant
+;                       file entry
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   buffer              The track/sector list for the file
+;
+;   track               The track number of the file's data
+;
+;   sector              The sector number of the file's data
 ;
 ; ******************************************************************************
 
 .gettsl
 
- LDA buffer,Y           ; get track of tsl ???
+ LDA buffer,Y           ; Set track to the track containing the track/sector
+ STA track              ; list
+
+ LDA buffer+1,Y         ; Set sector to the sector containing the track/sector
+ STA sector             ; list
+
+ JSR rsect              ; Read the track/sector list into the buffer
+
+ LDY #$C                ; Set Y to offset $C, so it points to the track and
+                        ; sector of first data sector in the track/sector list
+                        ; we just loaded
+
+ LDA buffer,Y           ; Set track to the track containing the file data
  STA track
- LDA buffer+1,Y ; get sector of tsl
+
+ LDA buffer+1,Y         ; Set sector to the sector containing the file data
  STA sector
- JSR rsect ; read tsl
- LDY #$C
- LDA buffer,Y ; get track of first sector of file
- STA track
- LDA buffer+1,Y ; get sector of first sector of file
- STA sector
- RTS
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
 ;       Name: rvtoc
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Read VTOC sector into the buffer at buffr2+256
+;    Summary: Read the VTOC sector into the buffer
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   buffer              Contains the VTOC sector
 ;
 ; ******************************************************************************
 
@@ -40853,14 +41188,14 @@ ENDMACRO
 
                         ; Fall through into rsect to read sector 0 in track 17,
                         ; so we read the VTOC sector from the disk into the
-                        ; buffer at buffr2+256
+                        ; buffer
 
 ; ******************************************************************************
 ;
 ;       Name: rsect
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Read a specific sector from disk into the buffer at buffr2+256
+;    Summary: Read a specific sector from disk into the buffer
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40869,6 +41204,12 @@ ENDMACRO
 ;   track               The track number
 ;
 ;   sector              The sector number
+;
+; ------------------------------------------------------------------------------
+;
+; Returns:
+;
+;   buffer              Contains the sector
 ;
 ; ******************************************************************************
 
@@ -40885,7 +41226,7 @@ ENDMACRO
 ;       Name: wsect
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Write a specific sector from the buffer at buffr2+256 to disk
+;    Summary: Write a specific sector from the buffer to disk
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40894,6 +41235,8 @@ ENDMACRO
 ;   track               The track number
 ;
 ;   sector              The sector number
+;
+;   buffer              Contains the data to write
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40974,45 +41317,83 @@ ENDMACRO
  DEY                    ;          DEY            ; MAYBE WE DIDN'T CATCH IT
  BNE rwts2              ;          BNE CHKIFON    ; SO WE'LL TRY AGAIN
 
+                        ; A chunk of the original DOS is omitted here, from
+                        ; ITISON to the start of OK, where we pick up the story
+                        ; once again
+
 .rwts3
 
- PHP                    ; ??? save result - Z = 0 = disk is spinning, Z = 1 = disk not spinning
- LDA mtron,X            ; turn motor on - if disk was not spinning
- LDA drv1en,X           ; enable drive 1
- PLP
- PHP
- BNE rwts5 ; branch if disk is spinning
- LDY #7
+ PHP                    ; Save the result of the above checks on the stack, so
+                        ; we have the Z flag clear (BNE) if the disk is
+                        ; spinning, or the Z flag set (BEQ) if the disk is not
+                        ; spinning
 
-.rwts4
+ LDA mtron,X            ; Read the disk controller I/O soft switch at MOTORON
+                        ; for slot X to turn the disk motor on
 
- JSR armwat ; wait for capacitor to discharge
- DEY
- BNE rwts4
+                        ; The following code omits the drive select code, as
+                        ; Elite only supports drive 1
 
- LDX slot16             ; Set X to the disk controller card slot number * 16
+                        ; OK       ROR A          ; BY GOING INTO THE CARRY
+                        ;          BCC SD1        ; SELECT DRIVE 2 !
+ LDA drv1en,X           ;          LDA DRV1EN,X   ; ASSUME DRIVE 1 TO HIT
+                        ;          BCS DRVSEL     ; IF WRONG, ENABLE DRIVE 2 INSTEAD
+                        ;
+                        ; SD1      LDA DRV2EN,X
+                        ;
+                        ; DRVSEL   EQU *
+                        ;          ROR DRIVNO     ; SAVE SELECTED DRIVE
+                        ; *
+                        ; * DRIVE SELECTED. IF MOTORING-UP,
+                        ; *  WAIT BEFORE SEEKING...
+                        ; *
+ PLP                    ;          PLP            ; WAS THE MOTOR
+ PHP                    ;          PHP            ; PREVIOUSLY OFF?
+ BNE rwts5              ;          BNE NOWAIT     ; =>NO, FORGET WAITING.
+ LDY #7                 ;          LDY #7         ; YES, DELAY 150 MS
 
-.rwts5
+.rwts4                  
 
- LDA track
- JSR seek
- PLP
- BNE trytrk ; branch if disk is spinning
- LDY mtimeh
- BPL trytrk ; branch if motor reached correct speed
+ JSR armwat             ; SEEKW    JSR MSWAIT
+ DEY                    ;          DEY
+ BNE rwts4              ;          BNE SEEKW
+ LDX slot16             ;          LDX SLOT       ; RESTORE SLOT NUMBER
 
-.rwts6
+.rwts5                  ; NOWAIT   EQU *
+                        ; *
+                        ; * SEEK TO DESIRED TRACK...
+                        ; *
+                        ;          LDY #4         ; SET TO IOBTRK
+                        ;          LDA (IOBPL),Y  ; GET DESIRED TRACK
 
- LDY #18 ; delay for motor to reach correct speed
+ LDA track              ; We fetch the track number from the track variable
+                        ; rather than the IOBPL block, as the Elite code just
+                        ; stores values in variables instead
 
-.rwts7
+ JSR seek               ;          JSR MYSEEK     ; SEEK!
+                        ; *
+                        ; * SEE IFMOTOR WAS ALREADY SPINNING.
+                        ; *
+ PLP                    ;          PLP            ; WAS MOTOR ON?
+ BNE trytrk             ;          BNE TRYTRK     ; IF SO, DON'T DELAY, GET IT TODAY!
+                        ; *
+                        ; *  WAIT FOR MOTOR SPEED TO COME UP.
+                        ; *
+ LDY mtimeh             ;          LDY MONTIME+1  ; IF MOTORTIME IS POSITIVE,
+ BPL trytrk             ;          BPL MOTORUP    ; THEN SEEK WASTED ENUFF TIME FOR US
 
- DEY
- BNE rwts7
- INC mtimel
- BNE rwts6
- INC mtimeh
- BNE rwts6
+.rwts6                  
+
+ LDY #18                ; MOTOF    LDY #$12       ; DELAY 100 USEC PER COUNT
+
+.rwts7                  
+
+ DEY                    ; CONWAIT  DEY
+ BNE rwts7              ;          BNE CONWAIT
+ INC mtimel             ;          INC MONTIME
+ BNE rwts6              ;          BNE MOTOF
+ INC mtimeh             ;          INC MONTIME+1
+ BNE rwts6              ;          BNE MOTOF      ; COUNT UP TO $0000
 
 ; ******************************************************************************
 ;
@@ -41024,7 +41405,8 @@ ENDMACRO
 ; ------------------------------------------------------------------------------
 ;
 ; This routine is almost identical to the TRYTRK routine in Apple DOS 3.3.
-; It omits code to format the disk, as this is not required.
+; It omits the code from the start of the routine that checks for the format
+; command, as this is not required.
 ;
 ; The original DOS 3.3 source code for this routine in is shown in the comments.
 ;
@@ -41249,9 +41631,12 @@ ENDMACRO
                         ; jump to rttrk2 to write the a sector to the disk
 
  JSR read               ; Otherwise we are reading a sector, so call the read
-                        ; routine read the current sector into the buffer at
-                        ; buffr2+256, which will load the entire commander file
-                        ; as it fits into one sector
+                        ; routine to read the current sector into the buffer at
+                        ; buffr2, which will load the entire commander file as
+                        ; it fits into one sector
+                        ;
+                        ; Note that this loads the file straight from disk, so
+                        ; it is in the 6-bit nibble format
 
  PHP                    ; Store the status flags on the stack, so if we take the
                         ; following branch, the stack will be in the correct
@@ -41266,7 +41651,8 @@ ENDMACRO
                         ; more
 
  JSR pstnib             ; Call pstnib to convert the sector data that we just
-                        ; read into 8-bit bytes
+                        ; read into 8-bit bytes, processing the 6-bit nibbles in
+                        ; buffr2 into 8-bit bytes in buffer
 
  JMP rttrk3             ; Jump to rttrk3 to return from the RWTS code with no
                         ; error reported
@@ -41274,9 +41660,12 @@ ENDMACRO
 .rttrk2
 
  JSR write              ; Call the write routine to write a sector's worth of
-                        ; data from the buffer at buffr2+256 to the current
-                        ; track and sector, which will save the entire
-                        ; commander file as it fits into one sector
+                        ; data from buffr2 to the specified track and sector,
+                        ; which will save the entire commander file as it fits
+                        ; into one sector
+                        ;
+                        ; Note that the data in buffr2 is in the 6-bit nibble
+                        ; format, as we pre-nibblized it in the trytrk routine
 
  BCC rttrk3             ; If there was no write error then the write routine
                         ; will have cleared the C flag, so jump to rttrk3 to
@@ -41378,7 +41767,7 @@ ENDMACRO
 ;       Name: read
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Read a sector's worth of data into the buffer at buffr2+256
+;    Summary: Read a sector's worth of data into the buffr2 buffer
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41499,8 +41888,8 @@ ENDMACRO
 ;       Name: write
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Write a sector's worth of data from the buffer at buffr2+256 to
-;             the current track and sector
+;    Summary: Write a sector's worth of data from the buffr2 buffer to the
+;             current track and sector
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41619,7 +42008,7 @@ ENDMACRO
 ;       Name: rdaddr
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Read track address field
+;    Summary: Read a track address field
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41752,6 +42141,12 @@ ENDMACRO
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
 ;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   A                   The track number
+;
 ; ******************************************************************************
 
 .seek
@@ -41849,7 +42244,7 @@ ENDMACRO
 ;       Name: armwat
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Arm move delay
+;    Summary: Implement the arm move delay
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41967,7 +42362,7 @@ ENDMACRO
 ;       Name: prenib
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Convert 256*8 bit bytes to 342*6 bit 'nibbles'
+;    Summary: Convert 256 8-bit bytes in buffer into 342 6-bit nibbles in buffr2
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42023,7 +42418,7 @@ ENDMACRO
 ;       Name: pstnib
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Convert 342*6 bit 'nibbles' to 256*8 bit bytes
+;    Summary: Convert 342 6-bit nibbles in buffr2 into 256 8-bit bytes in buffer
 ;
 ; ------------------------------------------------------------------------------
 ;
