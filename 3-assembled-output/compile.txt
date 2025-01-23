@@ -22990,6 +22990,7 @@ K% workspace from &800 to &927 inclusive
      0831
 .tracks
      0834
+     0835
 .bitmap
      0838
 .buffr2

@@ -40330,6 +40330,12 @@ ENDMACRO
 ;
 ; ------------------------------------------------------------------------------
 ;
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
+;
+; ------------------------------------------------------------------------------
+;
 ; Returns:
 ;
 ;   C flag              The result of the read:
@@ -40397,6 +40403,12 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Write a commander file from the buffer to a DOS disk
+;
+; ------------------------------------------------------------------------------
+;
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40674,6 +40686,12 @@ ENDMACRO
 ;
 ; ------------------------------------------------------------------------------
 ;
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
+;
+; ------------------------------------------------------------------------------
+;
 ; Arguments:
 ;
 ;   C flag              The type of search:
@@ -40843,7 +40861,13 @@ ENDMACRO
 ;       Name: getsct
 ;       Type: Subroutine
 ;   Category: Save and load
-;    Summary: Analyse the VTOC and allocate one free sector
+;    Summary: Analyse the VTOC sector to allocate one free sector
+;
+; ------------------------------------------------------------------------------
+;
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41060,6 +41084,12 @@ ENDMACRO
 ;
 ; ------------------------------------------------------------------------------
 ;
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
+;
+; ------------------------------------------------------------------------------
+;
 ; Returns:
 ;
 ;   C flag              The result of the check:
@@ -41122,6 +41152,12 @@ ENDMACRO
 ;
 ; ------------------------------------------------------------------------------
 ;
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
+;
+; ------------------------------------------------------------------------------
+;
 ; Arguments:
 ;
 ;   buffer              The catalog sector for this file
@@ -41169,6 +41205,12 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read the VTOC sector into the buffer
+;
+; ------------------------------------------------------------------------------
+;
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41230,6 +41272,12 @@ ENDMACRO
 ;
 ; ------------------------------------------------------------------------------
 ;
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
+;
+; ------------------------------------------------------------------------------
+;
 ; Arguments:
 ;
 ;   track               The track number
@@ -41284,6 +41332,27 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read or write a specific sector
+;
+; ------------------------------------------------------------------------------
+;
+; This routine is almost identical to the RWTS routine in Apple DOS 3.3.
+; It omits the code from the start of the routine that checks the command block
+; and slot number, as Elite doesn't use either of those features.
+;
+; The original DOS 3.3 source code for this routine in is shown in the comments.
+; For detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner.
+;
+; For details of the VTOC layout, catalog sector layout and file entry layout,
+; see chapter 4, "Diskette organisation".
+;
+; Elite uses different label names to the original DOS 3.3 source, but the code
+; is the same.
+;
+; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
+; low-level functions to read and write Apple disks, and is included in Elite so
+; the game can use the memory that's normally allocated to DOS for its own use.
 ;
 ; ******************************************************************************
 
@@ -41410,6 +41479,14 @@ ENDMACRO
 ;
 ; The original DOS 3.3 source code for this routine in is shown in the comments.
 ;
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
+;
+; For details of the VTOC layout, see page 34; for details of the catalog sector
+; layout and file entry layout see page 37; and for the track/sector list see
+; page 39.
+;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
@@ -41515,7 +41592,9 @@ ENDMACRO
 ; This routine is almost identical to the RDRIGHT routine in Apple DOS 3.3.
 ; It omits the code that saves the destination track, as this is not required.
 ;
-; The original DOS 3.3 source code for this routine in is shown in the comments.
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
@@ -41773,7 +41852,9 @@ ENDMACRO
 ;
 ; This routine is identical to the READ16 routine in Apple DOS 3.3.
 ;
-; The original DOS 3.3 source code for this routine in is shown in the comments.
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
@@ -41896,7 +41977,9 @@ ENDMACRO
 ; This routine is almost identical to the WRITE16 routine in Apple DOS 3.3.
 ; There is one instruction missing here that is in the original DOS.
 ;
-; The original DOS 3.3 source code for this routine in is shown in the comments.
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
@@ -42014,7 +42097,9 @@ ENDMACRO
 ;
 ; This routine is identical to the RDADR16 routine in Apple DOS 3.3.
 ;
-; The original DOS 3.3 source code for this routine in is shown in the comments.
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
@@ -42131,7 +42216,9 @@ ENDMACRO
 ;
 ; These extra instructions double the track number in A.
 ;
-; The original DOS 3.3 source code for this routine in is shown in the comments.
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
@@ -42250,7 +42337,9 @@ ENDMACRO
 ;
 ; This routine is identical to the MSWAIT routine in Apple DOS 3.3.
 ;
-; The original DOS 3.3 source code for this routine in is shown in the comments.
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
@@ -42368,7 +42457,9 @@ ENDMACRO
 ;
 ; This routine is identical to the PRENIB16 routine in Apple DOS 3.3.
 ;
-; The original DOS 3.3 source code for this routine in is shown in the comments.
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
@@ -42426,7 +42517,9 @@ ENDMACRO
 ; CPY T0 instruction from the original source is omitted as we only need to
 ; check whether the byte counter in Y has reached zero.
 ;
-; The original DOS 3.3 source code for this routine in is shown in the comments.
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
@@ -42472,7 +42565,9 @@ ENDMACRO
 ;
 ; This routine is identical to the WNIBL9 routine in Apple DOS 3.3.
 ;
-; The original DOS 3.3 source code for this routine in is shown in the comments.
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and file/track list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
