@@ -38064,10 +38064,50 @@ Saving file '3-assembled-output/CODE2.unprot.bin'
      0328   EA         NOP
 P% = &329 
 Saving file '3-assembled-output/MOVER.bin'
-.ZP
-     0000
-.P
-     0002
+.ztemp0
+     00F0
+.ztemp1
+     00F1
+.ztemp2
+     00F2
+.ztemp3
+     00F3
+.track
+     0300
+.sector
+     0301
+.curtrk
+     0302
+     0303
+.mtimel
+     0307
+.mtimeh
+     0308
+.seeks
+     0309
+.recals
+     030A
+.slot16
+     030B
+.atemp0
+     030C
+.idfld
+     030D
+Disk operations workspace from &25D6 to &310 inclusive
+.buffer
+     25D6
+.fretrk
+     2606
+.dirtrk
+     2607
+.tracks
+     260A
+     260B
+.bitmap
+     260E
+.buffr2
+     271E
+.ENTRY
      2000   20 D7 24   JSR &24D7
      2003   20 7C 24   JSR &247C
      2006   20 DC 23   JSR &23DC
@@ -38075,26 +38115,24 @@ Saving file '3-assembled-output/MOVER.bin'
      200C   20 5D 24   JSR &245D
      200F   20 DC 23   JSR &23DC
      2012   4C 00 40   JMP &4000
+.filename
      2015   45 4C 42 ...
+.comnam
      2019   53 43 52 ...
-     201D   20 20 20 ...
-     2025   20 20 20 ...
-     202D   20 20 20 ...
-     2035   20 20 
-.L2037
+.findf
      2037   18         CLC
      2038   90 00      BCC &203A
-.L203A
+.rentry
      203A   6E 0C 03   ROR &030C
      203D   20 05 21   JSR &2105
-.L2040
+.rentr2
      2040   AD D7 25   LDA &25D7
      2043   8D 00 03   STA &0300
      2046   AD D8 25   LDA &25D8
      2049   8D 01 03   STA &0301
      204C   20 0F 21   JSR &210F
      204F   A0 0B      LDY #&0B
-.L2051
+.rentr3
      2051   B9 D6 25   LDA &25D6,Y
      2054   2C 0C 03   BIT &030C
      2057   10 09      BPL &2062
@@ -38103,7 +38141,7 @@ Saving file '3-assembled-output/MOVER.bin'
      205C   C9 FF      CMP #&FF
      205E   F0 1F      BEQ &207F
      2060   D0 21      BNE &2083
-.L2062
+.rentr4
      2062   AA         TAX
      2063   F0 2A      BEQ &208F
      2065   C9 FF      CMP #&FF
@@ -38111,7 +38149,7 @@ Saving file '3-assembled-output/MOVER.bin'
      2069   98         TYA
      206A   48         PHA
      206B   A2 00      LDX #&00
-.L206D
+.rentr5
      206D   B9 D9 25   LDA &25D9,Y
      2070   29 7F      AND #&7F
      2072   DD 19 20   CMP &2019,X
@@ -38122,13 +38160,13 @@ Saving file '3-assembled-output/MOVER.bin'
      207B   D0 F0      BNE &206D
      207D   68         PLA
      207E   A8         TAY
-.L207F
+.rentr6
      207F   18         CLC
      2080   60         RTS
-.L2081
+.rentr7
      2081   68         PLA
      2082   A8         TAY
-.L2083
+.rentr8
      2083   98         TYA
      2084   18         CLC
      2085   69 23      ADC #&23
@@ -38136,15 +38174,16 @@ Saving file '3-assembled-output/MOVER.bin'
      2088   D0 C7      BNE &2051
      208A   AD D7 25   LDA &25D7
      208D   D0 B1      BNE &2040
-.L208F
+.rentr9
      208F   38         SEC
      2090   60         RTS
+.getsct
      2091   A9 00      LDA #&00
      2093   85 F0      STA &F0
      2095   F0 03      BEQ &209A
-.L2097
+.getsc3
      2097   AD 07 26   LDA &2607
-.L209A
+.getsc4
      209A   18         CLC
      209B   6D 06 26   ADC &2606
      209E   F0 09      BEQ &20A9
@@ -38152,16 +38191,16 @@ Saving file '3-assembled-output/MOVER.bin'
      20A3   90 12      BCC &20B7
      20A5   A9 FF      LDA #&FF
      20A7   D0 08      BNE &20B1
-.L20A9
+.getsc5
      20A9   A5 F0      LDA &F0
      20AB   D0 38      BNE &20E5
      20AD   A9 01      LDA #&01
      20AF   85 F0      STA &F0
-.L20B1
+.getsc6
      20B1   8D 07 26   STA &2607
      20B4   18         CLC
      20B5   69 11      ADC #&11
-.L20B7
+.getsc7
      20B7   8D 06 26   STA &2606
      20BA   0A         ASL A
      20BB   0A         ASL A
@@ -38173,16 +38212,16 @@ Saving file '3-assembled-output/MOVER.bin'
      20C5   A2 08      LDX #&08
      20C7   B9 0E 26   LDA &260E,Y
      20CA   F0 CB      BEQ &2097
-.L20CC
+.getsc8
      20CC   86 F0      STX &F0
      20CE   A2 00      LDX #&00
-.L20D0
+.getsc9
      20D0   E8         INX
      20D1   C6 F0      DEC &F0
      20D3   2A         ROL A
      20D4   90 FA      BCC &20D0
      20D6   18         CLC
-.L20D7
+.getscA
      20D7   6A         ROR A
      20D8   CA         DEX
      20D9   D0 FC      BNE &20D7
@@ -38191,10 +38230,10 @@ Saving file '3-assembled-output/MOVER.bin'
      20E1   A4 F0      LDY &F0
      20E3   18         CLC
      20E4   60         RTS
-.L20E5
+.getscB
      20E5   38         SEC
      20E6   60         RTS
-.L20E7
+.gettsl
      20E7   B9 D6 25   LDA &25D6,Y
      20EA   8D 00 03   STA &0300
      20ED   B9 D7 25   LDA &25D7,Y
@@ -38206,16 +38245,17 @@ Saving file '3-assembled-output/MOVER.bin'
      20FE   B9 D7 25   LDA &25D7,Y
      2101   8D 01 03   STA &0301
      2104   60         RTS
-.L2105
+.rvtoc
      2105   A9 11      LDA #&11
      2107   8D 00 03   STA &0300
      210A   A9 00      LDA #&00
      210C   8D 01 03   STA &0301
-.L210F
+.rsect
      210F   18         CLC
      2110   90 01      BCC &2113
+.wsect
      2112   38         SEC
-.L2113
+.wsect2
      2113   08         PHP
      2114   A9 60      LDA #&60
      2116   8D 0B 03   STA &030B
@@ -38229,7 +38269,7 @@ Saving file '3-assembled-output/MOVER.bin'
      212B   BD 8E C0   LDA &C08E,X
      212E   BD 8C C0   LDA &C08C,X
      2131   A0 08      LDY #&08
-.L2133
+.rwts2
      2133   BD 8C C0   LDA &C08C,X
      2136   48         PHA
      2137   68         PLA
@@ -38240,7 +38280,7 @@ Saving file '3-assembled-output/MOVER.bin'
      2140   D0 03      BNE &2145
      2142   88         DEY
      2143   D0 EE      BNE &2133
-.L2145
+.rwts3
      2145   08         PHP
      2146   BD 89 C0   LDA &C089,X
      2149   BD 8A C0   LDA &C08A,X
@@ -38248,43 +38288,43 @@ Saving file '3-assembled-output/MOVER.bin'
      214D   08         PHP
      214E   D0 0B      BNE &215B
      2150   A0 07      LDY #&07
-.L2152
+.rwts4
      2152   20 19 23   JSR &2319
      2155   88         DEY
      2156   D0 FA      BNE &2152
      2158   AE 0B 03   LDX &030B
-.L215B
+.rwts5
      215B   AD 00 03   LDA &0300
      215E   20 BB 22   JSR &22BB
      2161   28         PLP
      2162   D0 14      BNE &2178
      2164   AC 08 03   LDY &0308
      2167   10 0F      BPL &2178
-.L2169
+.rwts6
      2169   A0 12      LDY #&12
-.L216B
+.rwts7
      216B   88         DEY
      216C   D0 FD      BNE &216B
      216E   EE 07 03   INC &0307
      2171   D0 F6      BNE &2169
      2173   EE 08 03   INC &0308
      2176   D0 F1      BNE &2169
-.L2178
+.trytrk
      2178   28         PLP
      2179   08         PHP
      217A   90 03      BCC &217F
      217C   20 44 23   JSR &2344
-.L217F
+.trytr2
      217F   A0 30      LDY #&30
      2181   84 F2      STY &F2
-.L2183
+.trytr3
      2183   AE 0B 03   LDX &030B
      2186   20 5D 22   JSR &225D
      2189   90 21      BCC &21AC
-.L218B
+.trytr4
      218B   C6 F2      DEC &F2
      218D   10 F4      BPL &2183
-.L218F
+.trytr5
      218F   CE 0A 03   DEC &030A
      2192   F0 27      BEQ &21BB
      2194   A9 04      LDA #&04
@@ -38293,24 +38333,24 @@ Saving file '3-assembled-output/MOVER.bin'
      219B   8D 02 03   STA &0302
      219E   A9 00      LDA #&00
      21A0   20 BB 22   JSR &22BB
-.L21A3
+.trytr6
      21A3   AD 00 03   LDA &0300
      21A6   20 BB 22   JSR &22BB
      21A9   4C 7F 21   JMP &217F
-.L21AC
+.rdrght
      21AC   AC 0F 03   LDY &030F
      21AF   CC 00 03   CPY &0300
      21B2   F0 0F      BEQ &21C3
      21B4   CE 09 03   DEC &0309
      21B7   D0 EA      BNE &21A3
      21B9   F0 D4      BEQ &218F
-.L21BB
+.drverr
      21BB   28         PLP
      21BC   BC 88 C0   LDY &C088,X
      21BF   38         SEC
      21C0   A9 04      LDA #&04
      21C2   60         RTS
-.L21C3
+.rttrk
      21C3   AC 01 03   LDY &0301
      21C6   B9 61 23   LDA &2361,Y
      21C9   CD 0E 03   CMP &030E
@@ -38323,56 +38363,56 @@ Saving file '3-assembled-output/MOVER.bin'
      21D7   28         PLP
      21D8   20 45 23   JSR &2345
      21DB   4C E5 21   JMP &21E5
-.L21DE
+.rttrk2
      21DE   20 5B 22   JSR &225B
      21E1   A9 01      LDA #&01
      21E3   B0 03      BCS &21E8
-.L21E5
+.rttrk3
      21E5   A9 00      LDA #&00
      21E7   18         CLC
-.L21E8
+.rttrk4
      21E8   48         PHA
      21E9   AE 0B 03   LDX &030B
      21EC   BC 88 C0   LDY &C088,X
      21EF   68         PLA
      21F0   60         RTS
-.L21F1
+.read
      21F1   A0 20      LDY #&20
-.L21F3
+.read2
      21F3   88         DEY
      21F4   F0 61      BEQ &2257
-.L21F6
+.read3
      21F6   BD 8C C0   LDA &C08C,X
      21F9   10 FB      BPL &21F6
-.L21FB
+.read4
      21FB   49 D5      EOR #&D5
      21FD   D0 F4      BNE &21F3
      21FF   EA         NOP
-.L2200
+.read5
      2200   BD 8C C0   LDA &C08C,X
      2203   10 FB      BPL &2200
      2205   C9 AA      CMP #&AA
      2207   D0 F2      BNE &21FB
      2209   A0 56      LDY #&56
-.L220B
+.read6
      220B   BD 8C C0   LDA &C08C,X
      220E   10 FB      BPL &220B
      2210   C9 AD      CMP #&AD
      2212   D0 E7      BNE &21FB
      2214   A9 00      LDA #&00
-.L2216
+.read7
      2216   88         DEY
      2217   84 F0      STY &F0
-.L2219
+.read8
      2219   BC 8C C0   LDY &C08C,X
      221C   10 FB      BPL &2219
      221E   59 DC 22   EOR &22DC,Y
      2221   A4 F0      LDY &F0
      2223   99 1E 28   STA &281E,Y
      2226   D0 EE      BNE &2216
-.L2228
+.read9
      2228   84 F0      STY &F0
-.L222A
+.readA
      222A   BC 8C C0   LDY &C08C,X
      222D   10 FB      BPL &222A
      222F   59 DC 22   EOR &22DC,Y
@@ -38380,66 +38420,66 @@ Saving file '3-assembled-output/MOVER.bin'
      2234   99 1E 27   STA &271E,Y
      2237   C8         INY
      2238   D0 EE      BNE &2228
-.L223A
+.readB
      223A   BC 8C C0   LDY &C08C,X
      223D   10 FB      BPL &223A
      223F   D9 DC 22   CMP &22DC,Y
      2242   D0 13      BNE &2257
-.L2244
+.readC
      2244   BD 8C C0   LDA &C08C,X
      2247   10 FB      BPL &2244
      2249   C9 DE      CMP #&DE
      224B   D0 0A      BNE &2257
      224D   EA         NOP
-.L224E
+.readD
      224E   BD 8C C0   LDA &C08C,X
      2251   10 FB      BPL &224E
      2253   C9 AA      CMP #&AA
      2255   F0 02      BEQ &2259
-.L2257
+.readE
      2257   38         SEC
      2258   60         RTS
-.L2259
+.readF
      2259   18         CLC
      225A   60         RTS
-.L225B
+.write
      225B   18         CLC
      225C   60         RTS
-.L225D
+.rdaddr
      225D   A0 FC      LDY #&FC
      225F   84 F0      STY &F0
-.L2261
+.rdadr2
      2261   C8         INY
      2262   D0 04      BNE &2268
      2264   E6 F0      INC &F0
      2266   F0 51      BEQ &22B9
-.L2268
+.rdadr3
      2268   BD 8C C0   LDA &C08C,X
      226B   10 FB      BPL &2268
-.L226D
+.rdadr4
      226D   C9 D5      CMP #&D5
      226F   D0 F0      BNE &2261
      2271   EA         NOP
-.L2272
+.rdadr5
      2272   BD 8C C0   LDA &C08C,X
      2275   10 FB      BPL &2272
      2277   C9 AA      CMP #&AA
      2279   D0 F2      BNE &226D
      227B   A0 03      LDY #&03
-.L227D
+.rdadr6
      227D   BD 8C C0   LDA &C08C,X
      2280   10 FB      BPL &227D
      2282   C9 96      CMP #&96
      2284   D0 E7      BNE &226D
      2286   A9 00      LDA #&00
-.L2288
+.rdadr7
      2288   85 F1      STA &F1
-.L228A
+.rdadr8
      228A   BD 8C C0   LDA &C08C,X
      228D   10 FB      BPL &228A
      228F   2A         ROL A
      2290   85 F0      STA &F0
-.L2292
+.rdadr9
      2292   BD 8C C0   LDA &C08C,X
      2295   10 FB      BPL &2292
      2297   25 F0      AND &F0
@@ -38449,23 +38489,24 @@ Saving file '3-assembled-output/MOVER.bin'
      229F   10 E7      BPL &2288
      22A1   A8         TAY
      22A2   D0 15      BNE &22B9
-.L22A4
+.rdadrA
      22A4   BD 8C C0   LDA &C08C,X
      22A7   10 FB      BPL &22A4
      22A9   C9 DE      CMP #&DE
      22AB   D0 0C      BNE &22B9
      22AD   EA         NOP
-.L22AE
+.rdadrB
      22AE   BD 8C C0   LDA &C08C,X
      22B1   10 FB      BPL &22AE
      22B3   C9 AA      CMP #&AA
      22B5   D0 02      BNE &22B9
+.rdadrC
      22B7   18         CLC
      22B8   60         RTS
-.L22B9
+.rdadrD
      22B9   38         SEC
      22BA   60         RTS
-.L22BB
+.seek
      22BB   86 F0      STX &F0
      22BD   0A         ASL A
      22BE   CD 02 03   CMP &0302
@@ -38473,7 +38514,7 @@ Saving file '3-assembled-output/MOVER.bin'
      22C3   85 F1      STA &F1
      22C5   A9 00      LDA #&00
      22C7   85 F2      STA &F2
-.L22C9
+.seek2
      22C9   AD 02 03   LDA &0302
      22CC   85 F3      STA &F3
      22CE   38         SEC
@@ -38483,18 +38524,18 @@ Saving file '3-assembled-output/MOVER.bin'
      22D5   49 FF      EOR #&FF
      22D7   EE 02 03   INC &0302
      22DA   90 05      BCC &22E1
-.L22DC
+.seek3
      22DC   69 FE      ADC #&FE
      22DE   CE 02 03   DEC &0302
-.L22E1
+.seek4
      22E1   C5 F2      CMP &F2
      22E3   90 02      BCC &22E7
      22E5   A5 F2      LDA &F2
-.L22E7
+.seek5
      22E7   C9 0C      CMP #&0C
      22E9   B0 01      BCS &22EC
      22EB   A8         TAY
-.L22EC
+.seek6
      22EC   38         SEC
      22ED   20 0A 23   JSR &230A
      22F0   B9 2C 23   LDA &232C,Y
@@ -38506,33 +38547,34 @@ Saving file '3-assembled-output/MOVER.bin'
      22FF   20 19 23   JSR &2319
      2302   E6 F2      INC &F2
      2304   D0 C3      BNE &22C9
-.L2306
+.seek7
      2306   20 19 23   JSR &2319
      2309   18         CLC
-.L230A
+.step
      230A   AD 02 03   LDA &0302
-.L230D
+.step2
      230D   29 03      AND #&03
      230F   2A         ROL A
      2310   05 F0      ORA &F0
      2312   AA         TAX
      2313   BD 80 C0   LDA &C080,X
      2316   A6 F0      LDX &F0
-.L2318
+.step3
      2318   60         RTS
-.L2319
+.armwat
      2319   A2 11      LDX #&11
-.L231B
+.armwt2
      231B   CA         DEX
      231C   D0 FD      BNE &231B
      231E   EE 07 03   INC &0307
      2321   D0 03      BNE &2326
      2323   EE 08 03   INC &0308
-.L2326
+.armwt3
      2326   38         SEC
      2327   E9 01      SBC #&01
      2329   D0 EE      BNE &2319
      232B   60         RTS
+.armtab
      232C   01
      232D   30
      232E   28
@@ -38545,6 +38587,7 @@ Saving file '3-assembled-output/MOVER.bin'
      2335   1C
      2336   1C
      2337   1C
+.armtb2
      2338   70
      2339   2C
      233A   26
@@ -38557,13 +38600,13 @@ Saving file '3-assembled-output/MOVER.bin'
      2341   1C
      2342   1C
      2343   1C
-.L2344
+.prenib
      2344   60         RTS
-.L2345
+.pstnib
      2345   A0 00      LDY #&00
-.L2347
+.pstnb2
      2347   A2 56      LDX #&56
-.L2349
+.pstnb3
      2349   CA         DEX
      234A   30 FB      BMI &2347
      234C   B9 1E 27   LDA &271E,Y
@@ -38575,132 +38618,44 @@ Saving file '3-assembled-output/MOVER.bin'
      235A   C8         INY
      235B   D0 EC      BNE &2349
      235D   60         RTS
+.wbyte
      235E   60         RTS
      235F   60         RTS
      2360   60         RTS
-     2361   00
-     2362   0D
-     2363   0B
-     2364   09
-     2365   07
-     2366   05
-     2367   03
-     2368   01
-     2369   0E
-     236A   0C
-     236B   0A
-     236C   08
-     236D   06
-     236E   04
-     236F   02
-     2370   0F
-     2371   EA
-     2372   00
-     2373   01
-     2374   98
-     2375   99
-     2376   02
-     2377   03
-     2378   9C
-     2379   04
-     237A   05
-     237B   06
-     237C   A0
-     237D   A1
-     237E   A2
-     237F   A3
-     2380   A4
-     2381   A5
-     2382   07
-     2383   08
-     2384   A8
-     2385   A9
-     2386   AA
-     2387   09
-     2388   0A
-     2389   0B
-     238A   0C
-     238B   0D
-     238C   B0
-     238D   B1
-     238E   0E
-     238F   0F
-     2390   10
-     2391   11
-     2392   12
-     2393   13
-     2394   B8
-     2395   14
-     2396   15
-     2397   16
-     2398   17
-     2399   18
-     239A   19
-     239B   1A
-     239C   C0
-     239D   C1
-     239E   C2
-     239F   C3
-     23A0   C4
-     23A1   C5
-     23A2   C6
-     23A3   C7
-     23A4   C8
-     23A5   C9
-     23A6   CA
-     23A7   1B
-     23A8   CC
-     23A9   1C
-     23AA   1D
-     23AB   1E
-     23AC   D0
-     23AD   D1
-     23AE   D2
-     23AF   1F
-     23B0   D4
-     23B1   D5
-     23B2   20
-     23B3   21
-     23B4   D8
-     23B5   22
-     23B6   23
-     23B7   24
-     23B8   25
-     23B9   26
-     23BA   27
-     23BB   28
-     23BC   E0
-     23BD   E1
-     23BE   E2
-     23BF   E3
-     23C0   E4
-     23C1   29
-     23C2   2A
-     23C3   2B
-     23C4   E8
-     23C5   2C
-     23C6   2D
-     23C7   2E
-     23C8   2F
-     23C9   30
-     23CA   31
-     23CB   32
-     23CC   F0
-     23CD   F1
-     23CE   33
-     23CF   34
-     23D0   35
-     23D1   36
-     23D2   37
-     23D3   38
-     23D4   F8
-     23D5   39
-     23D6   3A
-     23D7   3B
-     23D8   3C
-     23D9   3D
-     23DA   3E
-     23DB   3F
+.scttab
+     2361   00 0D 0B 09
+     2365   07 05 03 01
+     2369   0E 0C 0A 08
+     236D   06 04 02 0F
+     2371   EA         NOP
+.rtable
+     2372   00 01 98 99
+     2376   02 03 9C 04
+     237A   05 06 A0 A1
+     237E   A2 A3 A4 A5
+     2382   07 08 A8 A9
+     2386   AA 09 0A 0B
+     238A   0C 0D B0 B1
+     238E   0E 0F 10 11
+     2392   12 13 B8 14
+     2396   15 16 17 18
+     239A   19 1A C0 C1
+     239E   C2 C3 C4 C5
+     23A2   C6 C7 C8 C9
+     23A6   CA 1B CC 1C
+     23AA   1D 1E D0 D1
+     23AE   D2 1F D4 D5
+     23B2   20 21 D8 22
+     23B6   23 24 25 26
+     23BA   27 28 E0 E1
+     23BE   E2 E3 E4 29
+     23C2   2A 2B E8 2C
+     23C6   2D 2E 2F 30
+     23CA   31 32 F0 F1
+     23CE   33 34 35 36
+     23D2   37 38 F8 39
+     23D6   3A 3B 3C 3D
+     23DA   3E 3F
 .L23DC
      23DC   A9 0C      LDA #&0C
      23DE   8D D5 24   STA &24D5
@@ -38817,10 +38772,15 @@ Saving file '3-assembled-output/MOVER.bin'
      24CC   8D 62 45   STA &4562
 .L24CF
      24CF   4C 00 40   JMP &4000
+.L24D2
      24D2   FF
+.L24D3
      24D3   4F
+.L24D4
      24D4   04
+.L24D5
      24D5   00
+.L24D6
      24D6   00
 .L24D7
      24D7   A9 00      LDA #&00
