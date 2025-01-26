@@ -255,14 +255,14 @@ IF _SOURCE_DISK_BUILD
 
 ELIF _4AM_CRACK
 
- EQUB $20, $20, $45, $51, $55, $57, $26, $44
- EQUB $30, $35, $30, $3A, $45, $51, $55, $57
- EQUB $26, $44, $30, $35, $30, $3A, $45, $51
- EQUB $55, $57, $26, $44, $30, $35, $30, $3A
- EQUB $45, $51, $55, $57, $26, $44, $30, $35
- EQUB $30, $0D, $07, $DF, $32, $2E, $53, $43
- EQUB $54, $42, $48, $20, $45, $51, $55, $57
- EQUB $26, $32, $30, $32, $30, $3A, $45, $51
+ EQUB $20, $20, $45, $51, $55, $57, $26, $44    ; These bytes appear to be
+ EQUB $30, $35, $30, $3A, $45, $51, $55, $57    ; unused and just contain random
+ EQUB $26, $44, $30, $35, $30, $3A, $45, $51    ; workspace noise left over from
+ EQUB $55, $57, $26, $44, $30, $35, $30, $3A    ; the BBC Micro assembly process
+ EQUB $45, $51, $55, $57, $26, $44, $30, $35    ;
+ EQUB $30, $0D, $07, $DF, $32, $2E, $53, $43    ; They contain part of the BASIC
+ EQUB $54, $42, $48, $20, $45, $51, $55, $57    ; source code from the SCTBH
+ EQUB $26, $32, $30, $32, $30, $3A, $45, $51    ; variable
  EQUB $55, $57, $26, $32, $31, $32, $31, $3A
  EQUB $45, $51, $55, $57, $26, $32, $32, $32
  EQUB $32, $3A, $45, $51, $55, $57, $26, $32
@@ -330,17 +330,17 @@ ENDIF
 
 IF _4AM_CRACK
 
- EQUB $C5, $20, $1A, $6C, $4C, $7B, $6F, $38
- EQUB $E9, $01, $0A, $A8, $BE, $92, $70, $B9
- EQUB $93, $70, $A8, $60, $AD, $F2, $02, $C9
- EQUB $08, $90, $05, $A9, $20, $20, $B5, $94
+ EQUB $C5, $20, $1A, $6C, $4C, $7B, $6F, $38    ; These bytes appear to be
+ EQUB $E9, $01, $0A, $A8, $BE, $92, $70, $B9    ; unused and just contain random
+ EQUB $93, $70, $A8, $60, $AD, $F2, $02, $C9    ; workspace noise left over from
+ EQUB $08, $90, $05, $A9, $20, $20, $B5, $94    ; the BBC Micro assembly process
  EQUB $A9, $10, $A8, $85, $36, $A9, $0C, $85
- EQUB $34, $98, $18, $69, $20, $20, $72, $64
- EQUB $A5, $36, $18, $69, $50, $20, $43, $71
- EQUB $E6, $36, $A4, $36, $C0, $14, $90, $E5
- EQUB $20, $1A, $A2, $A9, $AF, $20, $1A, $6C
- EQUB $20, $E1, $84, $38, $E9, $30, $C9, $04
- EQUB $90, $06, $20, $1A, $A2, $4C, $43, $70
+ EQUB $34, $98, $18, $69, $20, $20, $72, $64    ; They contain part of the CODE1
+ EQUB $A5, $36, $18, $69, $50, $20, $43, $71    ; binary, from file offset $306E
+ EQUB $E6, $36, $A4, $36, $C0, $14, $90, $E5    ; to $318E (which is loaded into
+ EQUB $20, $1A, $A2, $A9, $AF, $20, $1A, $6C    ; memory at $7000 to $7120),
+ EQUB $20, $E1, $84, $38, $E9, $30, $C9, $04    ; from when it was assembled in
+ EQUB $90, $06, $20, $1A, $A2, $4C, $43, $70    ; memory
  EQUB $AA, $60, $20, $5F, $69, $20, $9D, $6A
  EQUB $70, $70, $69, $4C, $1A, $A2, $85, $06
  EQUB $BD, $9F, $02, $F0, $1F, $A0, $04, $C9
