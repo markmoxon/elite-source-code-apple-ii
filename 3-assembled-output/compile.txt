@@ -38078,7 +38078,14 @@ Saving file '3-assembled-output/MOVER.bin'
      0301
 .curtrk
      0302
+.tsltrk
      0303
+.tslsct
+     0304
+.filtrk
+     0305
+.filsct
+     0306
 .mtimel
      0307
 .mtimeh
