@@ -1,1 +1,1 @@
----------------------------------------FIREBIRD ELITEVERSION: APPLE IIVARIANT: IAN BELL'S GAME DISKSEE WWW.BBCELITE.COM FOR DETAILS---------------------------------------
+---------------------------------------FIREBIRD ELITEVERSION: APPLE IIVARIANT: 4AM CRACK (FIREBIRD RELEASE)SEE WWW.BBCELITE.COM FOR DETAILS---------------------------------------

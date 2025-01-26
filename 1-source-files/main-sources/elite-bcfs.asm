@@ -54,6 +54,7 @@
  _SOURCE_DISK_BUILD         = (_VARIANT = 2)
  _SOURCE_DISK_CODE_FILES    = (_VARIANT = 3)
  _SOURCE_DISK_ELT_FILES     = (_VARIANT = 4)
+ _4AM_CRACK                 = (_VARIANT = 5)
  _SOURCE_DISK               = (_VARIANT = 2) OR (_VARIANT = 3) OR (_VARIANT = 4)
 
 ; ******************************************************************************
@@ -144,7 +145,7 @@ IF _SOURCE_DISK_BUILD
  EQUB $FE, $83, $4C, $4F, $4F, $50, $00, $8F    ; the BBC Micro assembly process
  EQUB $79, $A6, $00, $00
 
-ELIF _IB_DISK OR _SOURCE_DISK_CODE_FILES OR _SOURCE_DISK_ELT_FILES
+ELIF _IB_DISK OR _4AM_CRACK OR _SOURCE_DISK_CODE_FILES OR _SOURCE_DISK_ELT_FILES
 
  SKIPTO $A300
 
@@ -157,7 +158,7 @@ ENDIF
 
 IF _MATCH_ORIGINAL_BINARIES
 
- IF _IB_DISK
+ IF _IB_DISK OR _4AM_CRACK
 
   EQUB $00, $5C, $A0, $6C, $73, $73, $31, $00   ; These bytes appear to be
   EQUB $90, $20, $B8, $00, $00, $A9, $9F, $52   ; unused and just contain random

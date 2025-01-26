@@ -53,8 +53,11 @@ for arg in argv[1:]:
         release = 3
         folder = "source-disk-code-files"
     if arg == "-rel4":
-        release = 3
+        release = 4
         folder = "source-disk-elt-files"
+    if arg == "-rel5":
+        release = 5
+        folder = "4am-crack"
 
 # Configuration variables for scrambling code and calculating checksums
 #

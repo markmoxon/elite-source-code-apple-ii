@@ -38,10 +38,11 @@ DISKM8?=diskm8
 #   9 = Apple II
 #
 # _VARIANT
-#   1 = Ian Bell's game disk (default)
+#   1 = Ian Bell's game disk
 #   2 = source disk build (the binaries from running a build of the source disk)
 #   3 = source disk CODE files (the CODE* binaries already on the source disk)
 #   4 = source disk ELT files (the ELT* binaries already on the source disk)
+#   5 = 4am crack (default)
 #
 # _MAX_COMMANDER
 #   TRUE  = Maxed-out commander
@@ -78,7 +79,11 @@ else
   match-original-binaries=TRUE
 endif
 
-ifeq ($(variant), source-disk-build)
+ifeq ($(variant), ib-disk)
+  variant-number=1
+  folder=ib-disk
+  suffix=-ib-disk
+else ifeq ($(variant), source-disk-build)
   variant-number=2
   folder=source-disk-build
   suffix=-source-disk-build
@@ -91,9 +96,9 @@ else ifeq ($(variant), source-disk-elt-files)
   folder=source-disk-elt-files
   suffix=-source-disk-elt-files
 else
-  variant-number=1
-  folder=ib-disk
-  suffix=-ib-disk
+  variant-number=5
+  folder=4am-crack
+  suffix=-4am-crack
 endif
 
 .PHONY:all
@@ -109,6 +114,7 @@ apple-build:
 	$(BEEBASM) -i 1-source-files/main-sources/elite-source.asm -v >> 3-assembled-output/compile.txt
 	$(BEEBASM) -i 1-source-files/main-sources/elite-bcfs.asm -v >> 3-assembled-output/compile.txt
 	$(BEEBASM) -i 1-source-files/main-sources/elite-mover.asm -v >> 3-assembled-output/compile.txt
+	$(BEEBASM) -i 1-source-files/main-sources/elite-loader.asm -v >> 3-assembled-output/compile.txt
 	$(PYTHON) 2-build-files/elite-checksum.py $(unencrypt) -rel$(variant-number)
 	$(BEEBASM) -i 1-source-files/main-sources/elite-transfer.asm -v >> 3-assembled-output/compile.txt
 	$(BEEBASM) -i 1-source-files/main-sources/elite-readme.asm -v >> 3-assembled-output/compile.txt
@@ -140,6 +146,33 @@ ifeq ($(variant-number), 1)
 	$(DISKM8) -with-disk 5-compiled-game-disks/elite-apple$(suffix).dsk -file-put 5-compiled-game-disks/bee#0x3b00.bin
 	$(DISKM8) -with-disk 5-compiled-game-disks/elite-apple$(suffix).dsk -file-put 5-compiled-game-disks/four#0x4000.bin
 	$(DISKM8) -with-disk 5-compiled-game-disks/elite-apple$(suffix).dsk -file-put 5-compiled-game-disks/mover#0x0300.bin
+	$(DISKM8) -with-disk 5-compiled-game-disks/elite-apple$(suffix).dsk -file-put 3-assembled-output/readme.txt
+  ifeq ($(OS), Windows_NT)
+	del /Q /F 5-compiled-game-disks\*.bin
+  else
+	rm -fr 5-compiled-game-disks/*.bin
+  endif
+endif
+ifeq ($(variant-number), 5)
+  ifeq ($(OS), Windows_NT)
+	del /Q /F 5-compiled-game-disks\*.bin
+	copy 1-source-files\other-files\$(folder)\blank.dsk 5-compiled-game-disks\elite-apple$(suffix).dsk
+	copy 1-source-files\images\$(folder)\A.SCREEN.bin 5-compiled-game-disks\elitepic#0x2000.bin
+	copy 3-assembled-output\ELA.bin 5-compiled-game-disks\ela#0x0a00.bin
+	copy 3-assembled-output\ELB.bin 5-compiled-game-disks\elb1#0x4000.bin
+	copy 3-assembled-output\SEC3.bin 5-compiled-game-disks\sec3#0x2000.bin
+  else
+	rm -fr 5-compiled-game-disks/*.bin
+	cp 1-source-files/other-files/$(folder)/blank.dsk 5-compiled-game-disks/elite-apple$(suffix).dsk
+	cp 1-source-files/images/$(folder)/A.SCREEN.bin 5-compiled-game-disks/scrn#0x2000.bin
+	cp 3-assembled-output/ELA.bin 5-compiled-game-disks/ela#0x0a00.bin
+	cp 3-assembled-output/ELB.bin 5-compiled-game-disks/elb1#0x4000.bin
+	cp 3-assembled-output/SEC3.bin 5-compiled-game-disks/sec3#0x2000.bin
+  endif
+	$(DISKM8) -with-disk 5-compiled-game-disks/elite-apple$(suffix).dsk -file-put 5-compiled-game-disks/sec3#0x2000.bin
+	$(DISKM8) -with-disk 5-compiled-game-disks/elite-apple$(suffix).dsk -file-put 5-compiled-game-disks/scrn#0x2000.bin
+	$(DISKM8) -with-disk 5-compiled-game-disks/elite-apple$(suffix).dsk -file-put 5-compiled-game-disks/elb1#0x4000.bin
+	$(DISKM8) -with-disk 5-compiled-game-disks/elite-apple$(suffix).dsk -file-put 5-compiled-game-disks/ela#0x0a00.bin
 	$(DISKM8) -with-disk 5-compiled-game-disks/elite-apple$(suffix).dsk -file-put 3-assembled-output/readme.txt
   ifeq ($(OS), Windows_NT)
 	del /Q /F 5-compiled-game-disks\*.bin

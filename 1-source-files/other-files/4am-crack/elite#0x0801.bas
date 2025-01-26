@@ -1,0 +1,3 @@
+10 D$ =  CHR$ (4)
+20  PRINT D$;"BRUN ELA" 
+30  PRINT D$;"BRUN SEC3" 

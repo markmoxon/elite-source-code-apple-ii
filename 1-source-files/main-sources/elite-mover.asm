@@ -36,6 +36,7 @@
  _SOURCE_DISK_BUILD         = (_VARIANT = 2)
  _SOURCE_DISK_CODE_FILES    = (_VARIANT = 3)
  _SOURCE_DISK_ELT_FILES     = (_VARIANT = 4)
+ _4AM_CRACK                 = (_VARIANT = 5)
  _SOURCE_DISK               = (_VARIANT = 2) OR (_VARIANT = 3) OR (_VARIANT = 4)
 
 ; ******************************************************************************
@@ -48,7 +49,7 @@
 
  LOAD% = $0300          ; The address where the code will be loaded
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  BEGIN = $7EB9          ; The address of the BEGIN routine in the main game code
 

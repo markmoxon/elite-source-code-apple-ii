@@ -49,6 +49,7 @@
  _SOURCE_DISK_BUILD         = (_VARIANT = 2)
  _SOURCE_DISK_CODE_FILES    = (_VARIANT = 3)
  _SOURCE_DISK_ELT_FILES     = (_VARIANT = 4)
+ _4AM_CRACK                 = (_VARIANT = 5)
  _SOURCE_DISK               = (_VARIANT = 2) OR (_VARIANT = 3) OR (_VARIANT = 4)
 
 ; ******************************************************************************
@@ -61,7 +62,7 @@
 
  LOAD% = $4000          ; The address where the code will be loaded
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  STORE = $0200          ; The address where the dashboard image is loaded
 
@@ -1474,7 +1475,7 @@ ENDIF
                         ;   * Track
                         ;   * Volume
 
- PRINT "Disk operations workspace from ", ~K%, "to ", ~P%-1, "inclusive"
+ PRINT "Disk operations workspace from ", ~buffer, "to ", ~P%-1, "inclusive"
 
 ; ******************************************************************************
 ;
@@ -2610,7 +2611,7 @@ IF _IB_DISK
                         ; Toggled by pressing "Y" when paused, see the DKS3
                         ; routine for details
 
-ELIF _SOURCE_DISK
+ELIF _SOURCE_DISK OR _4AM_CRACK
 
  SKIP 1                 ; Reverse joystick Y-channel configuration setting
                         ;
@@ -2681,7 +2682,7 @@ ENDIF
                         ;           from the call in the TITLE routine, so
                         ;           prevent it from stopping the title music
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
 .fireButtonMask
 
@@ -2743,7 +2744,7 @@ ENDIF
  LDA #HI(CODE2)         ; So P(1 0) contains the address where we want to store
  STA P+1                ; the dashboard image in screen memory
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  LDX #7                 ; Set X = 7 so we copy eight pages of memory from
                         ; SC(1 0) to P(1 0) in the following loop
@@ -2790,7 +2791,7 @@ ENDIF
 
  DEX                    ; Decrement the page counter
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  BPL Sept3              ; Loop back until we have copied X + 1 pages
 
@@ -2813,7 +2814,7 @@ ENDIF
 ;JSR Checksum           ; This instruction is commented out in the original
                         ; source
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  LDA #$30               ; This modifies the RDKEY routine so the BPL at nokeys2
  STA nokeys2+4          ; jumps to nofast+2 rather than nojoyst (though this has
@@ -2942,10 +2943,21 @@ ENDIF
 
  RTS                    ; Return from the subroutine
 
+IF _4AM_CRACK
+
+ EQUB $B7, $AA          ; These bytes appear to be unused, though there is a
+ EQUB $45, $03          ; comment in the original source that says "red
+                        ; herring", so this would appear to be a red herring
+                        ; aimed at confusing any crackers
+
+ELIF _IB_DISK OR _SOURCE_DISK
+
  EQUB $B7, $AA          ; These bytes appear to be unused, though there is a
  EQUB $45, $23          ; comment in the original source that says "red
                         ; herring", so this would appear to be a red herring
                         ; aimed at confusing any crackers
+
+ENDIF
 
 ; ******************************************************************************
 ;
@@ -3510,7 +3522,7 @@ ENDIF
  LDA KY12               ; If "B" is being pressed, keep going, otherwise jump
  BEQ MA76               ; down to MA76 to skip the following
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  LDA BOMB               ; If we already set off our energy bomb, then BOMB is
  BMI MA76               ; negative, so this skips to MA76 if our energy bomb is
@@ -5726,7 +5738,7 @@ IF _IB_DISK
  JSR MT19               ; Call MT19 to capitalise the next letter (i.e. set
                         ; Sentence Case for this word only)
 
-ELIF _SOURCE_DISK
+ELIF _SOURCE_DISK OR _4AM_CRACK
 
  JSR DASC               ; Call the relevant JMTB subroutine, as this instruction
                         ; will have been modified by the above to point to the
@@ -5869,7 +5881,7 @@ ENDIF
 
  LDA #6                 ; Set A = 6 to denote column 6
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  STA XC                 ; Move the text cursor to column 6
 
@@ -6391,7 +6403,7 @@ IF _IB_DISK
  EQUS "JAMESON"         ; The current commander name
  EQUB 13
 
-ELIF _SOURCE_DISK
+ELIF _SOURCE_DISK OR _4AM_CRACK
 
  EQUS "jameson"         ; The current commander name
  EQUB 13
@@ -6428,7 +6440,7 @@ IF _IB_DISK
  EQUB $00, $03
  EQUB $00
 
-ELIF _SOURCE_DISK
+ELIF _SOURCE_DISK OR _4AM_CRACK
 
  SKIP 53                ; Placeholders for bytes #0 to #52
 
@@ -6483,7 +6495,7 @@ IF _IB_DISK
                         ; with $A9 to make it harder to tamper with the checksum
                         ; byte, #74
 
-ELIF _SOURCE_DISK
+ELIF _SOURCE_DISK OR _4AM_CRACK
 
  EQUB 0                 ; Placeholder for the checksum in byte #74
 
@@ -6516,7 +6528,7 @@ IF _IB_DISK
  EQUB $27               ; The third checksum value for the default commander,
                         ; #75
 
-ELIF _SOURCE_DISK
+ELIF _SOURCE_DISK OR _4AM_CRACK
 
  EQUB 0                 ; Placeholder for the checksum in byte #75
 
@@ -6547,7 +6559,7 @@ IF _IB_DISK
 
  EQUB $03               ; The checksum value for the default commander, #76
 
-ELIF _SOURCE_DISK
+ELIF _SOURCE_DISK OR _4AM_CRACK
 
  EQUB 0                 ; Placeholder for the checksum in byte #76
 
@@ -8803,7 +8815,7 @@ ENDIF
 
  LDA #7                 ; Set A = 7 to denote column 7
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  STA XC                 ; Move the text cursor to column 7
 
@@ -9087,7 +9099,7 @@ ENDIF
 
  LDA #6                 ; Set A = 6 to demote column 6
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  STA XC                 ; Move the text cursor to column 6
 
@@ -9925,7 +9937,7 @@ IF _IB_DISK
 
  EQUB 0
 
-ELIF _SOURCE_DISK
+ELIF _SOURCE_DISK OR _4AM_CRACK
 
  EQUB %11111111
 
@@ -16765,7 +16777,7 @@ ENDIF
 
  LDA #1                 ; Set A = 1 to set as the text cursor column
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  STA XC                 ; Move the text cursor to column 1
 
@@ -20901,7 +20913,7 @@ ENDIF
 
  LDA #1                 ; Set A = 1 to denote column 1
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  STA XC                 ; Move the text cursor to column 1, for the item's name
 
@@ -21008,7 +21020,7 @@ ENDIF
 
  LDA #25                ; Set A = 25 to denote column 25
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  STA XC                 ; Move the text cursor to column 25
 
@@ -21148,7 +21160,7 @@ ENDIF
 
  LDA #17                ; Set A = 17 to denote column 17
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  STA XC                 ; Move the text cursor in XC to column 17
 
@@ -21549,7 +21561,7 @@ ENDIF
  JSR GTHG               ; Call GTHG to spawn a Thargoid ship and a Thargon
                         ; companion
 
-IF _IB_DISK OR _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES
+IF _IB_DISK OR _4AM_CRACK OR _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES
 
  LDA #2                 ; Fetch the number of Thargoid ships from MANY+THG, and
  CMP MANY+THG           ; if it is less than or equal to 2, loop back to MJP1 to
@@ -21981,7 +21993,7 @@ ENDIF
 
  LDA #12                ; Set A = 12 to denote column 12
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  STA XC                 ; Move the text cursor to column 12
 
@@ -22061,7 +22073,7 @@ ENDIF
 
  LDA #25                ; Set A = 25 to denote column 25
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  STA XC                 ; Move the text cursor to column 25
 
@@ -22111,7 +22123,7 @@ ENDIF
 
  LDA #2                 ; Set A = 2 to denote column 2
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  STA XC                 ; Move the text cursor to column 2
 
@@ -22568,7 +22580,7 @@ ENDIF
  TAY                    ; Set Y to a counter going from 16 to 19 in the loop
                         ; below
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  STA YC                 ; Move the text cursor to row 16
 
@@ -22582,7 +22594,7 @@ ENDIF
 
  LDA #12                ; Set A = 12 to denote column 12
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  STA XC                 ; Move the text cursor to column 12
 
@@ -22603,7 +22615,7 @@ ENDIF
  ADC #80                ; "RIGHT"
  JSR TT27
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  INC YC                 ; Move the text cursor down a row, and increment the
                         ; counter in YC at the same time
@@ -23473,7 +23485,7 @@ ENDIF
 
  LDA #21                ; Set A = 21 to denote column 21
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  STA XC                 ; Set the X-column in XC to 21
 
@@ -27307,11 +27319,15 @@ IF _SOURCE_DISK_CODE_FILES
  STA KY6
  STA KY7
 
+ LDA thiskey            ; Fetch the key pressed from thiskey in the key logger
+
+ RTS                    ; Return from the subroutine
+
 ENDIF
 
 .TJ1
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  LDA #0                 ; Clear the key logger entries for "M" (fire missile)
  STA KY16               ; and "J" (in-system jump)
@@ -27324,7 +27340,7 @@ ENDIF
  LDX #0                 ; Set the initial values for the results, X = Y = 0,
  LDY #0                 ; which we now increase or decrease appropriately
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  CMP #8                 ; If left arrow (CTRL-H) was pressed, skip the next two
  BEQ P%+6               ; instructions to set X = X - 1
@@ -29836,7 +29852,7 @@ IF _IB_DISK
                         ; of the Coriolis space station's ship blueprint (the
                         ; initial address in this instruction is overwritten)
 
-ELIF _SOURCE_DISK
+ELIF _SOURCE_DISK OR _4AM_CRACK
 
  EQUW $8888             ; This variable is set by routine BEGIN to the address
                         ; of the Coriolis space station's ship blueprint
@@ -30406,7 +30422,7 @@ ENDIF
                         ; soft switch will be set, so this sets bit 7 of A if
                         ; either one of the fire buttons is being pressed
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  AND fireButtonMask     ; This is a strange bit of code - fireButtonMask is set
                         ; to %00001011 but it is never changed, so this AND will
@@ -32014,7 +32030,7 @@ IF _IB_DISK
                         ; changes the destination from nojoyst to nofast+2 so
                         ; that we also skip over the joystick fire button scan
 
-ELIF _SOURCE_DISK
+ELIF _SOURCE_DISK OR _4AM_CRACK
 
  LDA JSTK               ; If bit 7 of JSTK is clear, then we are configured to
  BPL nojoyst            ; use the keyboard rather than the joystick, so jump to
@@ -32027,7 +32043,7 @@ ENDIF
                         ; now read the joystick's position and fire button,
                         ; starting with the position in both axes
 
-IF _IB_DISK OR _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES
+IF _IB_DISK OR _4AM_CRACK OR _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES
 
  LDX auto               ; If the docking computer is currently activated, jump
  BNE nojoyst            ; to nojoyst to skip the following, so we disable the
@@ -45396,7 +45412,7 @@ ENDMACRO
 
 .WSCAN
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  PHA                    ; Store the A, X and Y registers on the stack
  TXA
@@ -45572,7 +45588,7 @@ ENDIF
 
 .RR5
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  BIT UPTOG              ; If bit 7 of UPTOG is set, jump to RR7 to skip the
  BMI RR7                ; following, so we print both upper and lower case
@@ -46422,7 +46438,7 @@ IF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES
 
  RTS                    ; Return from the subroutine
 
-ELIF _IB_DISK OR _SOURCE_DISK_CODE_FILES
+ELIF _IB_DISK OR _4AM_CRACK OR _SOURCE_DISK_CODE_FILES
 
 .SETXC
 
@@ -46456,7 +46472,7 @@ IF _SOURCE_DISK_BUILD OR _SOURCE_DISK_ELT_FILES
 ;                       ; source
 ;STA YC
 
-ELIF _IB_DISK OR _SOURCE_DISK_CODE_FILES
+ELIF _IB_DISK OR _4AM_CRACK OR _SOURCE_DISK_CODE_FILES
 
 .SETYC
 
@@ -46958,7 +46974,7 @@ ENDIF
 
  SKIP 0
 
-IF _IB_DISK
+IF _IB_DISK OR _4AM_CRACK
 
  EQUB $83, $6F          ; These bytes appear to be unused
  EQUB $63, $6F

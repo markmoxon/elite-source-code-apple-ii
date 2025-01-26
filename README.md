@@ -34,6 +34,7 @@ See the [introduction](#introduction) for more information, or jump straight int
 
 * [Building different variants of Apple II Elite](#building-different-variants-of-apple-ii-elite)
 
+  * [Building the 4am crack variant](#building-the-4am-crack-variant)
   * [Building the Ian Bell game disk variant](#building-the-ian-bell-game-disk-variant)
   * [Building the source disk build variant](#building-the-source-disk-build-variant)
   * [Building the source disk CODE files variant](#building-the-source-disk-code-files-variant)
@@ -48,7 +49,7 @@ See the [introduction](#introduction) for more information, or jump straight int
 
 This repository contains the original source code for Elite on the Apple II, with every single line documented and (for the most part) explained.
 
-You can build the fully functioning game from this source. [Four variants](#building-different-variants-of-apple-ii-elite) are currently supported: the game disk from Ian Bell's personal website, the variant built by the source disk build process, the variant built from the CODE* binary files already on the source disk, and the variant built from the ELT* binary files already on the source disk.
+You can build the fully functioning game from this source. [Five variants](#building-different-variants-of-apple-ii-elite) are currently supported: the 4am crack disk, the game disk from Ian Bell's personal website, the variant built by the source disk build process, the variant built from the CODE* binary files already on the source disk, and the variant built from the ELT* binary files already on the source disk.
 
 This repository is a companion to the [elite.bbcelite.com website](https://elite.bbcelite.com)<!--, which contains all the code from this repository, but laid out in a much more human-friendly fashion-->. The links at the top of this page will take you to repositories for the other versions of Elite that are covered by this project.
 
@@ -155,7 +156,7 @@ All being well, entering the following into a command window:
 make.bat
 ```
 
-will produce a file called `elite-apple-ib-disk.dsk` in the `5-compiled-game-disks` folder that contains the Ian Bell game disk variant, which you can then load into an emulator, or into a real Apple II.
+will produce a file called `elite-apple-4am-crack.dsk` in the `5-compiled-game-disks` folder that contains the 4am crack variant, which you can then load into an emulator, or into a real Apple II.
 
 ### Mac and Linux
 
@@ -167,7 +168,7 @@ All being well, entering the following into a terminal window:
 make
 ```
 
-will produce a file called `elite-apple-ib-disk.dsk` in the `5-compiled-game-disks` folder that contains the Ian Bell game disk variant, which you can then load into an emulator, or into a real Apple II.
+will produce a file called `elite-apple-4am-crack.dsk` in the `5-compiled-game-disks` folder that contains the 4am crack variant, which you can then load into an emulator, or into a real Apple II.
 
 ### Build options
 
@@ -175,7 +176,8 @@ By default the build process will create a typical Elite game disk with a standa
 
 * `variant=<name>` - Build the specified variant:
 
-  * `variant=ib-disk` (default)
+  * `variant=4am-crack` (default)
+  * `variant=ib-disk`
   * `variant=source-disk-build`
   * `variant=source-disk-code-files`
   * `variant=source-disk-elt-files`
@@ -213,37 +215,38 @@ The Python script `crc32.py` in the `2-build-files` folder does the actual verif
 The binaries in the `4-reference-binaries` folder are those extracted from the released version of the game, while those in the `3-assembled-output` folder are produced by the build process. For example, if you don't make any changes to the code and build the project with `make`, then this is the output of the verification process:
 
 ```
-Results for variant: ib-disk
+Results for variant: 4am-crack
 [--originals--]  [---output----]
 Checksum   Size  Checksum   Size  Match  Filename
 -----------------------------------------------------------
-dcd37bb9  32768  dcd37bb9  32768   Yes   CODE.unprot.bin
-310a5ea5  20480  310a5ea5  20480   Yes   CODE1.bin
-310a5ea5  20480  310a5ea5  20480   Yes   CODE1.unprot.bin
-35bc6507  12288  35bc6507  12288   Yes   CODE2.bin
+796a263b  32768  796a263b  32768   Yes   CODE.unprot.bin
+62271826  20480  62271826  20480   Yes   CODE1.bin
+a6f4ed53  20480  a6f4ed53  20480   Yes   CODE1.unprot.bin
+f7b5430f  12288  f7b5430f  12288   Yes   CODE2.bin
 35bc6507  12288  35bc6507  12288   Yes   CODE2.unprot.bin
-18be5848   5376  18be5848   5376   Yes   DATA.bin
-18be5848   5376  18be5848   5376   Yes   DATA.unprot.bin
-31bd40f8  26112  31bd40f8  26112   Yes   ELA.bin
-310a5ea5  20480  310a5ea5  20480   Yes   ELB.bin
-1bbcc440   3710  1bbcc440   3710   Yes   ELTA.bin
-5125fc56   2363  5125fc56   2363   Yes   ELTB.bin
+a831e7e2   5280  a831e7e2   5280   Yes   DATA.bin
+e66e6208   5280  e66e6208   5280   Yes   DATA.unprot.bin
+4520e38d  26400  4520e38d  26400   Yes   ELA.bin
+62271826  20480  62271826  20480   Yes   ELB.bin
+6adb264a   3710  6adb264a   3710   Yes   ELTA.bin
+711df275   2363  711df275   2363   Yes   ELTB.bin
 c4da2495   3082  c4da2495   3082   Yes   ELTC.bin
 dc6bf353   3308  dc6bf353   3308   Yes   ELTD.bin
 88396ce4   2243  88396ce4   2243   Yes   ELTE.bin
-4c6071c1   3477  4c6071c1   3477   Yes   ELTF.bin
+5ebd3212   3477  5ebd3212   3477   Yes   ELTF.bin
 fef23147   2391  fef23147   2391   Yes   ELTG.bin
 cb094bf3   1203  cb094bf3   1203   Yes   ELTH.bin
 0196f101    306  0196f101    306   Yes   ELTI.bin
 978e5515   1437  978e5515   1437   Yes   ELTJ.bin
 3d92a08d   1824  3d92a08d   1824   Yes   ELTK.bin
 d61caafe   3513  d61caafe   3513   Yes   IANTOK.bin
-c22cea95     41  c22cea95     41   Yes   MOVER.bin
+de4a0b89   1274  de4a0b89   1274   Yes   SEC3.bin
 6a113fb1   7314  6a113fb1   7314   Yes   SHIPS.bin
 f77b2a55    992  f77b2a55    992   Yes   WORDS.bin
+-             -  c22cea95     41    -    MOVER.bin
 ```
 
-All the compiled binaries match the originals, so we know we are producing the same final game as the Ian Bell game disk variant.
+All the compiled binaries match the originals, so we know we are producing the same final game as the 4am crack variant.
 
 ### Log files
 
@@ -253,7 +256,9 @@ During compilation, details of every step are output in a file called `compile.t
 
 This repository contains the source code for four different variants of Apple II Elite:
 
-* The game disk from Ian Bell's personal website, which contains a cracked version of the original Firebird game
+* The game disk from Ian Bell's personal website, which contains a cracked version of the original Firebird game by 4am crack (so this is the most authentic version, just without the disk protection)
+
+* The game disk from Ian Bell's personal website, which contains a cracked version of the original Firebird game by The Student
 
 * The variant produced by running the build process on the source disk from Ian Bell's personal website
 
@@ -263,9 +268,59 @@ This repository contains the source code for four different variants of Apple II
 
 By default the build process builds the FirebIan Bell game disk variant, but you can build a specified variant using the `variant=` build parameter.
 
+### Building the 4am crack variant
+
+You can add `variant=4am-crack` to produce the `elite-apple-4am-crack.dsk` file that contains the 4am crack variant, though that's the default value so it isn't necessary. In other words, you can build it like this:
+
+```
+make.bat variant=4am-crack
+```
+
+or this on a Mac or Linux:
+
+```
+make variant=4am-crack
+```
+
+This will produce a file called `elite-apple-4am-crack.dsk` in the `5-compiled-game-disks` folder that contains the 4am crack variant.
+
+The verification checksums for this version are as follows:
+
+```
+Results for variant: 4am-crack
+[--originals--]  [---output----]
+Checksum   Size  Checksum   Size  Match  Filename
+-----------------------------------------------------------
+796a263b  32768  796a263b  32768   Yes   CODE.unprot.bin
+62271826  20480  62271826  20480   Yes   CODE1.bin
+a6f4ed53  20480  a6f4ed53  20480   Yes   CODE1.unprot.bin
+f7b5430f  12288  f7b5430f  12288   Yes   CODE2.bin
+35bc6507  12288  35bc6507  12288   Yes   CODE2.unprot.bin
+a831e7e2   5280  a831e7e2   5280   Yes   DATA.bin
+e66e6208   5280  e66e6208   5280   Yes   DATA.unprot.bin
+4520e38d  26400  4520e38d  26400   Yes   ELA.bin
+62271826  20480  62271826  20480   Yes   ELB.bin
+6adb264a   3710  6adb264a   3710   Yes   ELTA.bin
+711df275   2363  711df275   2363   Yes   ELTB.bin
+c4da2495   3082  c4da2495   3082   Yes   ELTC.bin
+dc6bf353   3308  dc6bf353   3308   Yes   ELTD.bin
+88396ce4   2243  88396ce4   2243   Yes   ELTE.bin
+5ebd3212   3477  5ebd3212   3477   Yes   ELTF.bin
+fef23147   2391  fef23147   2391   Yes   ELTG.bin
+cb094bf3   1203  cb094bf3   1203   Yes   ELTH.bin
+0196f101    306  0196f101    306   Yes   ELTI.bin
+978e5515   1437  978e5515   1437   Yes   ELTJ.bin
+3d92a08d   1824  3d92a08d   1824   Yes   ELTK.bin
+d61caafe   3513  d61caafe   3513   Yes   IANTOK.bin
+c22cea95     41  c22cea95     41   Yes   MOVER.bin
+de4a0b89   1274  de4a0b89   1274   Yes   SEC3.bin
+6a113fb1   7314  6a113fb1   7314   Yes   SHIPS.bin
+f77b2a55    992  f77b2a55    992   Yes   WORDS.bin
+```
+
 ### Building the Ian Bell game disk variant
 
-You can add `variant=ib-disk` to produce the `elite-apple-ib-disk.dsk` file that contains the Ian Bell game disk variant, though that's the default value so it isn't necessary. In other words, you can build it like this:
+You can build the Ian Bell game disk variant by appending `variant=ib-disk` to the `make` command, like this on Windows:
 
 ```
 make.bat variant=ib-disk
@@ -310,6 +365,7 @@ d61caafe   3513  d61caafe   3513   Yes   IANTOK.bin
 c22cea95     41  c22cea95     41   Yes   MOVER.bin
 6a113fb1   7314  6a113fb1   7314   Yes   SHIPS.bin
 f77b2a55    992  f77b2a55    992   Yes   WORDS.bin
+-             -  de4a0b89   1274    -    SEC3.bin
 ```
 
 ### Building the source disk build variant
@@ -356,9 +412,10 @@ e9b436ce    306  e9b436ce    306   Yes   ELTI.bin
 1375d27d   1437  1375d27d   1437   Yes   ELTJ.bin
 e878870b   1805  e878870b   1805   Yes   ELTK.bin
 d61caafe   3513  d61caafe   3513   Yes   IANTOK.bin
-da873557     41  da873557     41   Yes   MOVER.bin
 6a113fb1   7314  6a113fb1   7314   Yes   SHIPS.bin
 998bb35a    992  998bb35a    992   Yes   WORDS.bin
+-             -  da873557     41    -    MOVER.bin
+-             -  de4a0b89   1274    -    SEC3.bin
 ```
 
 ### Building the source disk CODE files variant
@@ -405,9 +462,10 @@ b48b8c0a    306  b48b8c0a    306   Yes   ELTI.bin
 ba7ba5ea   1437  ba7ba5ea   1437   Yes   ELTJ.bin
 f7446a16   1809  f7446a16   1809   Yes   ELTK.bin
 d61caafe   3513  d61caafe   3513   Yes   IANTOK.bin
-da873557     41  da873557     41   Yes   MOVER.bin
 6a113fb1   7314  6a113fb1   7314   Yes   SHIPS.bin
 f77b2a55    992  f77b2a55    992   Yes   WORDS.bin
+-             -  da873557     41    -    MOVER.bin
+-             -  de4a0b89   1274    -    SEC3.bin
 ```
 
 ### Building the source disk ELT files variant
@@ -454,9 +512,10 @@ e9b436ce    306  e9b436ce    306   Yes   ELTI.bin
 1375d27d   1437  1375d27d   1437   Yes   ELTJ.bin
 e878870b   1805  e878870b   1805   Yes   ELTK.bin
 d61caafe   3513  d61caafe   3513   Yes   IANTOK.bin
-da873557     41  da873557     41   Yes   MOVER.bin
 6a113fb1   7314  6a113fb1   7314   Yes   SHIPS.bin
 f77b2a55    992  f77b2a55    992   Yes   WORDS.bin
+-             -  da873557     41    -    MOVER.bin
+-             -  de4a0b89   1274    -    SEC3.bin
 ```
 
 ### Differences between the variants
@@ -482,7 +541,7 @@ Here's an example of how workspace noise is included, from the big code file in 
 ```
 IF _MATCH_ORIGINAL_BINARIES
 
- IF _IB_DISK
+ IF _IB_DISK OR _4AM_CRACK
 
   EQUB &00, &5C, &A0, &6C, &73, &73, &31, &00
   EQUB &90, &20, &B8, &00, &00, &A9, &9F, &52

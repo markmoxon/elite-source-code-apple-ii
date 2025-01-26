@@ -31,6 +31,8 @@ for arg in argv[1:]:
         release = 3
     if arg == "-rel4":
         release = 4
+    if arg == "-rel5":
+        release = 5
 
 print("Apple II Elite Checksum")
 print("Encryption = ", encrypt)
@@ -74,6 +76,13 @@ elif release == 4:
     b = 0x4000                  # B%
     g = 0x45E9                  # G%
     na2_per_cent = 0x4DEE       # NA2%
+
+elif release == 5:
+
+    # 4am crack
+    b = 0x4000                  # B%
+    g = 0x45E9                  # G%
+    na2_per_cent = 0x4DF3       # NA2%
 
 # Load assembled code files that make up the CODE1 and CODE2 files
 
