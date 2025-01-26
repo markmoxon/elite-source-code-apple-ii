@@ -256,7 +256,7 @@ During compilation, details of every step are output in a file called `compile.t
 
 This repository contains the source code for four different variants of Apple II Elite:
 
-* The game disk from Ian Bell's personal website, which contains a cracked version of the original Firebird game by 4am crack (so this is the most authentic version, just without the disk protection)
+* The 4am crack, which is the most authentic version of the original Firebird game (only the disk protection has been removed)
 
 * The game disk from Ian Bell's personal website, which contains a cracked version of the original Firebird game by The Student
 

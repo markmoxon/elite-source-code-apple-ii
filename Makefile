@@ -157,14 +157,14 @@ ifeq ($(variant-number), 5)
   ifeq ($(OS), Windows_NT)
 	del /Q /F 5-compiled-game-disks\*.bin
 	copy 1-source-files\other-files\$(folder)\blank.dsk 5-compiled-game-disks\elite-apple$(suffix).dsk
-	copy 1-source-files\images\$(folder)\A.SCREEN.bin 5-compiled-game-disks\elitepic#0x2000.bin
+	copy 1-source-files\images\$(folder)\A.SCREEN1.bin 5-compiled-game-disks\elitepic#0x2000.bin
 	copy 3-assembled-output\ELA.bin 5-compiled-game-disks\ela#0x0a00.bin
 	copy 3-assembled-output\ELB.bin 5-compiled-game-disks\elb1#0x4000.bin
 	copy 3-assembled-output\SEC3.bin 5-compiled-game-disks\sec3#0x2000.bin
   else
 	rm -fr 5-compiled-game-disks/*.bin
 	cp 1-source-files/other-files/$(folder)/blank.dsk 5-compiled-game-disks/elite-apple$(suffix).dsk
-	cp 1-source-files/images/$(folder)/A.SCREEN.bin 5-compiled-game-disks/scrn#0x2000.bin
+	cp 1-source-files/images/$(folder)/A.SCREEN1.bin 5-compiled-game-disks/scrn#0x2000.bin
 	cp 3-assembled-output/ELA.bin 5-compiled-game-disks/ela#0x0a00.bin
 	cp 3-assembled-output/ELB.bin 5-compiled-game-disks/elb1#0x4000.bin
 	cp 3-assembled-output/SEC3.bin 5-compiled-game-disks/sec3#0x2000.bin
