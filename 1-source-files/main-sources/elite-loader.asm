@@ -131,7 +131,21 @@
  SKIP 1                 ; The current track before performing a seek in the RWTS
                         ; code
 
- SKIP 4
+.tsltrk
+
+ SKIP 1                 ; The track for the commander file's track/sector list
+
+.tslsct
+
+ SKIP 1                 ; The sector for the commander file's track/sector list
+
+.filtrk
+
+ SKIP 1                 ; The track for the commander file's contents
+
+.filsct
+
+ SKIP 1                 ; The sector for the commander file's contents
 
 .mtimel
 
