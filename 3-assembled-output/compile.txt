@@ -38072,6 +38072,10 @@ Saving file '3-assembled-output/MOVER.bin'
      00F2
 .ztemp3
      00F3
+.fromAddr
+     00F4
+.toAddr
+     00F6
 .track
      0300
 .sector
@@ -38663,19 +38667,20 @@ Disk operations workspace from &25D6 to &310 inclusive
      23D2   37 38 F8 39
      23D6   3A 3B 3C 3D
      23DA   3E 3F
-.L23DC
+.LoadFile
      23DC   A9 0C      LDA #&0C
      23DE   8D D5 24   STA &24D5
      23E1   20 37 20   JSR &2037
      23E4   B0 58      BCS &243E
      23E6   20 E7 20   JSR &20E7
      23E9   20 3F 24   JSR &243F
-.L23EC
+.load1
      23EC   20 0F 21   JSR &210F
      23EF   AC D4 24   LDY &24D4
      23F2   A2 00      LDX #&00
-.L23F4
+.load2
      23F4   B9 D6 25   LDA &25D6,Y
+.loadAddr
      23F7   9D 00 40   STA &4000,X
      23FA   20 4B 24   JSR &244B
      23FD   30 3F      BMI &243E
@@ -38707,7 +38712,7 @@ Disk operations workspace from &25D6 to &310 inclusive
      243C   D0 AE      BNE &23EC
 .L243E
      243E   60         RTS
-.L243F
+.CopyTrackSector
      243F   A0 00      LDY #&00
 .L2441
      2441   B9 D6 25   LDA &25D6,Y
@@ -38715,7 +38720,7 @@ Disk operations workspace from &25D6 to &310 inclusive
      2447   C8         INY
      2448   D0 F7      BNE &2441
      244A   60         RTS
-.L244B
+.DecrementFileSize
      244B   AD D2 24   LDA &24D2
      244E   38         SEC
      244F   E9 01      SBC #&01
@@ -38724,7 +38729,7 @@ Disk operations workspace from &25D6 to &310 inclusive
      2457   E9 00      SBC #&00
      2459   8D D3 24   STA &24D3
      245C   60         RTS
-.L245D
+.SetLoadVariables2
      245D   A9 04      LDA #&04
      245F   8D D4 24   STA &24D4
      2462   A9 FF      LDA #&FF
@@ -38738,7 +38743,7 @@ Disk operations workspace from &25D6 to &310 inclusive
      2476   A9 40      LDA #&40
      2478   8D F9 23   STA &23F9
      247B   60         RTS
-.L247C
+.SetLoadVariables1
      247C   A9 04      LDA #&04
      247E   8D D4 24   STA &24D4
      2481   A9 80      LDA #&80
@@ -38752,9 +38757,9 @@ Disk operations workspace from &25D6 to &310 inclusive
      2495   A9 02      LDA #&02
      2497   8D F9 23   STA &23F9
      249A   60         RTS
-.L249B
+.SetFilename
      249B   A0 00      LDY #&00
-.L249D
+.name1
      249D   B9 15 20   LDA &2015,Y
      24A0   99 19 20   STA &2019,Y
      24A3   C8         INY
@@ -38779,17 +38784,15 @@ Disk operations workspace from &25D6 to &310 inclusive
      24CC   8D 62 45   STA &4562
 .L24CF
      24CF   4C 00 40   JMP &4000
-.L24D2
-     24D2   FF
-.L24D3
-     24D3   4F
-.L24D4
+.fileSize
+     24D2   FF 4F
+.skipBytes
      24D4   04
-.L24D5
+.tslIndex
      24D5   00
-.L24D6
+.trackSector
      24D6   00
-.L24D7
+.CopyMemory
      24D7   A9 00      LDA #&00
      24D9   85 F4      STA &F4
      24DB   A9 40      LDA #&40
@@ -38800,7 +38803,7 @@ Disk operations workspace from &25D6 to &310 inclusive
      24E5   85 F7      STA &F7
      24E7   A2 30      LDX #&30
      24E9   A0 00      LDY #&00
-.L24EB
+.copy1
      24EB   B1 F4      LDA (&F4),Y
      24ED   91 F6      STA (&F6),Y
      24EF   C8         INY

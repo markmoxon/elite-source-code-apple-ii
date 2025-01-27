@@ -49,7 +49,7 @@
 
  LOAD% = $2000          ; The address where the code will be loaded
 
- startGame = $4000      ; ???
+ startGame = $4000      ; The entry point for the main game binary
 
  phsoff = $C080         ; Disk controller I/O soft switch for turning the
                         ; stepper motor phase 0 off (PHASEOFF)
@@ -82,7 +82,7 @@
 ;
 ;       Name: ZP
 ;       Type: Workspace
-;    Address: $00F0 to $00F3
+;    Address: $00F0 to $00F7
 ;   Category: Workspaces
 ;    Summary: Important variables used by the loader
 ;
@@ -105,6 +105,14 @@
 .ztemp3
 
  SKIP 1                 ; Temporary storage used by the disk routines
+
+.fromAddr
+
+ SKIP 2                 ; The address to copy from in the CopyMemory routine
+
+.toAddr
+
+ SKIP 2                 ; The address to copy to in the CopyMemory routine
 
 ; ******************************************************************************
 ;
@@ -259,26 +267,61 @@
 
 .ENTRY
 
- JSR L24D7              ; ???
+                        ; The ELITE BASIC program has already run by this point,
+                        ; which loads the ELA file into memory at $0A00 to $7210
+                        ; before running the SEC3 loader (this file) at $2000
 
- JSR L247C              ; ???
+ JSR CopyMemory         ; Copy memory from $4000-$6FFF to $9000-$BFFF
+                        ;
+                        ; This copies the CODE2 block that was loaded as part of
+                        ; the ELA file into $9000 to $BFFF
 
- JSR L23DC              ; ???
+ JSR SetLoadVariables1  ; Configure the file load variables as follows:
+                        ;
+                        ;   * skipBytes = 4
+                        ;
+                        ;   * fileSize(1 0) = $0880
+                        ;
+                        ;   * trackSector = 0
+                        ;
+                        ;   * loadAddr = STA $0200,X
 
- JSR L249B              ; ???
+ JSR LoadFile           ; Load the SCRN file of size $0880 at $0200 (though this
+                        ; isn't actually used)
 
- JSR L245D              ; ???
+ JSR SetFilename        ; Set the filename in comnam to ELB1
 
- JSR L23DC              ; ???
+ JSR SetLoadVariables2  ; Configure the file load variables as follows:
+                        ;
+                        ;   * skipBytes = 4
+                        ;
+                        ;   * fileSize(1 0) = $4FFF
+                        ;
+                        ;   * trackSector = 0
+                        ;
+                        ;   * loadAddr = STA $4000,X
 
- JMP startGame          ; ???
+ JSR LoadFile           ; Load the ELB1 file of size $4FFF at $4000, so that's
+                        ; from $4000 to $8FFF
+                        ;
+                        ; ELB1 contains the CODE1 block of the main game binary,
+                        ; so the end result of all this loading is:
+                        ;
+                        ;   * CODE1 from $4000 to $8FFF
+                        ;
+                        ;   * CODE2 from $9000 to $BFFF
+                        ;
+                        ; In other words the game binary is now loaded and in
+                        ; the correct location for the game to run
+
+ JMP startGame          ; Jump to startGame to start the game
 
 ; ******************************************************************************
 ;
 ;       Name: filename
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: ???
+;    Summary: The filename of the second file to load
 ;
 ; ******************************************************************************
 
@@ -291,8 +334,8 @@ EQUS "ELB1"
 ;       Name: comnam
 ;       Type: Variable
 ;   Category: Save and load
-;    Summary: Storage for the commander filename, padded out with spaces to a
-;             fixed size of 30 characters, for the rfile and wfile routines
+;    Summary: The filename of the first file to load, padded out with spaces to
+;             a fixed size of 30 characters for the rfile routine
 ;
 ; ******************************************************************************
 
@@ -1223,7 +1266,7 @@ EQUS "SCRN                          "
 
 .drverr
 
- PLP                    ; ??? 
+ PLP                    ; ???
 
  LDY mtroff,X           ; Read the disk controller I/O soft switch at MOTOROFF
                         ; for slot X to turn the disk motor off
@@ -2036,180 +2079,248 @@ EQUS "SCRN                          "
 
 ; ******************************************************************************
 ;
-;       Name: L23DC
+;       Name: LoadFile
 ;       Type: Subroutine
 ;   Category: Loader
-;    Summary: ???
+;    Summary: Load a multi-sector file
 ;
 ; ******************************************************************************
 
-.L23DC
+.LoadFile
 
- LDA #$0C
- STA $24D5
- JSR findf
- BCS L243E
- JSR gettsl
- JSR L243F
+ LDA #12                ; Set tslIndex = 12, so we can use this as an index into
+ STA tslIndex           ; the track/sector list for the file we want to load,
+                        ; starting with the index of the first track/sector pair
+                        ; in byte #12
 
-.L23EC
+ JSR findf              ; Search the disk catalog for a file with the filename
+                        ; in comnam
 
- JSR rsect
- LDY $24D4
- LDX #$00
+ BCS L243E              ; If no file is found with this name then findf will
+                        ; set the C flag, so jump to rfile3 to return from the
+                        ; subroutine as the file cannot be found
 
-.L23F4
+ JSR gettsl             ; Get the track/sector list of the file and populate the
+                        ; track and sector variables with the track and sector
+                        ; of the file's contents, to pass to the call to rsect
 
- LDA $25D6,Y
- STA $4000,X
- JSR L244B
- BMI L243E
- INX
- INY
- BNE L23F4
- INC $23F9
- LDA $23F8
+ JSR CopyTrackSector    ; Copy the track/sector list from the buffer into
+                        ; trackSector so we can work our way through it to load
+                        ; the file one sector at a time
+
+.load1
+
+ JSR rsect              ; Read the first sector of the file's data into the
+                        ; buffer (or the next sector if we loop back from below)
+
+ LDY skipBytes          ; Set Y to the number of bytes to skip from the start of
+                        ; the file, so we can use it as a starting index into
+                        ; the first sector that we copy
+
+ LDX #0                 ; Set X = 0 to act as a byte index into the destination
+                        ; address for the file
+
+.load2
+
+ LDA buffer,Y           ; Set A to the Y-th byte in the buffer
+
+.loadAddr
+
+ STA $4000,X            ; And copy it to the X-th byte of the load address,
+                        ; which by this point has been modified to the correct
+                        ; load address by the SetLoadVariables1 or
+                        ; SetLoadVariables2 routine
+
+ JSR DecrementFileSize  ; Decrement the file size in fileSize(1 0) by 1 as we
+                        ; have just loaded one more byte of the file
+
+ BMI L243E              ; If the result is negative then we have copied all
+                        ; fileSize(1 0) bytes, so jump to L243E to return from the
+                        ; subroutine
+
+ INX                    ; Increment the destination index in X
+
+ INY                    ; Increment the source index in Y
+
+ BNE load2              ; Loop back until we have reached the end of the page
+                        ; page in the source index
+
+ INC loadAddr+2         ; Modify the loadAddr address above by incrementing
+                        ; the high byte to point to the next page
+
+ LDA loadAddr+1         ; Subtract skipBytes from the loadAddr address ???
  SEC
- SBC $24D4
- STA $23F8
- LDA $23F9
- SBC #$00
- STA $23F9
- LDA $24D4
- BEQ L2422
- LDA #$00
- STA $24D4
+ SBC skipBytes
+ STA loadAddr+1
+ LDA loadAddr+2
+ SBC #0
+ STA loadAddr+2
 
-.L2422
+ LDA skipBytes          ; Set skipBytes = 0 so we don't skip any bytes from the
+ BEQ load3              ; remaining sectors (as we only want to skip bytes from
+ LDA #0                 ; the first sector)
+ STA skipBytes
 
- INC $24D5
- INC $24D5
- LDY $24D5
- LDA $24D6,Y
- STA $0300
- LDA L24D7,Y
- STA $0301
- BNE L23EC
- LDA $0300
- BNE L23EC
+.load3
+
+ INC tslIndex           ; Set tslIndex = tslIndex + 2 to point to the next track
+ INC tslIndex           ; and sector pair in the track/sector list
+
+ LDY tslIndex           ; Set track to the track number from the next pair in
+ LDA trackSector,Y      ; the track/sector list
+ STA track
+
+ LDA trackSector+1,Y    ; Set sector to the sector number from the next pair in
+ STA sector             ; the track/sector list
+
+ BNE load1              ; If either the track or sector number is non-zero, loop
+ LDA track              ; back to load1 to load the next sector
+ BNE load1
 
 .L243E
 
- RTS
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
-;       Name: L243F
+;       Name: CopyTrackSector
 ;       Type: Subroutine
 ;   Category: Loader
-;    Summary: ???
+;    Summary: Copy the track/sector list from the disk buffer to trackSector
 ;
 ; ******************************************************************************
 
-.L243F
+.CopyTrackSector
 
- LDY #$00
+ LDY #0                 ; Set Y = 0 to use as a byte counter
 
 .L2441
 
- LDA $25D6,Y
- STA $24D6,Y
- INY
- BNE L2441
- RTS
+ LDA buffer,Y           ; Copy the Y-th byte of buffer to the Y-th byte of
+ STA trackSector,Y      ; trackSector
+
+ INY                    ; Increment the byte counter
+
+ BNE L2441              ; Loop back until we have copied a whole page of data
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
-;       Name: L244B
+;       Name: DecrementFileSize
 ;       Type: Subroutine
 ;   Category: Loader
-;    Summary: ???
+;    Summary: Decrement the file size in fileSize(1 0) by 1
 ;
 ; ******************************************************************************
 
-.L244B
+.DecrementFileSize
 
- LDA $24D2
+ LDA fileSize           ; Set fileSize(1 0) = fileSize(1 0) - 1
  SEC
- SBC #$01
- STA $24D2
- LDA $24D3
- SBC #$00
- STA $24D3
- RTS
+ SBC #1
+ STA fileSize
+ LDA fileSize+1
+ SBC #0
+ STA fileSize+1
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
-;       Name: L245D
+;       Name: SetLoadVariables2
 ;       Type: Subroutine
 ;   Category: Loader
-;    Summary: ???
+;    Summary: Configure the file load variables for loading the ELB1 file
 ;
 ; ******************************************************************************
 
-.L245D
+.SetLoadVariables2
 
- LDA #$04
- STA $24D4
- LDA #$FF
- STA $24D2
+ LDA #4                 ; Set skipBytes = 4 so we skip the first four bytes of
+ STA skipBytes          ; the file (as these contain the program start address
+                        ; and file length)
+
+ LDA #$FF               ; Set fileSize(1 0) = $4FFF
+ STA fileSize
  LDA #$4F
- STA $24D3
- LDA #$00
- STA $24D6
- LDA #$00
- STA $23F8
+ STA fileSize+1
+
+ LDA #0                 ; Set trackSector = 0
+ STA trackSector
+
+ LDA #$00               ; Modify the instruction at loadAddr to STA $4000,X
+ STA loadAddr+1
  LDA #$40
- STA $23F9
- RTS
+ STA loadAddr+2
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
-;       Name: L247C
+;       Name: SetLoadVariables1
 ;       Type: Subroutine
 ;   Category: Loader
-;    Summary: ???
+;    Summary: Configure the file load variables for loading the SCRN file
 ;
 ; ******************************************************************************
 
-.L247C
+.SetLoadVariables1
 
- LDA #$04
- STA $24D4
- LDA #$80
- STA $24D2
+ LDA #4                 ; Set skipBytes = 4 so we skip the first four bytes of
+ STA skipBytes          ; the file (as these contain the program start address
+                        ; and file length)
+
+ LDA #$80               ; Set fileSize(1 0) = $0880
+ STA fileSize
  LDA #$08
- STA $24D3
- LDA #$00
- STA $24D6
- LDA #$00
- STA $23F8
+ STA fileSize+1
+
+ LDA #0                 ; Set trackSector = 0
+ STA trackSector
+
+ LDA #$00               ; Modify the instruction at loadAddr to STA $0200,X
+ STA loadAddr+1
  LDA #$02
- STA $23F9
- RTS
+ STA loadAddr+2
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
-;       Name: L249B
+;       Name: SetFilename
+;       Type: Subroutine
+;   Category: Loader
+;    Summary: Set the filename in comnam to ELB1
+;
+; ******************************************************************************
+
+.SetFilename
+
+ LDY #0                 ; Set Y = 0 to use as a character counter
+
+.name1
+
+ LDA filename,Y         ; Copy the Y-th character of filename to the Y-th
+ STA comnam,Y           ; character of comnam
+
+ INY                    ; Increment the character counter
+
+ CPY #4                 ; Loop back until we have copied all four characters of
+ BNE name1              ; filename to comnam
+
+ RTS                    ; Return from the subroutine
+
+; ******************************************************************************
+;
+;       Name: ???
 ;       Type: Subroutine
 ;   Category: Loader
 ;    Summary: ???
 ;
 ; ******************************************************************************
 
-.L249B
-
- LDY #$00
-
-.L249D
-
- LDA filename,Y
- STA $2019,Y
- INY
- CPY #$04
- BNE L249D
- RTS
- LDA #$00
+ LDA #0                 ; These instructions are not used ???
  STA $4562
  LDA $C064
  CMP #$FF
@@ -2228,106 +2339,105 @@ EQUS "SCRN                          "
 
 .L24CF
 
- JMP startGame
+ JMP startGame          ; This instruction is not used
 
 ; ******************************************************************************
 ;
-;       Name: L24D2
+;       Name: fileSize
 ;       Type: Variable
 ;   Category: Loader
-;    Summary: ???
+;    Summary: The file size of the file we are loading
 ;
 ; ******************************************************************************
 
-.L24D2
+.fileSize
 
- EQUB $FF
+ EQUW $4FFF
 
 ; ******************************************************************************
 ;
-;       Name: L24D3
+;       Name: skipBytes
 ;       Type: Variable
 ;   Category: Loader
-;    Summary: ???
+;    Summary: The number of bytes to skip at the start of the file that we are
+;             loading
 ;
 ; ******************************************************************************
 
-.L24D3
+.skipBytes
 
- EQUB $4F
+ EQUB 4
 
 ; ******************************************************************************
 ;
-;       Name: L24D4
+;       Name: tslIndex
 ;       Type: Variable
 ;   Category: Loader
-;    Summary: ???
+;    Summary: The index of the current entry in the track/sector list, as we
+;             work our way through the list
 ;
 ; ******************************************************************************
 
-.L24D4
+.tslIndex
 
- EQUB $04
+ EQUB 0
 
 ; ******************************************************************************
 ;
-;       Name: L24D5
+;       Name: trackSector
 ;       Type: Variable
 ;   Category: Loader
-;    Summary: ???
+;    Summary: The track/sector list for the file we are loading
 ;
 ; ******************************************************************************
 
-.L24D5
+.trackSector
 
- EQUB $00
-
-; ******************************************************************************
-;
-;       Name: L24D6
-;       Type: Variable
-;   Category: Loader
-;    Summary: ???
-;
-; ******************************************************************************
-
-.L24D6
-
- EQUB $00
+ EQUB 0
 
 ; ******************************************************************************
 ;
-;       Name: L24D7
+;       Name: CopyMemory
 ;       Type: Subroutine
 ;   Category: Loader
-;    Summary: ???
+;    Summary: Copy memory from $4000-$6FFF to $9000-$BFFF
 ;
 ; ******************************************************************************
 
-.L24D7
+.CopyMemory
 
- LDA #$00
- STA $F4
+ LDA #$00               ; Set fromAddr(1 0) = $4000
+ STA fromAddr
  LDA #$40
- STA $F5
- LDA #$00
- STA $F6
+ STA fromAddr+1
+
+ LDA #$00               ; Set toAddr(1 0) = $9000
+ STA toAddr
  LDA #$90
- STA $F7
- LDX #$30
- LDY #$00
+ STA toAddr+1
 
-.L24EB
+ LDX #$30               ; Set X = $30 to use as a page counter, so we copy
+                        ; $4000-$6FFF to $9000-$BFFF
 
- LDA ($F4),Y
- STA ($F6),Y
- INY
- BNE L24EB
- INC $F5
- INC $F7
- DEX
- BNE L24EB
- RTS
+ LDY #0                 ; Set Y = 0 to use as a byte counter
+
+.copy1
+
+ LDA (fromAddr),Y       ; Copy the Y-th byte of fromAddr(1 0) to the Y-th byte
+ STA (toAddr),Y         ; of toAddr(1 0)
+
+ INY                    ; Increment the byte counter
+
+ BNE copy1              ; Loop back until we have copied a whole page of bytes
+
+ INC fromAddr+1         ; Increment the high bytes of fromAddr(1 0) and
+ INC toAddr+1           ; toAddr(1 0) so they point to the next page in memory
+
+ DEX                    ; Decrement the page counter
+
+ BNE copy1              ; Loop back until we have copied X pages
+
+ RTS                    ; Return from the subroutine
 
 ; ******************************************************************************
 ;
