@@ -51,6 +51,9 @@
 
  startGame = $4000      ; The entry point for the main game binary
 
+ fireButtonMask = $4562 ; The address of the variable that controls the
+                        ; joystick selection on the title screen
+
  phsoff = $C080         ; Disk controller I/O soft switch for turning the
                         ; stepper motor phase 0 off (PHASEOFF)
 
@@ -116,9 +119,9 @@
 
 ; ******************************************************************************
 ;
-;       Name: Disk operations workspace
+;       Name: Disk operations workspace 1
 ;       Type: Workspace
-;    Address: $0300 to $036F
+;    Address: $0300 to $0310
 ;   Category: Workspaces
 ;    Summary: Variables used by the disk operations and DOS 3.3 RWTS routines
 ;
@@ -194,7 +197,17 @@
                         ;   * Track
                         ;   * Volume
 
- PRINT "Disk operations workspace from ", ~buffer, "to ", ~P%-1, "inclusive"
+ PRINT "Disk operations workspace 1 from ", ~track, "to ", ~P%-1, "inclusive"
+
+; ******************************************************************************
+;
+;       Name: Disk operations workspace 2
+;       Type: Workspace
+;    Address: $25D6 to $287B
+;   Category: Workspaces
+;    Summary: Variables used by the disk operations and DOS 3.3 RWTS routines
+;
+; ******************************************************************************
 
  ORG $25D6
 
@@ -234,7 +247,7 @@
  SKIP 200               ; Bit map of free sectors in track 0, at byte #56 ($38)
                         ; in the buffer
 
- ORG $271E
+ SKIP 72                ; These bytes appear to be unused
 
 .buffr2
 
@@ -247,6 +260,8 @@
                         ;
                         ; It is also where we store nibblized data that is ready
                         ; to be saved to the disk
+
+ PRINT "Disk operations workspace 2 from ", ~buffer, "to ", ~P%-1, "inclusive"
 
 ; ******************************************************************************
 ;
@@ -261,20 +276,72 @@
 ;       Name: Elite loader
 ;       Type: Subroutine
 ;   Category: Loader
-;    Summary: C???
+;    Summary: Load the SCRN and ELB1 binaries and run the game
+;
+; ------------------------------------------------------------------------------
+;
+; This game loader is only used by the official Firebird release (i.e. the 4am
+; crack variant).
+;
+; The loader's aim is to load the game code and data into memory as follows:
+;
+;   * The game's data is from $0B60 to $1C99.
+;
+;   * The loading screen (including the dashboard) is from $2000 to $3FFF.
+;
+;   * The first block of the main game binary (CODE1) is $4000 to $8FFF.
+;
+;   * The second block of the main game binary (CODE2) is from $9000 to $BFFF.
+;
+; These blocks of code and data are packaged up into two large files - ELA and
+; ELB - by the elite-transfer.asm source. Note that the ELB file is called ELB1
+; on the 4am crack disk, but the source files refer to it as ELB, so I'll stick
+; with that name here.
+;
+; For the Firebird release, the loading process is as follows:
+;
+;   * The ELITE BASIC file is run. This does BRUN ELA, followed by BRUN SEC3.
+;     Let's see what those commands do.
+;
+;   * ELA (which includes this routine) is run first with a load address of
+;     $0A00, so that loads the game data at $0B60, the loading screen at $2000
+;     and CODE2 at $4000 to $8FFF. This means that the game data and dashboard
+;     are now in the correct places for running the game (though the latter will
+;     soon get corrupted, see below).
+;
+;   * Because the ELA file is run with a BRUN command, it calls its own ENTRY
+;     routine after loading, which switches to the high-resolution screen mode.
+;     It also copies some data into bank-switched RAM, but this has no effect in
+;     the released game; it's a remnant of the transfer process used by the
+;     source disk variant, as described in the elite-transfer.asm source.
+;
+;   * The game loader in SEC3 is then run, which starts by copying CODE2 from
+;     $4000-$8FFF to $9000-$BFFF. This means that CODE2 is now in the correct
+;     place for running the game. SEC3 itself loads at $2000, which means it
+;     corrupts the loading screen (as $2000 is the start of screen memory).
+;
+;   * SEC3 then loads ELB (called ELB1 on disk) with a load address of $4000,
+;     which loads CODE1 from $4000 to $8FFF. This means that CODE1 is now in
+;     the correct place for running the game. 
+;
+;   * Finally, we start the game by calling the main game's S% routine at $4000,
+;     which starts by restoring the loading screen (in particular the dashboard,
+;     which is needed for the game to work), and then the game itself starts.
+;
+; So this loads the complete game binary into memory, and it's ready to run.
 ;
 ; ******************************************************************************
 
 .ENTRY
 
-                        ; The ELITE BASIC program has already run by this point,
-                        ; which loads the ELA file into memory at $0A00 to $7210
-                        ; before running the SEC3 loader (this file) at $2000
-
- JSR CopyMemory         ; Copy memory from $4000-$6FFF to $9000-$BFFF
+ JSR CopyCode2To9000    ; The ELITE BASIC program has already run by this point,
+                        ; so the following step has already been done:
                         ;
-                        ; This copies the CODE2 block that was loaded as part of
-                        ; the ELA file into $9000 to $BFFF
+                        ;   * ELA has been loaded and run, so CODE2 is in memory
+                        ;     from $4000 to $8FFF
+                        ;
+                        ; The first step is therefore to copy the CODE2 block
+                        ; from $4000-$6FFF to $9000-$BFFF
 
  JSR SetLoadVariables1  ; Configure the file load variables as follows:
                         ;
@@ -1266,7 +1333,8 @@ EQUS "SCRN                          "
 
 .drverr
 
- PLP                    ; ???
+ PLP                    ; Pull the read/write status off the stack as we don't
+                        ; need it there any more
 
  LDY mtroff,X           ; Read the disk controller I/O soft switch at MOTOROFF
                         ; for slot X to turn the disk motor off
@@ -2096,8 +2164,8 @@ EQUS "SCRN                          "
  JSR findf              ; Search the disk catalog for a file with the filename
                         ; in comnam
 
- BCS L243E              ; If no file is found with this name then findf will
-                        ; set the C flag, so jump to rfile3 to return from the
+ BCS load4              ; If no file is found with this name then findf will
+                        ; set the C flag, so jump to load4 to return from the
                         ; subroutine as the file cannot be found
 
  JSR gettsl             ; Get the track/sector list of the file and populate the
@@ -2134,8 +2202,8 @@ EQUS "SCRN                          "
  JSR DecrementFileSize  ; Decrement the file size in fileSize(1 0) by 1 as we
                         ; have just loaded one more byte of the file
 
- BMI L243E              ; If the result is negative then we have copied all
-                        ; fileSize(1 0) bytes, so jump to L243E to return from the
+ BMI load4              ; If the result is negative then we have copied all
+                        ; fileSize(1 0) bytes, so jump to load4 to return from the
                         ; subroutine
 
  INX                    ; Increment the destination index in X
@@ -2145,16 +2213,14 @@ EQUS "SCRN                          "
  BNE load2              ; Loop back until we have reached the end of the page
                         ; page in the source index
 
- INC loadAddr+2         ; Modify the loadAddr address above by incrementing
-                        ; the high byte to point to the next page
-
- LDA loadAddr+1         ; Subtract skipBytes from the loadAddr address ???
- SEC
- SBC skipBytes
- STA loadAddr+1
- LDA loadAddr+2
- SBC #0
- STA loadAddr+2
+ INC loadAddr+2         ; Update the load address as follows:
+ LDA loadAddr+1         ;
+ SEC                    ;   loadAddr = loadAddr + 256 - skipBytes
+ SBC skipBytes          ;
+ STA loadAddr+1         ; This makes sure that loadAddr points to the correct
+ LDA loadAddr+2         ; load address for the next sector, as we just loaded a
+ SBC #0                 ; sector's worth of bytes (256) and skipped the first
+ STA loadAddr+2         ; skipBytes bytes
 
  LDA skipBytes          ; Set skipBytes = 0 so we don't skip any bytes from the
  BEQ load3              ; remaining sectors (as we only want to skip bytes from
@@ -2177,7 +2243,7 @@ EQUS "SCRN                          "
  LDA track              ; back to load1 to load the next sector
  BNE load1
 
-.L243E
+.load4
 
  RTS                    ; Return from the subroutine
 
@@ -2194,14 +2260,14 @@ EQUS "SCRN                          "
 
  LDY #0                 ; Set Y = 0 to use as a byte counter
 
-.L2441
+.cpts1
 
  LDA buffer,Y           ; Copy the Y-th byte of buffer to the Y-th byte of
  STA trackSector,Y      ; trackSector
 
  INY                    ; Increment the byte counter
 
- BNE L2441              ; Loop back until we have copied a whole page of data
+ BNE cpts1              ; Loop back until we have copied a whole page of data
 
  RTS                    ; Return from the subroutine
 
@@ -2246,8 +2312,9 @@ EQUS "SCRN                          "
  LDA #$4F
  STA fileSize+1
 
- LDA #0                 ; Set trackSector = 0
- STA trackSector
+ LDA #0                 ; Set trackSector = 0 (though this appears to have no
+ STA trackSector        ; effect, as it isn't checked anywhere and the first
+                        ; byte of the track/sector list is unused)
 
  LDA #$00               ; Modify the instruction at loadAddr to STA $4000,X
  STA loadAddr+1
@@ -2276,8 +2343,9 @@ EQUS "SCRN                          "
  LDA #$08
  STA fileSize+1
 
- LDA #0                 ; Set trackSector = 0
- STA trackSector
+ LDA #0                 ; Set trackSector = 0 (though this appears to have no
+ STA trackSector        ; effect, as it isn't checked anywhere and the first
+                        ; byte of the track/sector list is unused)
 
  LDA #$00               ; Modify the instruction at loadAddr to STA $0200,X
  STA loadAddr+1
@@ -2313,33 +2381,53 @@ EQUS "SCRN                          "
 
 ; ******************************************************************************
 ;
-;       Name: ???
+;       Name: AllowJoystick
 ;       Type: Subroutine
 ;   Category: Loader
-;    Summary: ???
+;    Summary: An unused routine to check the joysticks and configure the title
+;             screen to check for the joystick fire button
 ;
 ; ******************************************************************************
 
- LDA #0                 ; These instructions are not used ???
- STA $4562
- LDA $C064
- CMP #$FF
- BNE L24CF
- LDA $C065
- CMP #$FF
- BNE L24CF
- LDA $C066
- CMP #$FF
- BNE L24CF
- LDA $C067
- CMP #$FF
- BNE L24CF
- LDA #$FF
- STA $4562
+.AllowJoystick
 
-.L24CF
+ LDA #0                 ; Set fireButtonMask to 0 to prevent the joystick fire
+ STA fireButtonMask     ; button from being able to select joysticks on the
+                        ; title screen
 
- JMP startGame          ; This instruction is not used
+ LDA $C064              ; Set A to the value of the soft switch containing the
+                        ; status of the joystick 0 x-axis (GC0)
+
+ CMP #$FF               ; If it is not $FF then jump to joys1 to start the game
+ BNE joys1              ; with the fire button disabled
+
+ LDA $C065              ; Set A to the value of the soft switch containing the
+                        ; status of the joystick 0 y-axis (GC1)
+
+ CMP #$FF               ; If it is not $FF then jump to joys1 to start the game
+ BNE joys1              ; with the fire button disabled
+
+ LDA $C066              ; Set A to the value of the soft switch containing the
+                        ; status of the joystick 1 x-axis (GC2)
+
+ CMP #$FF               ; If it is not $FF then jump to joys1 to start the game
+ BNE joys1              ; with the fire button disabled
+
+ LDA $C067              ; Set A to the value of the soft switch containing the
+                        ; status of the joystick 1 y-axis (GC3)
+
+ CMP #$FF               ; If it is not $FF then jump to joys1 to start the game
+ BNE joys1              ; with the fire button disabled
+
+                        ; If we get here then all four joystick soft switches
+                        ; are returning $FF
+
+ LDA #$FF               ; Set fireButtonMask to $FF to allow the joystick fire
+ STA fireButtonMask     ; button to select joysticks on the title screen
+
+.joys1
+
+ JMP startGame          ; Jump to startGame to start the game
 
 ; ******************************************************************************
 ;
@@ -2397,14 +2485,14 @@ EQUS "SCRN                          "
 
 ; ******************************************************************************
 ;
-;       Name: CopyMemory
+;       Name: CopyCode2To9000
 ;       Type: Subroutine
 ;   Category: Loader
-;    Summary: Copy memory from $4000-$6FFF to $9000-$BFFF
+;    Summary: Copy CODE2 from $4000-$6FFF to $9000-$BFFF
 ;
 ; ******************************************************************************
 
-.CopyMemory
+.CopyCode2To9000
 
  LDA #$00               ; Set fromAddr(1 0) = $4000
  STA fromAddr

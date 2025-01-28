@@ -109,22 +109,58 @@
 ; packs the entire game binary into memory, ready to be transmitted to an Apple
 ; II computer connected to the BBC Micro's User Port.
 ;
-; The transfer program loads the game binary in two blocks, CODE1 and CODE2.
-; The second block (CODE2, $3000 bytes) is loaded at address $4000-$7000, and
-; the first block (CODE1, $5000 bytes) is loaded at address $7000-$C000.
+; This code is run in the released variants of the game, but it doesn't have any
+; effect (apart from slowing down the load process). In the source disk variant,
+; it forms part of the development process.
 ;
-; The ENTRY routine then copies the second block of the game binary (from CODE2
-; onwards) into bank-switched RAM at $D000.
+; As part of the build process, the assembled game is split into two parts,
+; CODE1 and CODE2 (in the original build process, the BASIC program S.SCODES
+; creates these files, while in the modern build this split is done in the
+; elite-checksum.py Python script). The split is as follows:
 ;
-; The two blocks of code could then be transmitted to the Apple II using a
-; *APPLE command, which is unfortunately not present on the source disk.
+;   * CODE1 contains the first $5000 bytes, from $4000 to $8FFF.
 ;
-; Once transmitted, the main game code could be called at S%, which contains a
-; routine to copy the second block of code in CODE2 from bank-switched RAM at
-; $D000 into main memory at $9000. Presumably by this point the first block of
-; code has also been transmitted, from BBC Micro address $7000-$C000 to Apple II
-; address $4000-$9000, so the code in S% moved CODE2 to just after CODE1,
-; resulting in the complete game binary appearing at $4000 in the Apple II.
+;   * CODE2 contains the rest of the binary, from $9000 to $BFFF.
+;
+; The source you are reading now takes these two parts and produces two more
+; binaries, ELA and ELB, which contain the two parts of the game binary, plus
+; the following routine. ELA contains CODE2, while ELB contains CODE1 and the
+; rest of the data.
+;
+; For the official Firebird variant of the game, the loading process is managed
+; by a dedicated game loader. See the elite-loader.asm source for details.
+;
+; For the variant of the game on Ian Bell's website, the ELA and ELB files are
+; not used, and instead CODE1 and CODE2 are loaded directly from disk and are
+; moved to their correct addressses by a simple mover program. See the
+; elite-mover.asm source for details.
+;
+; For the source disk variant, the process is different, as the game isn't run
+; on an Apple II, but instead it's transmitted across a cable from the BBC Micro
+; development machine to the test Apple II machine. The transfer process goes
+; like this:
+;
+;   * ELA is transmitted first, which loads the game data at $0B60, the loading
+;     screen at $2000 and CODE2 at $9000 to $BFFF.
+;
+;   * The ENTRY routine in ELA (i.e. this routine) is called on the Apple II,
+;     which copies CODE2 into bank-switched RAM at $D000.
+;
+;   * ELB is transmitted next, which loads CODE1 from $4000 to $8FFF.
+;
+;   * The S% routine in ELB is called on the Apple II, which copies CODE2 out of
+;     bank-switched RAM back to $9000 to $BFFF.
+;
+; We don't have copies of the transfer software - there are some tantalising
+; clues in the S.APMAKES BASIC program, which includes a *APPLE command that is
+; presumably part of the transfer process - but I'm assumimg this memory-moving
+; process ensures that CODE2 doesn't get corrupted by the second transfer
+; process.
+;
+; Interestingly, this routine is run by all variants of the game when ELA is
+; loaded, so the released game also copies CODE2 into bank-switched RAM when it
+; loads. The only difference is that the copied code is ignored in the released
+; game.
 ;
 ; ******************************************************************************
 

@@ -38104,7 +38104,7 @@ Saving file '3-assembled-output/MOVER.bin'
      030C
 .idfld
      030D
-Disk operations workspace from &25D6 to &310 inclusive
+Disk operations workspace 1 from &300 to &310 inclusive
 .buffer
      25D6
 .fretrk
@@ -38116,8 +38116,10 @@ Disk operations workspace from &25D6 to &310 inclusive
      260B
 .bitmap
      260E
+     26D6
 .buffr2
      271E
+Disk operations workspace 2 from &25D6 to &287B inclusive
 .ENTRY
      2000   20 D7 24   JSR &24D7
      2003   20 7C 24   JSR &247C
@@ -38699,7 +38701,7 @@ Disk operations workspace from &25D6 to &310 inclusive
      241B   F0 05      BEQ &2422
      241D   A9 00      LDA #&00
      241F   8D D4 24   STA &24D4
-.L2422
+.load3
      2422   EE D5 24   INC &24D5
      2425   EE D5 24   INC &24D5
      2428   AC D5 24   LDY &24D5
@@ -38710,11 +38712,11 @@ Disk operations workspace from &25D6 to &310 inclusive
      2437   D0 B3      BNE &23EC
      2439   AD 00 03   LDA &0300
      243C   D0 AE      BNE &23EC
-.L243E
+.load4
      243E   60         RTS
 .CopyTrackSector
      243F   A0 00      LDY #&00
-.L2441
+.cpts1
      2441   B9 D6 25   LDA &25D6,Y
      2444   99 D6 24   STA &24D6,Y
      2447   C8         INY
@@ -38766,6 +38768,7 @@ Disk operations workspace from &25D6 to &310 inclusive
      24A4   C0 04      CPY #&04
      24A6   D0 F5      BNE &249D
      24A8   60         RTS
+.AllowJoystick
      24A9   A9 00      LDA #&00
      24AB   8D 62 45   STA &4562
      24AE   AD 64 C0   LDA &C064
@@ -38782,7 +38785,7 @@ Disk operations workspace from &25D6 to &310 inclusive
      24C8   D0 05      BNE &24CF
      24CA   A9 FF      LDA #&FF
      24CC   8D 62 45   STA &4562
-.L24CF
+.joys1
      24CF   4C 00 40   JMP &4000
 .fileSize
      24D2   FF 4F
@@ -38792,7 +38795,7 @@ Disk operations workspace from &25D6 to &310 inclusive
      24D5   00
 .trackSector
      24D6   00
-.CopyMemory
+.CopyCode2To9000
      24D7   A9 00      LDA #&00
      24D9   85 F4      STA &F4
      24DB   A9 40      LDA #&40

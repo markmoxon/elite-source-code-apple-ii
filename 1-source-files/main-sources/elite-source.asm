@@ -64,9 +64,23 @@
 
 IF _IB_DISK OR _4AM_CRACK
 
- STORE = $0200          ; The address where the dashboard image is loaded
+ STORE = $0200          ; The address where the SCRN file is stored during the
+                        ; load proces, so it can be used to repair the loading
+                        ; screen (including the dashboard) that gets corrupted
+                        ; by the loading process in elite-loader.asm
 
- CODE2 = $2000          ; The address where the dashboard image is stored
+ CODE2 = $2000          ; The address where the loading screen in SCRN is copied
+                        ; to when the game starts to repair the loading screen
+                        ; and leave an intact dashboard in screen memory for the
+                        ; duration of the game
+                        ;
+                        ; This variable name comes from the original source, but
+                        ; in the relased variants of the game it has nothing to
+                        ; do with the CODE2.bin file or its load address, so it
+                        ; is a bit confusing (its name is left over from the
+                        ; source code variant, where the copying code that
+                        ; repairs the screen is used to copy the CODE2.bin file
+                        ; as part of the transfer process)
 
 ELIF _SOURCE_DISK
 
@@ -76,7 +90,7 @@ ELIF _SOURCE_DISK
                         ; it into bank-switched RAM at $D000)
 
  CODE2 = $9000          ; The address where the second block of the main game
-                        ; code is copied to before the game is run
+                        ; code in CODE2.bin is copied to before the game is run
 
 ENDIF
 
@@ -2695,8 +2709,12 @@ IF _IB_DISK OR _4AM_CRACK
                         ; ability to configure joysticks by pressing a fire
                         ; button
                         ;
-                        ; This value is never changed, so this is a rather odd
-                        ; bit of code
+                        ; There is some code in the game loader that changes
+                        ; this value, but that code is never called so this
+                        ; value is never changed
+                        ;
+                        ; This means the joystick fire button does not select
+                        ; joysticks from the title screen - it's all a bit odd
 
 ENDIF
 
@@ -2738,6 +2756,54 @@ IF _SOURCE_DISK
 
 ENDIF
 
+                        ; We now copy a block of memory from STORE to CODE2
+                        ;
+                        ; In the released game, this copies the SCRN file into
+                        ; the first part of screen memory, to repair the loading
+                        ; screen (including the dashboard) that gets corrupted
+                        ; by the loading process in elite-loader.asm
+                        ;
+                        ; We need to do this as the dashboard remains intact in
+                        ; memory for the duration of the game, so it mustn't be
+                        ; corrupted
+                        ;
+                        ; In the source disk variant, this copying process forms
+                        ; part of the development process
+                        ;
+                        ; As part of the build, the elite-transfer.asm source
+                        ; takes the assembled game and produces two binaries,
+                        ; ELA and ELB, which contain the two parts of the game
+                        ; binary (ELA contains CODE2, ELB contains CODE1)
+                        ;
+                        ; The ELA binary also contains a routine that copies the
+                        ; the second block of the game binary (from CODE2
+                        ; onwards) into bank-switched RAM at $D000
+                        ;
+                        ; The ELA routine is run by both the source disk variant
+                        ; and the released game when ELA is loaded, so they both
+                        ; copy the game into bank-switched RAM; in the released
+                        ; game, nothing is done with the code in bank-switched
+                        ; RAM, but in the source disk, the code here copies the
+                        ; second block of the game binary back to the execution
+                        ; address of $9000
+                        ;
+                        ; The idea is to enable code to be developed on a BBC
+                        ; Micro before transmitting it to an attached Apple II
+                        ; for testing
+                        ;
+                        ; To do this, we start by transmitting the ELA binary to
+                        ; the Apple II, and when it arrives it runs its embedded
+                        ; routine to copy CODE2 into bank-switched RAM at $D000
+                        ;
+                        ; We then transmit ELB to the Apple II, which loads
+                        ; CODE1 into memory, where we can run the following to
+                        ; move CODE2 out of bank-switched RAM and into the right
+                        ; place to run it, leaving both parts of the game binary
+                        ; in memory which we can then execute
+                        ;
+                        ; See the transfer source code in elite-transfer.asm
+                        ; and the original code in S.APMAKES for details
+
  LDA #LO(STORE)         ; Set SC(1 0) = STORE
  STA SC                 ;
  LDA #HI(STORE)         ; So SC(1 0) contains the address where the dashboard
@@ -2754,17 +2820,6 @@ IF _IB_DISK OR _4AM_CRACK
                         ; SC(1 0) to P(1 0) in the following loop
 
 ELIF _SOURCE_DISK
-
-                        ; On the source disk, there is a transfer program that
-                        ; packs the entire game binary into memory, ready to be
-                        ; transmitted to a connected Apple II computer
-                        ;
-                        ; The transfer program copies the second block of the
-                        ; game binary (from CODE2 onwards) into bank-switched
-                        ; RAM at $D000, so the following copies it back to the
-                        ; correct address of $9000
-                        ;
-                        ; See the transfer source code in elite-transfer.asm
 
  LDA $C08B              ; Set RAM bank 1 to read RAM and write RAM by reading
                         ; the RDWRBSR1 soft switch, with bit 3 set (bank 1),
@@ -31901,7 +31956,7 @@ ENDIF
 .RDS1
 
  LDA $C064,X            ; Set A to the soft switch containing the status of
-                        ; joystick X, so that's GC0, GC1, GC2 or GC3
+                        ; joystick channel X, so that's GC0, GC1, GC2 or GC3
 
  BMI RDS1               ; Loop back until bit 7 of the soft switch is clear, at
                         ; which point the game controller circuitry is ready for
