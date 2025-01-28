@@ -334,7 +334,7 @@
 
 .ENTRY
 
- JSR CopyCode2To9000    ; The ELITE BASIC program has already run by this point,
+ JSR CopyCode2          ; The ELITE BASIC program has already run by this point,
                         ; so the following step has already been done:
                         ;
                         ;   * ELA has been loaded and run, so CODE2 is in memory
@@ -2203,8 +2203,8 @@ EQUS "SCRN                          "
                         ; have just loaded one more byte of the file
 
  BMI load4              ; If the result is negative then we have copied all
-                        ; fileSize(1 0) bytes, so jump to load4 to return from the
-                        ; subroutine
+                        ; fileSize(1 0) bytes, so jump to load4 to return from
+                        ; the subroutine
 
  INX                    ; Increment the destination index in X
 
@@ -2485,14 +2485,14 @@ EQUS "SCRN                          "
 
 ; ******************************************************************************
 ;
-;       Name: CopyCode2To9000
+;       Name: CopyCode2
 ;       Type: Subroutine
 ;   Category: Loader
 ;    Summary: Copy CODE2 from $4000-$6FFF to $9000-$BFFF
 ;
 ; ******************************************************************************
 
-.CopyCode2To9000
+.CopyCode2
 
  LDA #$00               ; Set fromAddr(1 0) = $4000
  STA fromAddr

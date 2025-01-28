@@ -38795,7 +38795,7 @@ Disk operations workspace 2 from &25D6 to &287B inclusive
      24D5   00
 .trackSector
      24D6   00
-.CopyCode2To9000
+.CopyCode2
      24D7   A9 00      LDA #&00
      24D9   85 F4      STA &F4
      24DB   A9 40      LDA #&40
