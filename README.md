@@ -556,13 +556,13 @@ The main differences in the three source disk variants compared to the 4am crack
 
 Further differences in the source disk build variant compared to the 4am crack variant are:
 
-* The dashboard has a blue rim rather than the violet rim of the released version.
+* The dashboard has a blue rim rather than the violet rim of the released version, and the loading screen has the date "23 SEPT 1985" printed in the space view.
 
 * The font is the same as the BBC Micro and Commodore 64 versions (the other Apple versions have an Apple-specific font).
 
 Further differences in the source disk CODE files variant compared to the 4am crack variant are:
 
-* The dashboard has a blue rim rather than the violet rim of the released version, and it also has the "E" and "S" indicator bulbs lit.
+* The dashboard has a blue rim rather than the violet rim of the released version, and the loading screen has the date "7 SEPT 1985" printed in the space view.
 
 * It contains the code to cope with phantom key presses from the Commodore 64 version.
 
@@ -574,7 +574,7 @@ Further differences in the source disk CODE files variant compared to the 4am cr
 
 Further differences in the source disk ELT files variant compared to the 4am crack variant are:
 
-* The dashboard has a blue rim rather than the violet rim of the released version.
+* The dashboard has a blue rim rather than the violet rim of the released version, and the loading screen has the date "7 SEPT 1985" printed in the space view.
 
 See the [accompanying website](https://elite.bbcelite.com/apple/releases.html) for a comprehensive list of differences between the variants.
 
