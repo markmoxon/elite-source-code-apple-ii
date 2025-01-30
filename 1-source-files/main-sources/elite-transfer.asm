@@ -1,6 +1,6 @@
 ; ******************************************************************************
 ;
-; APPLE II ELITE PDS TRANSFER SOURCE
+; APPLE II ELITE TRANSFER PROGRAM SOURCE
 ;
 ; Apple II Elite was written by Ian Bell and David Braben and is copyright
 ; D. Braben and I. Bell 1986
@@ -21,9 +21,14 @@
 ; ------------------------------------------------------------------------------
 ;
 ; This source file produces game binaries that are suitable for transfer to an
-; Apple II that's attached to a BBC Micro. The original S.APMAKES file on the
-; source disk compiles this code and sends it to the Apple using a *APPLE
-; command (this latter utility is not included on the disk).
+; Apple II that's attached to a BBC Micro. The same files are also included on
+; the Firebird game disk, with the transfer code still embedded.
+;
+; For file transers, the BASIC program S.APMAKES on the source disk compiles
+; this code into the ELA and ELB binaries, which it then sends it to the Apple
+; using a *APPLE command (this latter utility is not included on the disk).
+; This source replicates the functionality in S.APMAKES that produces the ELA
+; and ELB files, but it stops short of the actual transfer process.
 ;
 ; It forms part of the PDS (Programmers' Development System) that was used when
 ; developing Apple II Elite on a BBC Micro.
@@ -244,10 +249,7 @@
 
 ; ******************************************************************************
 ;
-;       Name: Game data and binaries
-;       Type: Subroutine
-;   Category: Utility routines
-;    Summary: The game data and binaries to transfer to an Apple II
+; Load the compiled binaries to create the files to transfer to an Apple II
 ;
 ; ******************************************************************************
 

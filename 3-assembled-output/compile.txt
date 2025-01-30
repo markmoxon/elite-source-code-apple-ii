@@ -28593,7 +28593,7 @@ Saving file '3-assembled-output/ELTB.bin'
      62A7   D0 CE      BNE &6277
 .PD1
      62A9   A2 03      LDX #&03
-.PDL1
+.PDL1K
      62AB   B5 94      LDA &94,X
      62AD   95 02      STA &02,X
      62AF   CA         DEX
@@ -29264,7 +29264,7 @@ Saving file '3-assembled-output/ELTC.bin'
      6752   86 AE      STX &AE
      6754   A2 0C      LDX #&0C
      6756   86 06      STX &06
-.TT223
+.TT223K
      6758   20 B5 67   JSR &67B5
      675B   B0 C6      BCS &6723
      675D   85 31      STA &31
@@ -36283,9 +36283,9 @@ Saving file '3-assembled-output/ELTI.bin'
 .prterr
      98B0   A9 01      LDA #&01
      98B2   10 34      BPL &98E8
-.drverr
+.drverrK
      98B4   A9 04      LDA #&04
-.drver2p
+.drver2K
      98B6   AE 6B 0A   LDX &0A6B
      98B9   9A         TXS
      98BA   AE 69 0A   LDX &0A69

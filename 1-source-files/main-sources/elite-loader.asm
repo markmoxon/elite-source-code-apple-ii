@@ -1195,6 +1195,12 @@ EQUS "SCRN                          "
 ;                       again (must have the status flags on the stack with the
 ;                       C flag set)
 ;
+;   trytr5              Re-entry point for the loop from the rdrght subroutine,
+;                       for when we need to re-calibrate
+;
+;   trytr6              Re-entry point for the loop from the rdrght subroutine,
+;                       for when we need to re-seek
+;
 ; ******************************************************************************
 
 .trytrk

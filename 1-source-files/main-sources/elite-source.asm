@@ -2400,7 +2400,7 @@ ENDIF
 ;
 ;       Name: SCTBX1
 ;       Type: Variable
-;   Category: Screen
+;   Category: Drawing the screen
 ;    Summary: Lookup table for converting a pixel x-coordinate to the bit number
 ;             within the pixel row byte that corresponds to this pixel
 ;
@@ -2433,7 +2433,7 @@ NEXT
 ;
 ;       Name: SCTBX2
 ;       Type: Variable
-;   Category: Screen
+;   Category: Drawing the screen
 ;    Summary: Lookup table for converting a pixel x-coordinate to the byte
 ;             number in the pixel row that corresponds to this pixel
 ;
@@ -2668,12 +2668,19 @@ ENDIF
 
  SKIP 1                 ; Upper case configuration setting
                         ;
-                        ;   * 0 = display upper and lower case letters (default)
+                        ;   * 0 = only display upper case letters (default)
                         ;
-                        ;   * $FF = only display upper case letters
+                        ;   * $FF = display upper and lower case letters
                         ;
                         ; Toggled by pressing "U" when paused, see the DK4
                         ; routine for details
+                        ;
+                        ; Note that in the source disk variants, the two values
+                        ; are the other way around:
+                        ;
+                        ;   * 0 = display upper and lower case letters (default)
+                        ;
+                        ;   * $FF = only display upper case letters
 
 .DISK
 
@@ -2876,11 +2883,16 @@ ENDIF
 IF _IB_DISK OR _4AM_CRACK
 
  LDA #$30               ; This modifies the RDKEY routine so the BPL at nokeys2
- STA nokeys2+4          ; jumps to nofast+2 rather than nojoyst (though this has
- NOP                    ; no effect as the binary has already been modified,
- NOP                    ; perhaps because the version on Ian Bell's site is a
-                        ; hacked version that may have been extracted from
-                        ; memory)
+ STA nokeys2+4          ; jumps to nofast+2 rather than nojoyst
+ NOP                    ;
+ NOP                    ; This ensures that when we are configured to use the
+                        ; keyboard rather than the joystick, we skip all the
+                        ; joystick scanning code in RDKEY
+                        ;
+                        ; If this modification is not applied, the original code
+                        ; will still scan the joystick fire button, even if
+                        ; joysticks are not configured, so this fix stops this
+                        ; from happening
 
 ENDIF
 
@@ -6476,9 +6488,9 @@ IF _IB_DISK
 
  EQUB $00, $14          ; Placeholders for bytes #0 to #52
  EQUB $AD, $4A          ;
- EQUB $5A, $48          ; This contains random workspace noise left over from
- EQUB $02, $53          ; the BBC Micro assembly process
- EQUB $B7, $00
+ EQUB $5A, $48          ; This contains data that is left over from the cracking
+ EQUB $02, $53          ; process, where the game was extracted from memory
+ EQUB $B7, $00          ; while it was running
  EQUB $00, $03
  EQUB $E8, $46
  EQUB $00, $00
@@ -10785,6 +10797,12 @@ ENDIF
 ;
 ; Other entry points:
 ;
+;   DIS1+2              The range of the indicator is 0-63 (for the fuel
+;                       indicator)
+;
+;   DIS2                The range of the indicator is 0-31 (for the fuel and
+;                       energy bank indicators)
+;
 ;   DIR1                Contains an RTS
 ;
 ; ******************************************************************************
@@ -11545,13 +11563,21 @@ ENDIF
 .TA87
 
  LDA INWK+32            ; Set X to bits 1-6 of the missile's AI flag in ship
- AND #%01111111         ; byte #32, so bits 0-4 of X are the target's slot
- LSR A                  ; number, and bit 5 is set (as the missile is hostile)
- TAX                    ; so X is fairly random and in the range 32-43 (as the
-                        ; maximum slot number is 11)
+ AND #%01111111         ; byte #32, so that bits 0-4 of X are the target's slot
+ LSR A                  ; number, and bit 5 is clear (as the missile is ours)
+ TAX                    ;
+                        ; So X contains the slot number of the target ship
                         ;
-                        ; The value of X is used to determine the number of kill
-                        ; points awarded for the destruction of the missile
+                        ; We should now fetch the ship type from slot X, so we
+                        ; can pass the ship type to EXNO2 to add the correct
+                        ; number of kill points to award for this type of ship,
+                        ; but instead we're passing the slot number to EXNO2
+                        ;
+                        ; This is a bug that means we will be allocated a fairly
+                        ; random number of kill points when destroying a ship
+                        ; with a missile; this bug was fixed in the NES version,
+                        ; but it affects the Commodore 64, Apple II and BBC
+                        ; Master versions of Elite
 
 .TA353
 
@@ -16595,22 +16621,22 @@ ENDIF
                         ; every time we call PDESC, so set a counter in X for
                         ; copying 4 bytes
 
-{
-.PDL1                   ; This label is a duplicate of the label above (which is
-                        ; why we need to surround it with braces, as BeebAsm
-                        ; doesn't allow us to redefine labels, unlike BBC BASIC)
+.PDL1K                  ; This label is a duplicate of the label above
+                        ;
+                        ; In the original source this label is PDL1, but
+                        ; because BeebAsm doesn't allow us to redefine labels,
+                        ; I have renamed it to PDL1K
 
  LDA QQ15+2,X           ; Copy QQ15+2 to QQ15+5 (s1 and s2) to RAND to RAND+3
  STA RAND,X
 
  DEX                    ; Decrement the loop counter
 
- BPL PDL1               ; Loop back to PDL1 until we have copied all
+ BPL PDL1K              ; Loop back to PDL1K until we have copied all
 
  LDA #5                 ; Set A = 5, so we print extended token 5 in the next
                         ; instruction ("{lower case}{justify}{single cap}[86-90]
                         ; IS [140-144].{cr}{left align}"
-}
 
 .PD4
 
@@ -18854,15 +18880,13 @@ ENDIF
  LDX #12                ; Perhaps they were left behind when code was moved from
  STX T1                 ; here into gnum, and weren't deleted?
 
-{
-.TT223                  ; This label is a duplicate of a label in gnum (which is
-                        ; why we need to surround it with braces, as BeebAsm
-                        ; doesn't allow us to redefine labels, unlike BBC
-                        ; BASIC). This could be a remnant if the code in gnum
-                        ; was originally here, but got moved into the gnum
-                        ; subroutine without removing the original
-
-}
+.TT223K                 ; This label is a duplicate of a label in the gnum
+                        ; routine, so this could also be a remnant from code
+                        ; that got moved into the gnum subroutine
+                        ;
+                        ; In the original source this label is TT223, but
+                        ; because BeebAsm doesn't allow us to redefine labels,
+                        ; I have renamed it to TT223K
 
  JSR gnum               ; Call gnum to get a number from the keyboard, which
                         ; will be the quantity of this item we want to purchase,
@@ -32090,9 +32114,9 @@ IF _IB_DISK
                         ; modified by S% to point to nofast+2
                         ;
                         ; In the game disk on Ian Ball's site, this modification
-                        ; is already baked into the code, but we can assume it
-                        ; changes the destination from nojoyst to nofast+2 so
-                        ; that we also skip over the joystick fire button scan
+                        ; is already baked into the code, as the game was
+                        ; cracked by extracting it from memory while running, by
+                        ; which point this modification had already been applied
 
 ELIF _SOURCE_DISK OR _4AM_CRACK
 
@@ -32100,6 +32124,18 @@ ELIF _SOURCE_DISK OR _4AM_CRACK
  BPL nojoyst            ; use the keyboard rather than the joystick, so jump to
                         ; nojoyst to skip the joystick position scan and move on
                         ; to the joystick fire button scan
+                        ;
+                        ; Note that the destination for this instruction is
+                        ; modified by S% to point to nofast+2
+                        ;
+                        ; This ensures that when we are configured to use the
+                        ; keyboard rather than the joystick, we skip all the
+                        ; joystick scanning code in RDKEY
+                        ;
+                        ; If this modification is not applied, the original code
+                        ; will still scan the joystick fire button, even if
+                        ; joysticks are not configured, so this fix stops this
+                        ; from happening
 
 ENDIF
 
@@ -41583,6 +41619,12 @@ ENDMACRO
 ;                       again (must have the status flags on the stack with the
 ;                       C flag set)
 ;
+;   trytr5              Re-entry point for the loop from the rdrght subroutine,
+;                       for when we need to re-calibrate
+;
+;   trytr6              Re-entry point for the loop from the rdrght subroutine,
+;                       for when we need to re-seek
+;
 ; ******************************************************************************
 
 .trytrk
@@ -41721,7 +41763,7 @@ ENDMACRO
 ;
 ; Other entry points:
 ;
-;   drver2p             Restore the stack pointer and return from the RWTS code
+;   drver2K             Restore the stack pointer and return from the RWTS code
 ;                       with the error number in A and the C flag set to
 ;                       indicate an error
 ;
@@ -41737,19 +41779,23 @@ ENDMACRO
                         ; and the C flag set to indicate an error (this BPL is
                         ; effectively a JMP as A is always positive)
 
-{
-.drverr
+.drverrK                ; This label is a duplicate of a label in the drverr
+                        ; routine
+                        ;
+                        ; In the original source this label is drverr, but
+                        ; because BeebAsm doesn't allow us to redefine labels,
+                        ; I have renamed it to drverrK
 
- LDA #4                 ; This code is never called and is a copy of the drverr
-                        ; label and instruction from the drverr routine, so we
-                        ; need to put this in braces as BeebAsm doesn't allow
-                        ; us to redefine labels, unlike BBC BASIC
+ LDA #4                 ; This code is never called and seems to be left over
+                        ; from a copy of the label and instruction from the
+                        ; drverr routine
 
-}
-
-.drver2p                ; This label is called drver2 in the original source,
-                        ; which is already being used in the drverr routine, so
-                        ; I have renamed it to drver2p
+.drver2K                ; This label is a duplicate of a label in the drverr
+                        ; routine
+                        ;
+                        ; In the original source this label is drver2, but
+                        ; because BeebAsm doesn't allow us to redefine labels,
+                        ; I have renamed it to drver2K
 
  LDX stkptr             ; Restore the value of the stack pointer from when we
  TXS                    ; first ran the RWTS code, to remove any return
@@ -41833,7 +41879,7 @@ ENDMACRO
  LDA #1                 ; Set A = 1 to return as the error number for the "Disk
                         ; write protected" error
 
- BPL drver2p            ; Jump to drver2p to restore the stack pointer and
+ BPL drver2K            ; Jump to drver2K to restore the stack pointer and
                         ; return from the RWTS code with an error number of 1
                         ; and the C flag set to indicate an error (this BPL is
                         ; effectively a JMP as A is always positive)
@@ -42782,7 +42828,7 @@ ENDMACRO
 ; ******************************************************************************
 ;
 ;       Name: MUTILATE
-;       Type: Variable
+;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Encrypt the commander file in the buffer at comfil
 ;
@@ -42903,7 +42949,7 @@ ENDMACRO
 ; ******************************************************************************
 ;
 ;       Name: UNMUTILATE
-;       Type: Variable
+;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Decrypt the commander file in the buffer at comfil
 ;
@@ -45152,6 +45198,7 @@ ENDMACRO
 ;       Name: ECBLB
 ;       Type: Subroutine
 ;   Category: Dashboard
+;    Summary: Light up the E.C.M. indicator bulb ("E") on the dashboard
 ;
 ; ******************************************************************************
 
@@ -45721,9 +45768,9 @@ ENDIF
                         ; is also present in this source, so it isn't clear why
                         ; this duplicate exists
                         ;
-                        ; In the original source, this version also has the name
-                        ; TT67, but because BeebAsm doesn't allow us to redefine
-                        ; labels, I have renamed this one to TT67K
+                        ; In the original source this label is TT67, but
+                        ; because BeebAsm doesn't allow us to redefine labels,
+                        ; I have renamed it to TT67K
 
  LDA #12                ; Set A to a carriage return character
 
@@ -45780,10 +45827,6 @@ ENDIF
 ; ------------------------------------------------------------------------------
 ;
 ; Other entry points:
-;
-;   RREN                Prints the character definition pointed to by P(2 1) at
-;                       the screen address pointed to by (A SC). Used by the
-;                       BULB routine
 ;
 ;   RR4                 Restore the registers and return from the subroutine
 ;

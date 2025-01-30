@@ -51,11 +51,11 @@ This repository contains the original source code for Elite on the Apple II, wit
 
 You can build the fully functioning game from this source. [Five variants](#building-different-variants-of-apple-ii-elite) are currently supported: the 4am crack disk, the game disk from Ian Bell's personal website, the variant built by the source disk build process, the variant built from the CODE* binary files already on the source disk, and the variant built from the ELT* binary files already on the source disk.
 
-This repository is a companion to the [elite.bbcelite.com website](https://elite.bbcelite.com)<!--, which contains all the code from this repository, but laid out in a much more human-friendly fashion-->. The links at the top of this page will take you to repositories for the other versions of Elite that are covered by this project.
+This repository is a companion to the [elite.bbcelite.com website](https://elite.bbcelite.com), which contains all the code from this repository, but laid out in a much more human-friendly fashion. The links at the top of this page will take you to repositories for the other versions of Elite that are covered by this project.
 
 * If you want to browse the source and read about how Elite works under the hood, you will probably find [the website](https://elite.bbcelite.com) a better place to start than this repository.
 
-* If you would rather explore the source code in your favourite IDE, then the [annotated source](1-source-files/main-sources) is what you're looking for. <!--It contains the exact same content as the website, so you won't be missing out (the website is generated from the source files, so they are guaranteed to be identical).--> You might also like to read the section on [browsing the source in an IDE](#browsing-the-source-in-an-ide) for some tips.
+* If you would rather explore the source code in your favourite IDE, then the [annotated source](1-source-files/main-sources) is what you're looking for. It contains the exact same content as the website, so you won't be missing out (the website is generated from the source files, so they are guaranteed to be identical). You might also like to read the section on [browsing the source in an IDE](#browsing-the-source-in-an-ide) for some tips.
 
 * If you want to build Apple II Elite from the source on a modern computer, to produce a working game disk that can be loaded into a Apple II or an emulator, then you want the section on [building Apple II Elite from the source](#building-apple-ii-elite-from-the-source).
 
@@ -256,7 +256,7 @@ During compilation, details of every step are output in a file called `compile.t
 
 This repository contains the source code for four different variants of Apple II Elite:
 
-* The 4am crack, which is the most authentic version of the original Firebird game (only the disk protection has been removed)
+* The 4am crack, which is the most authentic version of the original Firebird game (only the disk protection has been removed, and I have also removed the CTRL-E characters from the filenames on the original disk to make the the modern build process simpler)
 
 * The game disk from Ian Bell's personal website, which contains a cracked version of the original Firebird game by The Student
 
@@ -522,11 +522,61 @@ f77b2a55    992  f77b2a55    992   Yes   WORDS.bin
 
 You can see the differences between the variants by searching the source code for `_IB_DISK` (for features in the Ian Bell game disk variant), `_SOURCE_DISK_BUILD` (for features in the source disk build variant), `_SOURCE_DISK_CODE_FILES` (for features in the source disk CODE files variant) or `_SOURCE_DISK_ELT_FILES` (for features in the source disk ELT files variant). You can also search for `_SOURCE_DISK` for features in all the source disk variants.
 
-Analysis into the differences between the variants is ongoing.
+The main differences in the Ian Bell game disk variant compared to the 4am crack variant are:
 
-<!--The main differences in the Ian Bell game disk variant compared to the source disk build variant are:-->
+* The loading screen is different, showing "Cracked by The Student" instead of the Firebird logo.
 
-<!--See the [accompanying website](https://elite.bbcelite.com/apple/releases.html) for a comprehensive list of differences between the variants.-->
+* The values of some of the variables have been changed from the placeholder values in the source code, as the game was cracked by extracting it from memory while the game was running.
+
+The main differences in the three source disk variants compared to the 4am crack variant are:
+
+* The values of the STORE and CODE2 configuration variables are different, so the game copies CODE2 out of bank-switched RAM when it starts.
+
+* There is an extra CLD instruction on starting the game.
+
+* The game uses JSR DOXC to move the text cursor to a specified column, while the released game uses STA XC.
+
+* The game uses JSR DOYC to move the text cursor to a specified row, while the released game uses STA YC.
+
+* The game uses JSR INCYC to move the text cursor to the next row, while the released game uses INC YC.
+
+* The "J", "K", "M" and "I" key presses for moving the chart crosshairs are not supported.
+
+* The game waits for the vertical sync to implement pauses, while the released game just performs loop iterations.
+
+* The default setting is to display both upper and lower case letters, while the default for the released game is upper case only.
+
+* The joystick modification is missing from the end of S%, so the game will still scan the joystick fire button, even if joysticks are not configured.
+
+* "M" and "J" can still be pressed when the charts are showing.
+
+* The joystick fire button can be used to configure joysticks from the title screen.
+
+* If the energy bomb is already going off and we press "B", the effect restarts.
+
+Further differences in the source disk build variant compared to the 4am crack variant are:
+
+* The dashboard has a blue rim rather than the violet rim of the released version.
+
+* The font is the same as the BBC Micro and Commodore 64 versions (the other Apple versions have an Apple-specific font).
+
+Further differences in the source disk CODE files variant compared to the 4am crack variant are:
+
+* The dashboard has a blue rim rather than the violet rim of the released version, and it also has the "E" and "S" indicator bulbs lit.
+
+* It contains the code to cope with phantom key presses from the Commodore 64 version.
+
+* The Thargoid spawning logic is different.
+
+* There's some unused code that would speed up chart crosshair movement when fire is pressed.
+
+* The joystick is not disabled while the docking computer is activated.
+
+Further differences in the source disk ELT files variant compared to the 4am crack variant are:
+
+* The dashboard has a blue rim rather than the violet rim of the released version.
+
+See the [accompanying website](https://elite.bbcelite.com/apple/releases.html) for a comprehensive list of differences between the variants.
 
 ## Notes on the original source files
 
