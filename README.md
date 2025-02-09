@@ -396,9 +396,9 @@ b997aacf  32768  b997aacf  32768   Yes   CODE.unprot.bin
 fa257f9a  20480  fa257f9a  20480   Yes   CODE1.unprot.bin
 5cc4867f  12288  5cc4867f  12288   Yes   CODE2.bin
 05dbc169  12288  05dbc169  12288   Yes   CODE2.unprot.bin
-13be9288   5280  13be9288   5280   Yes   DATA.bin
-77de7416   5280  77de7416   5280   Yes   DATA.unprot.bin
-8ee8ad6f  26112  8ee8ad6f  26112   Yes   ELA.bin
+a831e7e2   5280  a831e7e2   5280   Yes   DATA.bin
+e66e6208   5280  e66e6208   5280   Yes   DATA.unprot.bin
+08c2cabe  26112  08c2cabe  26112   Yes   ELA.bin
 3b881cde  20480  3b881cde  20480   Yes   ELB.bin
 9d14b02b   3705  9d14b02b   3705   Yes   ELTA.bin
 2a02c544   2364  2a02c544   2364   Yes   ELTB.bin
@@ -413,7 +413,7 @@ e9b436ce    306  e9b436ce    306   Yes   ELTI.bin
 e878870b   1805  e878870b   1805   Yes   ELTK.bin
 d61caafe   3513  d61caafe   3513   Yes   IANTOK.bin
 6a113fb1   7314  6a113fb1   7314   Yes   SHIPS.bin
-998bb35a    992  998bb35a    992   Yes   WORDS.bin
+f77b2a55    992  f77b2a55    992   Yes   WORDS.bin
 -             -  da873557     41    -    MOVER.bin
 -             -  de4a0b89   1274    -    SEC3.bin
 ```
@@ -557,8 +557,6 @@ The main differences in the three source disk variants compared to the 4am crack
 Further differences in the source disk build variant compared to the 4am crack variant are:
 
 * The dashboard has a blue rim and different coloured labels to the released version, and the loading screen has the date "23 SEPT 1985" printed in the space view.
-
-* The font is the same as the BBC Micro and Commodore 64 versions (the other Apple versions have an Apple-specific font).
 
 Further differences in the source disk CODE files variant compared to the 4am crack variant are:
 
