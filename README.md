@@ -348,7 +348,7 @@ dcd37bb9  32768  dcd37bb9  32768   Yes   CODE.unprot.bin
 35bc6507  12288  35bc6507  12288   Yes   CODE2.unprot.bin
 18be5848   5376  18be5848   5376   Yes   DATA.bin
 18be5848   5376  18be5848   5376   Yes   DATA.unprot.bin
-31bd40f8  26112  31bd40f8  26112   Yes   ELA.bin
+c41f1c49  26112  c41f1c49  26112   Yes   ELA.bin
 310a5ea5  20480  310a5ea5  20480   Yes   ELB.bin
 1bbcc440   3710  1bbcc440   3710   Yes   ELTA.bin
 5125fc56   2363  5125fc56   2363   Yes   ELTB.bin
@@ -396,9 +396,9 @@ b997aacf  32768  b997aacf  32768   Yes   CODE.unprot.bin
 fa257f9a  20480  fa257f9a  20480   Yes   CODE1.unprot.bin
 5cc4867f  12288  5cc4867f  12288   Yes   CODE2.bin
 05dbc169  12288  05dbc169  12288   Yes   CODE2.unprot.bin
-a831e7e2   5280  a831e7e2   5280   Yes   DATA.bin
-e66e6208   5280  e66e6208   5280   Yes   DATA.unprot.bin
-08c2cabe  26112  08c2cabe  26112   Yes   ELA.bin
+2aa536de   5280  2aa536de   5280   Yes   DATA.bin
+fca02798   5280  fca02798   5280   Yes   DATA.unprot.bin
+b4a81200  26112  b4a81200  26112   Yes   ELA.bin
 3b881cde  20480  3b881cde  20480   Yes   ELB.bin
 9d14b02b   3705  9d14b02b   3705   Yes   ELTA.bin
 2a02c544   2364  2a02c544   2364   Yes   ELTB.bin
@@ -413,7 +413,7 @@ e9b436ce    306  e9b436ce    306   Yes   ELTI.bin
 e878870b   1805  e878870b   1805   Yes   ELTK.bin
 d61caafe   3513  d61caafe   3513   Yes   IANTOK.bin
 6a113fb1   7314  6a113fb1   7314   Yes   SHIPS.bin
-f77b2a55    992  f77b2a55    992   Yes   WORDS.bin
+998bb35a    992  998bb35a    992   Yes   WORDS.bin
 -             -  da873557     41    -    MOVER.bin
 -             -  de4a0b89   1274    -    SEC3.bin
 ```

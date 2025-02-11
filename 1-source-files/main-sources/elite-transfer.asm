@@ -255,41 +255,41 @@
 
 IF _SOURCE_DISK_BUILD
 
- EQUB $C6, $C7, $C7, $C8, $C9, $C9, $CA, $CA    ; These bytes appear to be
- EQUB $CB, $CC, $CC, $CD, $CD, $CE, $CE, $CF    ; unused and just contain random
- EQUB $CF, $D0, $D0, $D1, $D1, $D2, $D2, $D3    ; workspace noise left over from
- EQUB $D3, $D4, $D4, $D5, $D5, $D5, $D6, $D6    ; the BBC Micro assembly process
- EQUB $D7, $D7, $D8, $D8, $D9, $D9, $D9, $DA
- EQUB $DA, $DB, $DB, $DB, $DC, $DC, $DD, $DD
- EQUB $DD, $DE, $DE, $DE, $DF, $DF, $E0, $E0
- EQUB $E0, $E1, $E1, $E1, $E2, $E2, $E2, $E3
- EQUB $E3, $E3, $E4, $E4, $E4, $E5, $E5, $E5
- EQUB $E6, $E6, $E6, $E7, $E7, $E7, $E7, $E8
- EQUB $E8, $E8, $E9, $E9, $E9, $EA, $EA, $EA
- EQUB $EA, $EB, $EB, $EB, $EC, $EC, $EC, $EC
- EQUB $ED, $ED, $ED, $ED, $EE, $EE, $EE, $EE
- EQUB $EF, $EF, $EF, $EF, $F0, $F0, $F0, $F1
- EQUB $F1, $F1, $F1, $F1, $F2, $F2, $F2, $F2
- EQUB $F3, $F3, $F3, $F3, $F4, $F4, $F4, $F4
- EQUB $F5, $F5, $F5, $F5, $F5, $F6, $F6, $F6
- EQUB $F6, $F7, $F7, $F7, $F7, $F7, $F8, $F8
- EQUB $F8, $F8, $F9, $F9, $F9, $F9, $F9, $FA
- EQUB $FA, $FA, $FA, $FA, $FB, $FB, $FB, $FB
- EQUB $FB, $FC, $FC, $FC, $FC, $FC, $FD, $FD
- EQUB $FD, $FD, $FD, $FD, $FE, $FE, $FE, $FE
- EQUB $FE, $FF, $FF, $FF, $FF, $FF, $03, $00
- EQUB $00, $B8, $00, $4D, $B8, $D6, $00, $70
- EQUB $4D, $B4, $B8, $6A, $D6, $05, $00, $CC
- EQUB $70, $EF, $4D, $8E, $B4, $C1, $B8, $9A
- EQUB $6A, $28, $D6, $75, $05, $89, $00, $6C
- EQUB $CC, $23, $70, $B4, $EF, $22, $4D, $71
- EQUB $8E, $A4, $B4, $BD, $C1, $BF, $B8, $AC
- EQUB $9A, $85, $6A, $4B, $28, $01, $D6, $A7
- EQUB $75, $3F, $05, $C9, $89, $46, $00, $B7
- EQUB $6C, $1D, $CC, $79, $23, $CB, $70, $13
- EQUB $B4, $52, $EF, $8A, $22, $B9, $4D, $E0
- EQUB $71, $00, $8E, $1A, $A4, $2D, $B4, $39
- EQUB $BD, $40, $C1
+ EQUB $32, $30, $32, $30, $3A, $45, $51, $55    ; These bytes appear to be
+ EQUB $57, $26, $32, $31, $32, $31, $3A, $45    ; unused and just contain random
+ EQUB $51, $55, $57, $26, $32, $32, $32, $32    ; workspace noise left over from
+ EQUB $3A, $45, $51, $55, $57, $26, $32, $33    ; the BBC Micro assembly process
+ EQUB $32, $33, $0D, $07, $E9, $32, $20, $20    ;
+ EQUB $20, $20, $20, $20, $20, $45, $51, $55    ; They contain part of the BASIC
+ EQUB $57, $26, $32, $30, $32, $30, $3A, $45    ; source code from the SCTBH
+ EQUB $51, $55, $57, $26, $32, $31, $32, $31    ; variable
+ EQUB $3A, $45, $51, $55, $57, $26, $32, $32
+ EQUB $32, $32, $3A, $45, $51, $55, $57, $26
+ EQUB $32, $33, $32, $33, $0D, $07, $EB, $3C
+ EQUB $20, $20, $20, $20, $20, $20, $20, $45
+ EQUB $51, $55, $57, $26, $32, $30, $32, $30
+ EQUB $3A, $45, $51, $55, $57, $26, $32, $30
+ EQUB $32, $30, $3A, $45, $51, $55, $57, $26
+ EQUB $32, $30, $32, $30, $3A, $45, $51, $55
+ EQUB $57, $26, $32, $30, $32, $30, $20, $20
+ EQUB $20, $5C, $73, $61, $66, $65, $74, $79
+ EQUB $0D, $07, $EE, $33, $2E, $53, $43, $54
+ EQUB $42, $48, $32, $20, $45, $51, $55, $57
+ EQUB $26, $33, $43, $33, $43, $3A, $45, $51
+ EQUB $55, $57, $26, $33, $44, $33, $44, $3A
+ EQUB $45, $51, $55, $57, $26, $33, $45, $33
+ EQUB $45, $3A, $45, $51, $55, $57, $26, $33
+ EQUB $46, $33, $46, $0D, $07, $F3, $A3, $0D
+ EQUB $00, $83, $40, $00, $00, $00, $AC, $0D
+ EQUB $50, $00, $87, $60, $00, $00, $00, $43
+ EQUB $00, $50, $32, $00, $87, $64, $00, $00
+ EQUB $00, $44, $00, $4E, $54, $52, $59, $00
+ EQUB $8C, $39, $A0, $00, $00, $CD, $0D, $55
+ EQUB $4D, $50, $00, $8C, $3B, $D0, $00, $00
+ EQUB $D9, $0D, $55, $4D, $50, $33, $00, $8C
+ EQUB $3C, $80, $00, $00, $55, $00, $55, $4D
+ EQUB $50, $32, $00, $8C, $3D, $40, $00, $00
+ EQUB $26, $33, $44
 
 ELIF _4AM_CRACK
 
@@ -341,7 +341,7 @@ ENDIF
 
 IF _IB_DISK
 
- INCBIN "1-source-files/images/source-disk-build/A.SCREEN.bin"
+ INCBIN "1-source-files/images/ib-disk/A.SCREEN.bin"
 
 ELIF _4AM_CRACK
 
