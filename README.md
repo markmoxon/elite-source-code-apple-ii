@@ -57,7 +57,7 @@ This repository is a companion to the [elite.bbcelite.com website](https://elite
 
 * If you would rather explore the source code in your favourite IDE, then the [annotated source](1-source-files/main-sources) is what you're looking for. It contains the exact same content as the website, so you won't be missing out (the website is generated from the source files, so they are guaranteed to be identical). You might also like to read the section on [browsing the source in an IDE](#browsing-the-source-in-an-ide) for some tips.
 
-* If you want to build Apple II Elite from the source on a modern computer, to produce a working game disk that can be loaded into a Apple II or an emulator, then you want the section on [building Apple II Elite from the source](#building-apple-ii-elite-from-the-source).
+* If you want to build Apple II Elite from the source on a modern computer, to produce a working game disk that can be loaded into an Apple II or an emulator, then you want the section on [building Apple II Elite from the source](#building-apple-ii-elite-from-the-source).
 
 My hope is that this repository and the [accompanying website](https://elite.bbcelite.com) will be useful for those who want to learn more about Elite and what makes it tick. It is provided on an educational and non-profit basis, with the aim of helping people appreciate one of the most iconic games of the 8-bit era.
 
