@@ -39993,13 +39993,25 @@ ENDMACRO
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
                         ; out) by reading the SPEAKER soft switch
 
- INC T3                 ; Increment the period in T3
+ INC T3                 ; Increment the period in T3, so the tone of the sound
+                        ; falls slowly
 
- LDX T3                 ; Loop around for T3 iterations, waiting for four cycles
- DEX                    ; in each iteration, so as the sound continues and T3
- NOP                    ; increases, the wait gets longer and the frequency of
- NOP                    ; the explosion tone lowers into a dissipated explosion
- BNE P%-3               ; noise
+ LDX T3                 ; Set X to the period length in T3 iterations, so the
+                        ; higher the period in X, the longer the pause in the
+                        ; following loop, so the pause gets longer and the
+                        ; frequency of the explosion tone lowers into a
+                        ; dissipated explosion noise
+
+ DEX                    ; Decrement the period counter in X
+
+ NOP                    ; Wait for four CPU cycles
+ NOP
+
+ BNE P%-3               ; If X is non-zero then loop back to repeat the DEX and
+                        ; NOP instructions, so this waits for a total of 9 * X
+                        ; CPU cycles (as the DEX takes two cycles, the NOPs take
+                        ; another two cycles each, a successful BNE takes three
+                        ; cycles, and we repeat these nine cycles X times)
 
  JSR DORND              ; Set A and X to random numbers
 
@@ -40067,9 +40079,17 @@ ENDMACRO
  LDA $C030              ; Toggle the state of the speaker (i.e. move it in or
                         ; out) by reading the SPEAKER soft switch
 
- LDX T3                 ; Loop around for T3 iterations, so the higher the
- DEX                    ; period in X, the longer the wait
- BNE P%-1
+ LDX T3                 ; Set X to the period length in T3 iterations, so the
+                        ; higher the period in X, the longer the pause in the
+                        ; following loop
+
+ DEX                    ; Decrement the period counter in X
+
+ BNE P%-1               ; If X is non-zero then loop back to repeat the DEX
+                        ; instruction, so this waits for a total of 5 * X
+                        ; CPU cycles (as the DEX takes two cycles, a successful
+                        ; BNE takes three cycles, and we repeat these five
+                        ; cycles X times)
 
  DEY                    ; Decrement the sound length in Y
 
@@ -40123,10 +40143,20 @@ ENDMACRO
 
  DEC T3                 ; Decrement the period in T3
 
- LDX T3                 ; Loop around for T3 iterations, waiting for two cycles
- DEX                    ; in each iteration, so as the sound continues and T3
- NOP                    ; decreases, the wait gets shorter and the frequency of
- BNE P%-2               ; the sound rises
+ LDX T3                 ; Set X to the period length in T3 iterations, so the
+                        ; higher the period in X, the longer the pause in the
+                        ; following loop, so the pause gets shorter and the
+                        ; frequency of the sound rises as it progresses
+
+ DEX                    ; Decrement the period counter in X
+
+ NOP                    ; Wait for two CPU cycles
+
+ BNE P%-2               ; If X is non-zero then loop back to repeat the DEX
+                        ; instruction, so this waits for a total of 7 * X
+                        ; CPU cycles (as the DEX takes two cycles, the NOP takes
+                        ; another two cycles, a successful BNE takes three
+                        ; cycles, and we repeat these seven cycles X times)
 
  DEY                    ; Decrement the sound length in Y
 
@@ -40173,10 +40203,19 @@ ENDMACRO
  INC T3                 ; Increment the period in T3 twice, so the tone of the
  INC T3                 ; sound falls rapidly
 
- LDX T3                 ; Loop around for T3 iterations, so as the sound
- DEX                    ; continues and T3 increases, the wait gets longer and
- BNE P%-1               ; the frequency of the laser tone lowers into a
-                        ; dissipated explosion noise
+ LDX T3                 ; Set X to the period length in T3 iterations, so the
+                        ; higher the period in X, the longer the pause in the
+                        ; following loop, so the pause gets longer and the
+                        ; frequency of the laser tone lowers into a dissipated
+                        ; explosion noise
+
+ DEX                    ; Decrement the period counter in X
+
+ BNE P%-1               ; If X is non-zero then loop back to repeat the DEX
+                        ; instruction, so this waits for a total of 5 * X
+                        ; CPU cycles (as the DEX takes two cycles, a successful
+                        ; BNE takes three cycles, and we repeat these five
+                        ; cycles X times)
 
  DEY                    ; Decrement the sound length in Y
 
@@ -40194,8 +40233,7 @@ ENDMACRO
 ;       Name: LASNOISE2
 ;       Type: Subroutine
 ;   Category: Sound
-;    Summary: An unused routine that makes the sound of the energy bomb going
-;             off
+;    Summary: An unused routine that makes a different laser sound
 ;
 ; ******************************************************************************
 
@@ -40207,11 +40245,12 @@ ENDMACRO
  LDX #130               ; Set X = 130, though this has no effect as X is
                         ; overwritten with a random number before it is used
 
-                        ; Fall through into SOBOMB to make the sound of an
-                        ; energy bomb going off
+                        ; We now fall through into SOBOMB to make the sound of
+                        ; an energy bomb going off, but it is unlikely that this
+                        ; is how thie routine was used
                         ;
                         ; The above variables make no difference to the sound
-                        ; made by SOBOMB, but given the title of the routine,
+                        ; made by SOBOMB, and given the title of the routine,
                         ; it was presumably designed to jump to the SOBLOP entry
                         ; point to make a higher-pitched variation of the laser
                         ; sound, rather than falling in to SOBOMB
