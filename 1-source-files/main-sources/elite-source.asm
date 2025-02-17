@@ -39831,7 +39831,7 @@ ENDMACRO
 ;       Name: EXNO
 ;       Type: Subroutine
 ;   Category: Sound
-;    Summary: Make the sound of a laser strike or ship explosion
+;    Summary: Make the sound of a laser strike on another ship
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -39917,8 +39917,10 @@ ENDMACRO
  NOP                    ; cycles)
 
  BNE P%-3               ; If X is non-zero then loop back to repeat the DEX and
-                        ; NOP instructions, so this waits for a total of 4 * X
-                        ; CPU cycles
+                        ; NOP instructions, so this waits for a total of 9 * X
+                        ; CPU cycles (as the DEX takes two cycles, the NOPs take
+                        ; another two cycles each, a successful BNE takes three
+                        ; cycles, and we repeat these nine cycles X times)
 
  DEY                    ; Decrement the sound length in Y
 
@@ -40006,8 +40008,10 @@ ENDMACRO
  NOP                    ; Wait for two CPU cycles
 
  BNE P%-2               ; If X is non-zero then loop back to repeat the DEX and
-                        ; NOP instructions, so this waits for a total of 2 * X
-                        ; CPU cycles
+                        ; NOP instructions, so this waits for a total of 7 * X
+                        ; CPU cycles (as the DEX takes two cycles, the NOP takes
+                        ; another two cycles, a successful BNE takes three
+                        ; cycles, and we repeat these seven cycles X times)
 
  DEY                    ; Decrement the sound length in Y
 
@@ -40254,8 +40258,10 @@ ENDMACRO
  NOP                    ; Wait for two CPU cycles
 
  BNE P%-2               ; If X is non-zero then loop back to repeat the DEX and
-                        ; NOP instructions, so this waits for a total of 2 * X
-                        ; CPU cycles
+                        ; NOP instructions, so this waits for a total of 7 * X
+                        ; CPU cycles (as the DEX takes two cycles, the NOP takes
+                        ; another two cycles, a successful BNE takes three
+                        ; cycles, and we repeat these seven cycles X times)
 
  DEY                    ; Decrement the sound length in Y
 
