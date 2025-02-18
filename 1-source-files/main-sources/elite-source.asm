@@ -10573,6 +10573,7 @@ ENDIF
 ;       Type: Subroutine
 ;   Category: Sound
 ;    Summary: Make a standard system beep
+;  Deep dive: Sound effects in Apple II Elite
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -39832,6 +39833,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Sound
 ;    Summary: Make the sound of a laser strike on another ship
+;  Deep dive: Sound effects in Apple II Elite
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -39853,6 +39855,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Sound
 ;    Summary: Make a long, low beep
+;  Deep dive: Sound effects in Apple II Elite
 ;
 ; ******************************************************************************
 
@@ -39874,6 +39877,7 @@ ENDMACRO
 ;   Category: Sound
 ;    Summary: Make the sound of a launch from the station, hyperspace or missile
 ;             launch
+;  Deep dive: Sound effects in Apple II Elite
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -39943,6 +39947,7 @@ ENDMACRO
 ;   Category: Sound
 ;    Summary: Make the sound of a collision, or an exploding cargo canister or
 ;             missile
+;  Deep dive: Sound effects in Apple II Elite
 ;
 ; ******************************************************************************
 
@@ -39958,6 +39963,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Sound
 ;    Summary: Make an explosion sound
+;  Deep dive: Sound effects in Apple II Elite
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40043,6 +40049,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Sound
 ;    Summary: Make a short, high beep
+;  Deep dive: Sound effects in Apple II Elite
 ;
 ; ******************************************************************************
 
@@ -40061,6 +40068,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Sound
 ;    Summary: Make a beep
+;  Deep dive: Sound effects in Apple II Elite
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40123,6 +40131,7 @@ ENDMACRO
 ;   Category: Sound
 ;    Summary: Make the sound of the hyperspace drive being engaged, or the sound
 ;             of the E.C.M.
+;  Deep dive: Sound effects in Apple II Elite
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40189,6 +40198,7 @@ ENDMACRO
 ;   Category: Sound
 ;    Summary: Make the sound of our laser firing or the sound of us being hit by
 ;             lasers
+;  Deep dive: Sound effects in Apple II Elite
 ;
 ; ******************************************************************************
 
@@ -40277,6 +40287,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Sound
 ;    Summary: Make the sound of an energy bomb going off
+;  Deep dive: Sound effects in Apple II Elite
 ;
 ; ******************************************************************************
 
@@ -40333,6 +40344,7 @@ ENDMACRO
 ;   Category: Sound
 ;    Summary: Toggle the state of the speaker (i.e. move it in or out) to make a
 ;             single click
+;  Deep dive: Sound effects in Apple II Elite
 ;
 ; ******************************************************************************
 
