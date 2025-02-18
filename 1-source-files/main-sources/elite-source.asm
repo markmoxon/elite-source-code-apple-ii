@@ -40044,19 +40044,6 @@ ENDMACRO
 ;   Category: Sound
 ;    Summary: Make a short, high beep
 ;
-; ------------------------------------------------------------------------------
-;
-; Other entry points:
-;
-;   SOBEEP              Make a beep as follows:
-;
-;                         * X = the period of the beep (a bigger value means a
-;                               lower pitch)
-;
-;                         * Y = the length of the beep
-;
-;   SOUR                Contains an RTS
-;
 ; ******************************************************************************
 
 .BEEP
@@ -40065,6 +40052,32 @@ ENDMACRO
                         ; make a total of 31 clicks in the following
 
  LDX #110               ; Set the period of the sound at 110 for a high beep
+
+                        ; Fall through into SOBEEP to make a short, high beep
+
+; ******************************************************************************
+;
+;       Name: SOBEEP
+;       Type: Subroutine
+;   Category: Sound
+;    Summary: Make a beep
+;
+; ------------------------------------------------------------------------------
+;
+; Arguments:
+;
+;   X                   The period of the beep (a bigger value means a lower
+;                       pitch)
+;
+;   Y                   The length of the beep
+;
+; ------------------------------------------------------------------------------
+;
+; Other entry points:
+;
+;   SOUR                Contains an RTS
+;
+; ******************************************************************************
 
 .SOBEEP
 
