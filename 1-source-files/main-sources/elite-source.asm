@@ -2802,7 +2802,7 @@ ENDIF
                         ; for testing
                         ;
                         ; To do this, we start by transmitting the ELA binary to
-                        ; the Apple II, and when it arrives it runs its embedded
+                        ; the Apple II, and when it arrives we call its embedded
                         ; routine to copy CODE2 into bank-switched RAM at $D000
                         ;
                         ; We then transmit ELB to the Apple II, which loads
@@ -2812,7 +2812,8 @@ ENDIF
                         ; in memory which we can then execute
                         ;
                         ; See the transfer source code in elite-transfer.asm
-                        ; and the original code in S.APMAKES for details
+                        ; and the original code in S.APMAKES and A.TESTER for
+                        ; details
 
  LDA #LO(STORE)         ; Set SC(1 0) = STORE
  STA SC                 ;
@@ -2838,7 +2839,7 @@ ELIF _SOURCE_DISK
                         ; So this enables bank-switched RAM at $D000
 
  LDX #($C0-$90)         ; We want to copy all the data from $D000 into main
-                        ; memory between $9000 and $C000, so set X to the number
+                        ; memory between $9000 and $BFFF, so set X to the number
                         ; of pages to copy from SC(1 0) to P(1 0) in the
                         ; following loop
 
@@ -32037,6 +32038,7 @@ ENDIF
 ;   Category: Keyboard
 ;    Summary: Scan the keyboard for key presses and the joystick, and update the
 ;             key logger
+;  Deep dive: Working with the Apple II keyboard
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -32482,7 +32484,9 @@ ENDIF
 ;       Name: DKSANYKEY
 ;       Type: Subroutine
 ;   Category: Keyboard
-;    Summary: Scan the keyboard to detect whether any key is being pressed
+;    Summary: An unused routine that scans the keyboard to detect whether any
+;             key is being pressed
+;  Deep dive: Working with the Apple II keyboard
 ;
 ; ------------------------------------------------------------------------------
 ;

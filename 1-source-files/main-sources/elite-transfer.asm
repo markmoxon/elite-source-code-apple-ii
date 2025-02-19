@@ -27,8 +27,13 @@
 ; For file transers, the BASIC program S.APMAKES on the source disk compiles
 ; this code into the ELA and ELB binaries, which it then sends it to the Apple
 ; using a *APPLE command (this latter utility is not included on the disk).
+; The binaries can then be saved to an Apple disk as ELA and ELB.
+;
 ; This source replicates the functionality in S.APMAKES that produces the ELA
 ; and ELB files, but it stops short of the actual transfer process.
+;
+; A variant of the S.APMAKES program called A.TESTER transmits the binaries to
+; the Apple II, and then runs the game.
 ;
 ; It forms part of the PDS (Programmers' Development System) that was used when
 ; developing Apple II Elite on a BBC Micro.
@@ -107,6 +112,7 @@
 ;   Category: Utility routines
 ;    Summary: Copy the second block of the game code, between CODE2 and STORE,
 ;             into bank-switched RAM at $D000
+;  Deep dive: Developing Apple II Elite on a BBC Micro
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -145,8 +151,8 @@
 ; development machine to the test Apple II machine. The transfer process goes
 ; like this:
 ;
-;   * ELA is transmitted first, which loads the game data at $0B60, the loading
-;     screen at $2000 and CODE2 at $9000 to $BFFF.
+;   * ELA is transmitted first, which loads this routine at $0A00, the game
+;     data at $0B60, the loading screen at $2000 and CODE2 at $4000 to $6FFF.
 ;
 ;   * The ENTRY routine in ELA (i.e. this routine) is called on the Apple II,
 ;     which copies CODE2 into bank-switched RAM at $D000.
@@ -157,10 +163,9 @@
 ;     bank-switched RAM back to $9000 to $BFFF.
 ;
 ; We don't have copies of the transfer software - there are some tantalising
-; clues in the S.APMAKES BASIC program, which includes a *APPLE command that is
-; presumably part of the transfer process - but I'm assumimg this memory-moving
-; process ensures that CODE2 doesn't get corrupted by the second transfer
-; process.
+; clues in the S.APMAKES and A.TESTER BASIC programs, which include *APPLE and
+; *CALL commands that form part of the transfer process. See the deep dive for
+; more details.
 ;
 ; Interestingly, this routine is run by all variants of the game when ELA is
 ; loaded, so the released game also copies CODE2 into bank-switched RAM when it
@@ -213,7 +218,7 @@
 
  LDY #0                 ; Set Y = 0 to use as a byte counter
 
- LDX #HI($C000-$9000)   ; We want to copy all the data between $9000 and $C000,
+ LDX #HI($C000-$9000)   ; We want to copy all the data between $9000 and $BFFF,
                         ; so set X to the number of pages to copy
 
 .MVLP1
