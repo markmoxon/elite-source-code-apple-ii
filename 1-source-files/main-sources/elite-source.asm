@@ -2406,6 +2406,7 @@ ENDIF
 ;   Category: Drawing the screen
 ;    Summary: Lookup table for converting a pixel x-coordinate to the bit number
 ;             within the pixel row byte that corresponds to this pixel
+;  Deep dive: Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -2439,6 +2440,7 @@ NEXT
 ;   Category: Drawing the screen
 ;    Summary: Lookup table for converting a pixel x-coordinate to the byte
 ;             number in the pixel row that corresponds to this pixel
+;  Deep dive: Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -7302,6 +7304,7 @@ ENDIF
 ;   Category: Drawing pixels
 ;    Summary: Draw a two-pixel dash, three-pixel dash or double-height
 ;             three-pixel dash
+;  Deep dive: Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -25524,7 +25527,7 @@ ENDIF
 .NW2
 
  STA FRIN,X             ; Store the ship type in the X-th byte of FRIN, so the
-                        ; this slot is now shown as occupied in the index table
+                        ; slot is now shown as occupied in the index table
 
  TAX                    ; Copy the ship type into X
 
@@ -25534,7 +25537,7 @@ ENDIF
  CPX #HER               ; If the ship type is a rock hermit, jump to gangbang
  BEQ gangbang           ; to increase the junk count
 
- CPX #JL                ; If JL <= X < JH, i.e. the type of ship we killed in X
+ CPX #JL                ; If JL <= X < JH, i.e. the type of ship we added in X
  BCC NW7                ; is junk (escape pod, alloy plate, cargo canister,
  CPX #JH                ; asteroid, splinter, Shuttle or Transporter), then keep
  BCS NW7                ; going, otherwise jump to NW7
@@ -43294,6 +43297,7 @@ ENDMACRO
 ;   Category: Drawing the screen
 ;    Summary: Lookup table for converting a character row number to the address
 ;             of the top or bottom pixel line in that character row (low byte)
+;  Deep dive: Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -43354,6 +43358,7 @@ ENDMACRO
 ;   Category: Drawing the screen
 ;    Summary: Lookup table for converting a character row number to the address
 ;             of the top pixel line in that character row (high byte)
+;  Deep dive: Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -43417,6 +43422,7 @@ ENDMACRO
 ;   Category: Drawing the screen
 ;    Summary: Lookup table for converting a character row number to the address
 ;             of the bottom pixel line in that character row (high byte)
+;  Deep dive: Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -43593,6 +43599,7 @@ ENDMACRO
 ;   Category: Drawing lines
 ;    Summary: Draw a line: Line has a shallow gradient, step right along x-axis
 ;  Deep dive: Bresenham's line algorithm
+;             Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -43747,6 +43754,7 @@ ENDMACRO
 ;   Category: Drawing lines
 ;    Summary: Draw a shallow line going right and up or left and down
 ;  Deep dive: Bresenham's line algorithm
+;             Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -43897,6 +43905,7 @@ ENDMACRO
 ;   Category: Drawing lines
 ;    Summary: Draw a shallow line going right and down or left and up
 ;  Deep dive: Bresenham's line algorithm
+;             Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -44039,6 +44048,7 @@ ENDMACRO
 ;   Category: Drawing lines
 ;    Summary: Draw a line: Line has a steep gradient, step up along y-axis
 ;  Deep dive: Bresenham's line algorithm
+;             Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -44205,6 +44215,7 @@ ENDMACRO
 ;   Category: Drawing lines
 ;    Summary: Draw a steep line going up and left or down and right
 ;  Deep dive: Bresenham's line algorithm
+;             Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -44344,6 +44355,7 @@ ENDMACRO
 ;   Category: Drawing lines
 ;    Summary: Draw a steep line going up and right or down and left
 ;  Deep dive: Bresenham's line algorithm
+;             Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -44516,6 +44528,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Drawing lines
 ;    Summary: Draw a horizontal line from (X1, Y1) to (X2, Y1)
+;  Deep dive: Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -44952,6 +44965,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Drawing lines
 ;    Summary: Draw a vertical line from (X1, Y1) to (X1, Y2)
+;  Deep dive: Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -45134,6 +45148,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Drawing pixels
 ;    Summary: Draw a colour pixel
+;  Deep dive: Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -46177,6 +46192,7 @@ ENDIF
 ;   Category: Text
 ;    Summary: Draw a character or indicator bulb bitmap in the high-resolution
 ;             screen mode
+;  Deep dive: Drawing pixels in the Apple II version
 ;
 ; ------------------------------------------------------------------------------
 ;
