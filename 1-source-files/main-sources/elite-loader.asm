@@ -416,6 +416,7 @@ EQUS "SCRN                          "
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Search the disk catalog for an existing file
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -444,12 +445,13 @@ EQUS "SCRN                          "
 ;   Category: Save and load
 ;    Summary: Search the disk catalog for an existing file or an empty file
 ;             entry
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -623,12 +625,13 @@ EQUS "SCRN                          "
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Analyse the VTOC sector to allocate one free sector
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -842,12 +845,13 @@ EQUS "SCRN                          "
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read a file's track/sector list
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -898,12 +902,13 @@ EQUS "SCRN                          "
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read the VTOC sector into the buffer
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -931,6 +936,13 @@ EQUS "SCRN                          "
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read a specific sector from disk into the buffer
+;  Deep dive: File operations with embedded Apple DOS
+;
+; ------------------------------------------------------------------------------
+;
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -962,12 +974,13 @@ EQUS "SCRN                          "
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Write a specific sector from the buffer to disk
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -1025,6 +1038,7 @@ EQUS "SCRN                          "
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read or write a specific sector
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -1042,7 +1056,7 @@ EQUS "SCRN                          "
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -1166,6 +1180,7 @@ EQUS "SCRN                          "
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Try finding a specific track on the disk
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -1177,12 +1192,12 @@ EQUS "SCRN                          "
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -1284,6 +1299,7 @@ EQUS "SCRN                          "
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Check that this is the correct track
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -1292,12 +1308,12 @@ EQUS "SCRN                          "
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -1468,6 +1484,7 @@ EQUS "SCRN                          "
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read a sector's worth of data into the buffr2 buffer
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -1475,12 +1492,12 @@ EQUS "SCRN                          "
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -1612,6 +1629,7 @@ EQUS "SCRN                          "
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read a track address field
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -1619,12 +1637,12 @@ EQUS "SCRN                          "
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -1727,6 +1745,7 @@ EQUS "SCRN                          "
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Fast seek routine
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -1738,12 +1757,12 @@ EQUS "SCRN                          "
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -1852,6 +1871,7 @@ EQUS "SCRN                          "
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Implement the arm move delay
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -1859,12 +1879,12 @@ EQUS "SCRN                          "
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -1896,6 +1916,7 @@ EQUS "SCRN                          "
 ;       Type: Variable
 ;   Category: Save and load
 ;    Summary: Phase-on time table in 100-usec intervals
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -1906,7 +1927,7 @@ EQUS "SCRN                          "
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -1934,6 +1955,7 @@ EQUS "SCRN                          "
 ;       Type: Variable
 ;   Category: Save and load
 ;    Summary: Phase-off time table in 100-usec intervals
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -1944,7 +1966,7 @@ EQUS "SCRN                          "
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -1990,6 +2012,7 @@ EQUS "SCRN                          "
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Convert 342 6-bit nibbles in buffr2 into 256 8-bit bytes in buffer
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -1999,12 +2022,12 @@ EQUS "SCRN                          "
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -2062,6 +2085,7 @@ EQUS "SCRN                          "
 ;   Category: Save and load
 ;    Summary: Lookup table to translate logical (requested) sector number to
 ;             physical sector number
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -2072,7 +2096,7 @@ EQUS "SCRN                          "
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -2094,6 +2118,7 @@ EQUS "SCRN                          "
 ;       Type: Variable
 ;   Category: Save and load
 ;    Summary: 64 disk nibbles of "6-and-2" Read Translate Table
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -2105,7 +2130,7 @@ EQUS "SCRN                          "
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.

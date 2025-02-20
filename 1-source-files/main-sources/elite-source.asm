@@ -2471,6 +2471,7 @@ NEXT
 ;       Type: Variable
 ;   Category: Save and load
 ;    Summary: 6-bit to 7-bit nibble conversion table
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -2481,7 +2482,7 @@ NEXT
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -11903,7 +11904,7 @@ ENDIF
 
 .TN3
 
- LSR A                  ; Extract bit 2 of the ship's NEWB flags into the C flag
+ LSR A                  ; Extract bit 3 of the ship's NEWB flags into the C flag
  BCC TN4                ; and jump to TN4 if it is clear (i.e. if this ship is
                         ; not a pirate)
 
@@ -31376,6 +31377,7 @@ ENDIF
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Print a disk error, make a beep and wait for a key press
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40502,6 +40504,7 @@ ENDMACRO
 ;   Category: Save and load
 ;    Summary: Storage for the commander filename, padded out with spaces to a
 ;             fixed size of 30 characters, for the rfile and wfile routines
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ******************************************************************************
 
@@ -40515,12 +40518,13 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read a commander file from a DOS disk into the buffer
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40591,12 +40595,13 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Write a commander file from the buffer to a DOS disk
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40817,6 +40822,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Search the disk catalog for an existing file
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40844,6 +40850,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Search the disk catalog for an empty file entry
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -40871,12 +40878,13 @@ ENDMACRO
 ;   Category: Save and load
 ;    Summary: Search the disk catalog for an existing file or an empty file
 ;             entry
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41050,12 +41058,13 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Analyse the VTOC sector to allocate one free sector
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41270,12 +41279,13 @@ ENDMACRO
 ;   Category: Save and load
 ;    Summary: Check the disk to ensure there are least two free sectors, one for
 ;             the file's track/sector list and one for the file's contents
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41338,12 +41348,13 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read a file's track/sector list
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41394,12 +41405,13 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read the VTOC sector into the buffer
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41427,6 +41439,13 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read a specific sector from disk into the buffer
+;  Deep dive: File operations with embedded Apple DOS
+;
+; ------------------------------------------------------------------------------
+;
+; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
+; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41458,12 +41477,13 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Write a specific sector from the buffer to disk
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41521,6 +41541,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read or write a specific sector
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41538,7 +41559,7 @@ ENDMACRO
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -41662,6 +41683,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Try finding a specific track on the disk
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41673,12 +41695,12 @@ ENDMACRO
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -41780,6 +41802,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Check that this is the correct track
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41788,12 +41811,12 @@ ENDMACRO
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -41822,6 +41845,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Return from the RWTS code with a "Disk write protected" error
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -41890,6 +41914,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read or write a sector on the current track
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ******************************************************************************
 
@@ -41962,6 +41987,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Return from the RWTS code with a "Disk I/O error"
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42005,6 +42031,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Successfully return from the RWTS code with no error reported
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42045,6 +42072,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read a sector's worth of data into the buffr2 buffer
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42052,12 +42080,12 @@ ENDMACRO
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -42169,6 +42197,7 @@ ENDMACRO
 ;   Category: Save and load
 ;    Summary: Write a sector's worth of data from the buffr2 buffer to the
 ;             current track and sector
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42177,12 +42206,12 @@ ENDMACRO
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -42290,6 +42319,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Read a track address field
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42297,12 +42327,12 @@ ENDMACRO
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -42405,6 +42435,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Fast seek routine
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42416,12 +42447,12 @@ ENDMACRO
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -42530,6 +42561,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Implement the arm move delay
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42537,12 +42569,12 @@ ENDMACRO
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -42574,6 +42606,7 @@ ENDMACRO
 ;       Type: Variable
 ;   Category: Save and load
 ;    Summary: Phase-on time table in 100-usec intervals
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42584,7 +42617,7 @@ ENDMACRO
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -42612,6 +42645,7 @@ ENDMACRO
 ;       Type: Variable
 ;   Category: Save and load
 ;    Summary: Phase-off time table in 100-usec intervals
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42622,7 +42656,7 @@ ENDMACRO
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -42650,6 +42684,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Convert 256 8-bit bytes in buffer into 342 6-bit nibbles in buffr2
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42657,12 +42692,12 @@ ENDMACRO
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -42708,6 +42743,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Convert 342 6-bit nibbles in buffr2 into 256 8-bit bytes in buffer
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42717,12 +42753,12 @@ ENDMACRO
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -42758,6 +42794,7 @@ ENDMACRO
 ;       Type: Subroutine
 ;   Category: Save and load
 ;    Summary: Write one byte to disk
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42765,12 +42802,12 @@ ENDMACRO
 ;
 ; For a detailed look at how DOS works, see the book "Beneath Apple DOS" by Don
 ; Worth and Pieter Lechner. In particular, see chapter 4 for the layout of the
-; VTOC, catalog sector, file entry and file/track list.
+; VTOC, catalog sector, file entry and track/sector list.
 ;
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -42810,6 +42847,7 @@ ENDMACRO
 ;   Category: Save and load
 ;    Summary: Lookup table to translate logical (requested) sector number to
 ;             physical sector number
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42820,7 +42858,7 @@ ENDMACRO
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
@@ -42840,6 +42878,7 @@ ENDMACRO
 ;       Type: Variable
 ;   Category: Save and load
 ;    Summary: 64 disk nibbles of "6-and-2" Read Translate Table
+;  Deep dive: File operations with embedded Apple DOS
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -42851,7 +42890,7 @@ ENDMACRO
 ; Elite uses different label names to the original DOS 3.3 source, but the code
 ; is the same.
 ;
-; This code forms part of the RWTS ("read/write track sector") layer from Apple
+; This code forms part of the RWTS ("read/write track-sector") layer from Apple
 ; DOS, which was written by Randy Wigginton and Steve Wozniak. It implements the
 ; low-level functions to read and write Apple disks, and is included in Elite so
 ; the game can use the memory that's normally allocated to DOS for its own use.
