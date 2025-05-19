@@ -53,8 +53,8 @@ if release == 1:
 
     # Ian Bell disk
     b = 0x4000                  # B%
-    g = 0x45EA                  # G%
-    na2_per_cent = 0x4DF3       # NA2%
+    g = 0x459C                  # G%
+    na2_per_cent = 0x4D8C       # NA2%
 
 elif release == 2:
 
@@ -81,8 +81,8 @@ elif release == 5:
 
     # 4am crack
     b = 0x4000                  # B%
-    g = 0x45E9                  # G%
-    na2_per_cent = 0x4DF3       # NA2%
+    g = 0x459C                  # G%
+    na2_per_cent = 0x4D8C       # NA2%
 
 # Load assembled code files that make up the CODE1 and CODE2 files
 

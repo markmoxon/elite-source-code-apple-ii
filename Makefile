@@ -79,10 +79,13 @@ else
   match-original-binaries=TRUE
 endif
 
+# Remove encryption to save space
+unencrypt=-u
+
 ifeq ($(variant), ib-disk)
   variant-number=1
   folder=ib-disk
-  suffix=-ib-disk
+  suffix=-flicker-free-ib-disk
 else ifeq ($(variant), source-disk-build)
   variant-number=2
   folder=source-disk-build
@@ -98,7 +101,7 @@ else ifeq ($(variant), source-disk-elt-files)
 else
   variant-number=5
   folder=4am-crack
-  suffix=-4am-crack
+  suffix=-flicker-free-4am-crack
 endif
 
 .PHONY:all
