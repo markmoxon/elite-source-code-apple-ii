@@ -969,7 +969,7 @@ ENDIF
                         ;   0   = Space view
                         ;         Death screen
                         ;   1   = Data on System screen (key "7")
-                        ;         Get commander name ("@", save/load commander)
+                        ;         Get commander name ("I", save/load commander)
                         ;         In-system jump just arrived ("J")
                         ;         Mission 1 briefing screen
                         ;   2   = Buy Cargo screen (key "2")
@@ -29340,7 +29340,8 @@ ENDIF
 
  BIT QQ12               ; If bit 7 of QQ12 is clear (i.e. we are not docked, but
  BPL INSP               ; in space), jump to INSP to skip the following checks
-                        ; for f1-f3 and "@" (save commander file) key presses
+                        ; for the "1" to "3" and "I" (save commander file) key
+                        ; presses
 
  CMP #f3                ; If key "3" was pressed, jump to EQSHP to show the
  BNE P%+5               ; Equip Ship screen, returning from the subroutine using
@@ -29353,7 +29354,7 @@ ENDIF
  CMP #'I'               ; If "I" was not pressed, skip to nosave
  BNE nosave
 
- JSR SVE                ; "@" was pressed, so call SVE to show the disk access
+ JSR SVE                ; "I" was pressed, so call SVE to show the disk access
                         ; menu
 
  BCC P%+5               ; If the C flag was set by SVE, then we loaded a new
