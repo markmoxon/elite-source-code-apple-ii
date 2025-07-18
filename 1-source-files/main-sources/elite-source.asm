@@ -370,7 +370,7 @@ ENDIF
 ;
 ; ******************************************************************************
 
- ORG $0000
+ ORG $0000              ; Set the assembly address to $0000
 
 .ZP
 
@@ -1316,7 +1316,7 @@ ENDIF
 ;
 ; ******************************************************************************
 
- ORG $0100
+ ORG $0100              ; Set the assembly address to $0100
 
 .XX3
 
@@ -1344,7 +1344,7 @@ ENDIF
 ;
 ; ******************************************************************************
 
- ORG $0800
+ ORG $0800              ; Set the assembly address to $0800
 
 .K%
 
@@ -1362,7 +1362,7 @@ ENDIF
 ;
 ; ******************************************************************************
 
- ORG $0800
+ ORG $0800              ; Set the assembly address to $0800
 
  CLEAR $0800, $0A6E     ; The disk operations workspace shares memory with the
                         ; ship data blocks at K%, so we need to clear this block
@@ -1501,7 +1501,7 @@ ENDIF
 ;
 ; ******************************************************************************
 
- ORG $0200
+ ORG $0200              ; Set the assembly address to $0200
 
 .UP
 
@@ -2199,7 +2199,7 @@ ENDIF
 ;
 ; ******************************************************************************
 
- ORG $0400
+ ORG $0400              ; Set the assembly address to $0400
 
 .WP
 
@@ -2262,7 +2262,7 @@ ENDIF
 ;
 ; ******************************************************************************
 
- ORG CODE%
+ ORG CODE%              ; Set the assembly address to CODE%
 
  LOAD_A% = LOAD%
 

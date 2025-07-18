@@ -81,7 +81,7 @@ ENDIF
 ;
 ; ******************************************************************************
 
- ORG CODE%
+ ORG CODE%              ; Set the assembly address to CODE%
 
 IF _IB_DISK
 
@@ -5996,7 +5996,7 @@ ENDMACRO
 
  LOAD_SHIPS% = LOAD% + D% - CODE%
 
- ORG D%
+ ORG D%                 ; Set the assembly address to D%
 
 ; ******************************************************************************
 ;
