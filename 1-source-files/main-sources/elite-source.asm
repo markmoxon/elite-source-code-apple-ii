@@ -11669,6 +11669,7 @@ ENDIF
 ;   Category: Tactics
 ;    Summary: Apply tactics: Escape pod, station, lone Thargon, safe-zone pirate
 ;  Deep dive: Program flow of the tactics routine
+;             Aggression and hostility in ship tactics
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -11834,6 +11835,7 @@ ENDIF
 ;   Category: Tactics
 ;    Summary: Apply tactics: Calculate dot product to determine ship's aim
 ;  Deep dive: Program flow of the tactics routine
+;             Aggression and hostility in ship tactics
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -12093,7 +12095,7 @@ ENDIF
  LDY #36                ; Update the NEWB flags in the ship's data block
  STA (INF),Y
 
- LDA #0                 ; Set the AI flag to 0 to disable AI, set aggression to
+ LDA #%00000000         ; Set the AI flag to 0 to disable AI, set aggression to
  STA INWK+32            ; zero and disable any E.C.M., so the ship's a sitting
                         ; duck
 
@@ -12276,6 +12278,7 @@ ENDIF
 ;   Category: Tactics
 ;    Summary: Apply tactics: Set pitch, roll, and acceleration
 ;  Deep dive: Program flow of the tactics routine
+;             Aggression and hostility in ship tactics
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -13531,6 +13534,7 @@ ENDIF
 ;   Category: Tactics
 ;    Summary: Make a ship or station hostile, and if this is a ship then enable
 ;             the ship's AI and give it a kick of speed
+;  Deep dive: Aggression and hostility in ship tactics
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -13639,6 +13643,7 @@ ENDIF
 ;       Type: Subroutine
 ;   Category: Flight
 ;    Summary: Spawn an escape pod from the current (parent) ship
+;  Deep dive: Aggression and hostility in ship tactics
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -21644,6 +21649,7 @@ ENDIF
 ;   Category: Universe
 ;    Summary: Spawn a Thargoid ship and a Thargon companion
 ;  Deep dive: Fixing ship positions
+;             Aggression and hostility in ship tactics
 ;
 ; ******************************************************************************
 
@@ -28498,6 +28504,7 @@ ENDIF
 ;   Category: Universe
 ;    Summary: Initialise the INWK workspace to a fairly aggressive ship
 ;  Deep dive: Fixing ship positions
+;             Aggression and hostility in ship tactics
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -28613,6 +28620,7 @@ ENDIF
 ;    Summary: Spawn a trader (a Cobra Mk III, Python, Boa or Anaconda)
 ;  Deep dive: Program flow of the main game loop
 ;             Ship data blocks
+;             Aggression and hostility in ship tactics
 ;
 ; ------------------------------------------------------------------------------
 ;
@@ -28958,6 +28966,7 @@ ENDIF
 ;             Ship data blocks
 ;             Fixing ship positions
 ;             The elusive Cougar
+;             Aggression and hostility in ship tactics
 ;
 ; ------------------------------------------------------------------------------
 ;
