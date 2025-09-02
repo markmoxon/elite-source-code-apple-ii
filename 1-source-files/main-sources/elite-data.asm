@@ -31,9 +31,9 @@
 ;
 ; after reading in the following files:
 ;
-;   * WORDS.bin
-;   * IANTOK.bin
 ;   * FONT.bin
+;   * IANTOK.bin
+;   * WORDS.bin
 ;
 ; ******************************************************************************
 

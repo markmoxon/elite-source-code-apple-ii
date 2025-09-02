@@ -48,9 +48,9 @@
 ; after reading in the following files:
 ;
 ;   * DATA.bin
-;   * SCREEN.bin
-;   * CODE2.bin
 ;   * CODE1.bin
+;   * CODE2.bin
+;   * SCREEN.bin
 ;
 ; ******************************************************************************
 
