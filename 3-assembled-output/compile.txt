@@ -12508,7 +12508,7 @@ Reload at &EE0
 S.C.IANTOK &EE0  &1C99  &EE0  &EE0 
 Saving file '3-assembled-output/IANTOK.bin'
 .FONT
-     1CA0   00 00 00 ... INCBIN "versions/apple/1-source-files/fonts/A.FLOWY.bin"
+     1CA0   00 00 00 ... INCBIN "1-source-files/fonts/A.FLOWY.bin"
 P% = &1FA0 
 S.C.DATA &B00  &1FA0  &B00  &B00 
 Saving file '3-assembled-output/DATA.unprot.bin'
@@ -37898,42 +37898,42 @@ G% = &45EA
 NA2% = &4DF3 
 .elitea
 elitea = &4000 
-     4000   4C 6D 45 ... INCBIN "versions/apple/3-assembled-output/ELTA.bin"
+     4000   4C 6D 45 ... INCBIN "3-assembled-output/ELTA.bin"
 .eliteb
 eliteb = &4E7E 
-     4E7E   00 08 25 ... INCBIN "versions/apple/3-assembled-output/ELTB.bin"
+     4E7E   00 08 25 ... INCBIN "3-assembled-output/ELTB.bin"
 .elitec
 elitec = &57B9 
-     57B9   A5 0C 05 ... INCBIN "versions/apple/3-assembled-output/ELTC.bin"
+     57B9   A5 0C 05 ... INCBIN "3-assembled-output/ELTC.bin"
 .elited
 elited = &63C3 
-     63C3   4A 85 08 ... INCBIN "versions/apple/3-assembled-output/ELTD.bin"
+     63C3   4A 85 08 ... INCBIN "3-assembled-output/ELTD.bin"
 .elitee
 elitee = &70AF 
-     70AF   A2 05 B5 ... INCBIN "versions/apple/3-assembled-output/ELTE.bin"
+     70AF   A2 05 B5 ... INCBIN "3-assembled-output/ELTE.bin"
 .elitef
 elitef = &7972 
-     7972   A5 31 8D ... INCBIN "versions/apple/3-assembled-output/ELTF.bin"
+     7972   A5 31 8D ... INCBIN "3-assembled-output/ELTF.bin"
 .eliteg
 eliteg = &8707 
-     8707   20 F9 75 ... INCBIN "versions/apple/3-assembled-output/ELTG.bin"
+     8707   20 F9 75 ... INCBIN "3-assembled-output/ELTG.bin"
 .eliteh
 eliteh = &905E 
-     905E   A5 2B 29 ... INCBIN "versions/apple/3-assembled-output/ELTH.bin"
+     905E   A5 2B 29 ... INCBIN "3-assembled-output/ELTH.bin"
 .elitei
 elitei = &9511 
-     9511   60 A9 00 ... INCBIN "versions/apple/3-assembled-output/ELTI.bin"
+     9511   60 A9 00 ... INCBIN "3-assembled-output/ELTI.bin"
 .elitej
 elitej = &9643 
-     9643   43 4F 4D ... INCBIN "versions/apple/3-assembled-output/ELTJ.bin"
+     9643   43 4F 4D ... INCBIN "3-assembled-output/ELTJ.bin"
 .elitek
 elitek = &9BE0 
-     9BE0   01 02 04 ... INCBIN "versions/apple/3-assembled-output/ELTK.bin"
+     9BE0   01 02 04 ... INCBIN "3-assembled-output/ELTK.bin"
 F% = &A300 
 P% = &A300 
 .ships
 ships = &A300 
-     A300   A0 A3 9E ... INCBIN "versions/apple/3-assembled-output/SHIPS.bin"
+     A300   A0 A3 9E ... INCBIN "3-assembled-output/SHIPS.bin"
      BF92   00
      BF93   5C
      BF94   A0
@@ -39153,10 +39153,10 @@ Saving file '3-assembled-output/SEC3.bin'
      0B5D   3A
      0B5E   45
      0B5F   51
-     0B60   7E 56 24 ... INCBIN "versions/apple/3-assembled-output/DATA.bin"
-     2000   C0 AA D5 ... INCBIN "versions/apple/1-source-files/images/4am-crack/A.SCREEN1.bin"
-     27FF   00 C0 80 ... INCBIN "versions/apple/1-source-files/images/4am-crack/A.SCREEN2.bin"
-     4000   DE F5 4D ... INCBIN "versions/apple/3-assembled-output/CODE2.bin"
+     0B60   7E 56 24 ... INCBIN "3-assembled-output/DATA.bin"
+     2000   C0 AA D5 ... INCBIN "1-source-files/images/4am-crack/A.SCREEN1.bin"
+     27FF   00 C0 80 ... INCBIN "1-source-files/images/4am-crack/A.SCREEN2.bin"
+     4000   DE F5 4D ... INCBIN "3-assembled-output/CODE2.bin"
      7000   C5
      7001   20
      7002   1A
@@ -39446,7 +39446,7 @@ Saving file '3-assembled-output/SEC3.bin'
      711E   38
      711F   71
 .endA
-     7120   4C 6D 45 ... INCBIN "versions/apple/3-assembled-output/CODE1.bin"
+     7120   4C 6D 45 ... INCBIN "3-assembled-output/CODE1.bin"
 .endB
 P% = &C120 
 S.A.ELA &A00  &7120  &A00  &A00 
