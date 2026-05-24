@@ -143,7 +143,7 @@
 ;
 ; For the variant of the game on Ian Bell's website, the ELA and ELB files are
 ; not used, and instead CODE1 and CODE2 are loaded directly from disk and are
-; moved to their correct addressses by a simple mover program. See the
+; moved to their correct addresses by a simple mover program. See the
 ; elite-mover.asm source for details.
 ;
 ; For the source disk variant, the process is different, as the game isn't run
