@@ -45690,7 +45690,7 @@ ENDMACRO
 ; ------------------------------------------------------------------------------
 ;
 ; This routine is not used in this version of Elite. It is left over from the
-; 650s Second Processor version.
+; 6502 Second Processor version.
 ;
 ; The entry point at coolkey is used, however.
 ;
