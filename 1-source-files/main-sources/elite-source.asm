@@ -33296,7 +33296,7 @@ ENDIF
  STA XC                 ; Move the text cursor to column messXC
 
  JSR MT15               ; Call MT15 to switch to left-aligned text when printing
-                        ; extended tokens disabling the justify text setting we
+                        ; extended tokens, disabling the justify text setting we
                         ; set above
 
  LDA MCH                ; Set MCH to the token we are about to display
