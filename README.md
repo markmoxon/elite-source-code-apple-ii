@@ -280,7 +280,7 @@ During compilation, details of every step are output in a file called `compile.t
 
 ## Building different variants of Apple II Elite
 
-This repository contains the source code for four different variants of Apple II Elite:
+This repository contains the source code for five different variants of Apple II Elite:
 
 * The 4am crack, which is the most authentic version of the original Firebird game (only the disk protection has been removed, and I have also removed the CTRL-E characters from the filenames on the original disk to make the the modern build process simpler)
 
