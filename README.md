@@ -406,7 +406,7 @@ or this on a Mac or Linux:
 make variant=source-disk-build
 ```
 
-This does not currently produce a game disk, but instead produces the same binaries as the original build process. In the original development system, these files would then be transmitted from the BBC Micro to the Apple II via a serial link, but that setup isn't emulated here.
+This does not currently produce a game disk, but instead produces the same binaries as those produced by the original build process on the source disk. In the original development system, these files would then be transmitted from the BBC Micro to the Apple II via a serial link, but that setup isn't emulated here.
 
 The verification checksums for this version are as follows:
 
