@@ -39,9 +39,9 @@ DISKM8?=diskm8
 #
 # _VARIANT
 #   1 = Ian Bell's game disk
-#   2 = source disk build (the binaries from running a build of the source disk)
-#   3 = source disk CODE files (the CODE* binaries already on the source disk)
-#   4 = source disk ELT files (the ELT* binaries already on the source disk)
+#   2 = Source disk build (the binaries from running a build of the source disk)
+#   3 = Source disk CODE files (the CODE* binaries already on the source disk)
+#   4 = Source disk ELT files (the ELT* binaries already on the source disk)
 #   5 = 4am crack (default)
 #
 # _MAX_COMMANDER
